@@ -32,11 +32,19 @@ namespace AILogisticsAutomation
 
         public AIInventoryManagerSettings Settings { get; set; } = new AIInventoryManagerSettings();
 
+        public bool IsValidToWork
+        {
+            get
+            {
+                return CurrentEntity.IsFunctional && IsPowered && IsEnabled && CountAIInventoryManager(Grid) == 1;
+            }
+        }
+
         public bool IsWorking
         {
             get
             {
-                return CurrentEntity.IsFunctional && IsPowered && IsEnabled && HadWorkToDo;
+                return IsValidToWork && HadWorkToDo;
             }
         }
 
@@ -275,8 +283,9 @@ namespace AILogisticsAutomation
             sb.Append("Is Enabled: ").Append(Settings.GetEnabled() ? "Yes" : "No").Append('\n');
             if (Settings.GetEnabled())
             {
-                sb.Append("Is Working: ").Append(IsWorking ? "Yes" : "No").Append('\n');
+                sb.Append("Is Valid To Work: ").Append(IsValidToWork ? "Yes" : "No").Append('\n');
                 sb.Append("Had Work To Do: ").Append(HadWorkToDo ? "Yes" : "No").Append('\n');
+                sb.Append("Is Working: ").Append(IsWorking ? "Yes" : "No").Append('\n');
             }
             sb.Append('-', 30).Append('\n');
             sb.Append("Is Powered: ").Append(IsPowered ? "Yes" : "No").Append('\n');
@@ -324,7 +333,7 @@ namespace AILogisticsAutomation
 
         private List<MyCubeGrid> GetSubGrids()
         {
-            return CubeGrid.GetConnectedGrids(GridLinkTypeEnum.Mechanical).Where(x => x.EntityId != Grid.EntityId).ToList();
+            return CubeGrid.GetConnectedGrids(GridLinkTypeEnum.Mechanical).Where(x => x.EntityId != Grid.EntityId && CountAIInventoryManager(x) == 0).ToList();
         }
 
         public struct ShipConnected
@@ -339,6 +348,22 @@ namespace AILogisticsAutomation
                 Grid = connector.CubeGrid as MyCubeGrid;
             }
 
+        }
+
+        private int CountAIInventoryManager(IMyCubeGrid grid)
+        {
+            if (ExtendedSurvivalCoreAPI.Registered)
+            {
+                var lista = ExtendedSurvivalCoreAPI.GetGridBlocks(grid.EntityId, typeof(MyObjectBuilder_OreDetector), "AIInventoryManager");
+                return lista.Count;
+            }
+            else
+            {
+                var targetId = new MyDefinitionId(typeof(MyObjectBuilder_OreDetector), "AIInventoryManager");
+                List<IMySlimBlock> lista = new List<IMySlimBlock>();
+                grid.GetBlocks(lista, x => x.BlockDefinition.Id == targetId);
+                return lista.Count;
+            }
         }
 
         private Dictionary<IMyShipConnector, ShipConnected> GetConnectedGrids()
@@ -358,7 +383,7 @@ namespace AILogisticsAutomation
                 foreach (var connector in connectors)
                 {
                     var c = (connector.FatBlock as IMyShipConnector);
-                    if (c.IsConnected && c.OtherConnector.CubeGrid.EntityId != Grid.EntityId)
+                    if (c.IsConnected && c.OtherConnector.CubeGrid.EntityId != Grid.EntityId && CountAIInventoryManager(c.OtherConnector.CubeGrid) == 0)
                     {
                         data.Add(c, new ShipConnected(c.OtherConnector));
                     }
@@ -384,6 +409,7 @@ namespace AILogisticsAutomation
                 !Settings.GetIgnoreFunctionalBlocks().Contains(x.EntityId) &&
                 !Settings.GetIgnoreConnectors().Contains(x.EntityId) &&
                 !x.BlockDefinition.Id.IsHydrogenEngine() &&
+                !x.BlockDefinition.Id.IsParachute() &&
                 (Settings.GetPullFromComposter() || !x.BlockDefinition.Id.IsComposter()) &&
                 (Settings.GetPullFishTrap() || !x.BlockDefinition.Id.IsFishTrap()) &&
                 (Settings.GetPullRefrigerator() || !x.BlockDefinition.Id.IsRefrigerator()) &&
@@ -444,6 +470,9 @@ namespace AILogisticsAutomation
         {
             subgrids = null;
             connectedGrids = null;
+
+            if (!IsValidToWork)
+                return 0;
 
             // Get base power
             var power = CalcPowerFromBlocks(0, ValidInventories);
@@ -976,7 +1005,7 @@ namespace AILogisticsAutomation
                 {
                     foreach (var validTarget in validTargets)
                     {
-                        var targetBlock = listaToCheck.FirstOrDefault(x => x.EntityId == validTarget.EntityId);
+                        var targetBlock = ValidInventories.FirstOrDefault(x => x.EntityId == validTarget.EntityId);
                         if (targetBlock != null)
                         {
                             var targetInventory = targetBlock.GetInventory(0);
@@ -1046,7 +1075,7 @@ namespace AILogisticsAutomation
         {
             if (!IsEnabled)
                 return SetEmissiveState(EmissiveState.Disabled);
-            if (!IsPowered || !HadWorkToDo)
+            if (!IsWorking)
                 return SetEmissiveState(EmissiveState.Warning);
             if (cycleIsRuning)
                 return SetEmissiveState(EmissiveState.Working);

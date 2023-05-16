@@ -14,12 +14,18 @@ namespace AILogisticsAutomation
         public static readonly MyObjectBuilderType[] targetEngineFilter = new MyObjectBuilderType[] { typeof(MyObjectBuilder_HydrogenEngine) };
         public static readonly MyObjectBuilderType[] targetConnectorFilter = new MyObjectBuilderType[] { typeof(MyObjectBuilder_ShipConnector) };
         public static readonly MyObjectBuilderType[] targetRefineryFilter = new MyObjectBuilderType[] { typeof(MyObjectBuilder_Refinery) };
+        public static readonly MyObjectBuilderType[] targetParachuteFilter = new MyObjectBuilderType[] { typeof(MyObjectBuilder_Parachute) };
         public static readonly MyObjectBuilderType[] targetAssemblerFilter = new MyObjectBuilderType[] { typeof(MyObjectBuilder_Assembler), typeof(MyObjectBuilder_SurvivalKit) };
 
         public static readonly string[] isWaterSolidificator = new string[] { "LargeWaterSolidificator", "WaterSolidificator" };
         public static readonly string[] isRefrigerator = new string[] { "LargeBlockRefrigerator", "SmallBlockRefrigerator" };
         public static readonly string[] isComposter = new string[] { "LargeBlockComposter" };
         public static readonly string[] isFishTrap = new string[] { "FishTrap" };
+
+        public static bool IsParachute(this MyDefinitionId id)
+        {
+            return targetParachuteFilter.Contains(id.TypeId);
+        }
 
         public static bool IsRefinery(this MyDefinitionId id)
         {
