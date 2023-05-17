@@ -69,19 +69,16 @@ namespace AILogisticsAutomation
 
         protected override void OnInit(MyObjectBuilder_EntityBase objectBuilder)
         {
-
             if (IsServer)
             {
                 LoadSettings();
+                CurrentEntity.OnClose += CurrentEntity_OnClose;
             }
             else
             {
                 RequestSettings();
             }
             NeedsUpdate |= MyEntityUpdateEnum.EACH_100TH_FRAME;
-
-            CurrentEntity.OnClose += CurrentEntity_OnClose;
-
         }
 
         private void CurrentEntity_OnClose(IMyEntity obj)
@@ -107,11 +104,11 @@ namespace AILogisticsAutomation
             }
         }
 
-        protected string GetEncodedData(bool checkFlag = false)
+        protected string GetEncodedData()
         {
             try
             {
-                var data = Settings.GetData(checkFlag);
+                var data = Settings.GetData();
                 var dataToSend = MyAPIGateway.Utilities.SerializeToXML<AIInventoryManagerSettingsData>(data);
                 return Base64Utils.EncodeToBase64(dataToSend);
             }
@@ -126,8 +123,10 @@ namespace AILogisticsAutomation
         {
             try
             {
+                if (AILogisticsAutomationSettings.Instance.Debug)
+                    AILogisticsAutomationLogging.Instance.LogInfo(GetType(), $"SendToClient: clientId={clientId}");
                 var encodeData = GetEncodedData();
-                SendCallServer(clientId, "UpdateSettings", new Dictionary<string, string>() { { "DATA", encodeData } });
+                SendCallServer(new ulong[] { clientId }, "UpdateSettings", new Dictionary<string, string>() { { "DATA", encodeData } });
             }
             catch (Exception ex)
             {
@@ -135,17 +134,46 @@ namespace AILogisticsAutomation
             }
         }
 
-        protected void ReciveFromClient(string encodeData)
+        protected void SendPowerToClient()
         {
             try
             {
-                if (!string.IsNullOrWhiteSpace(encodeData))
+                if (AILogisticsAutomationSettings.Instance.Debug)
+                    AILogisticsAutomationLogging.Instance.LogInfo(GetType(), $"SendPowerToClient: caller={Settings.GetPowerConsumption()}");
+                SendCallServer(new ulong[] { }, "UpdatePower", new Dictionary<string, string>() { { "POWER", Settings.GetPowerConsumption().ToString() } });
+            }
+            catch (Exception ex)
+            {
+                AILogisticsAutomationLogging.Instance.LogError(GetType(), ex);
+            }
+        }
+
+        protected void ReciveFromClient(ulong caller, string key, string action, string value, string owner)
+        {
+            try
+            {
+                if (AILogisticsAutomationSettings.Instance.Debug)
+                    AILogisticsAutomationLogging.Instance.LogInfo(GetType(), $"ReciveFromClient: caller={caller} - key={key} - action={action} - value={value} - owner={owner}");
+                if (Settings.UpdateData(key, action, value, owner))
                 {
-                    var decodeData = Base64Utils.DecodeFrom64(encodeData);
-                    var data = MyAPIGateway.Utilities.SerializeFromXML<AIInventoryManagerSettingsData>(decodeData);
-                    Settings.UpdateData(data);
                     SaveSettings();
-                    SendToClient(0);
+                    var players = new List<IMyPlayer>();
+                    MyAPIGateway.Players.GetPlayers(players);
+                    if (players.Any(x => x.SteamUserId != caller))
+                    {
+                        var ids = players.Where(x => x.SteamUserId != caller).Select(x => x.SteamUserId).ToArray();
+                        if (ids.Any())
+                        {
+                            var changeData = new Dictionary<string, string>()
+                            {
+                                { "KEY", key },
+                                { "ACTION", action },
+                                { "VALUE", value },
+                                { "OWNER", owner }
+                            };
+                            SendCallServer(ids, "SetSettings", changeData);
+                        }
+                    }
                 }
             }
             catch (Exception ex)
@@ -197,19 +225,26 @@ namespace AILogisticsAutomation
             }
         }
 
-        public void SendToServer()
+        public void SendToServer(string key, string action, string value, string owner = null)
         {
             try
             {
+                var changeData = new Dictionary<string, string>() 
+                { 
+                    { "KEY", key },
+                    { "ACTION", action },
+                    { "VALUE", value },
+                    { "OWNER", owner }
+                };
                 if (!IsServer)
                 {
-                    var encodeData = GetEncodedData(true);
-                    SendCallClient(MyAPIGateway.Session.Player.SteamUserId, "UpdateSettings", new Dictionary<string, string>() { { "DATA", encodeData } });
+                    var encodeData = GetEncodedData();
+                    SendCallClient(MyAPIGateway.Session.Player.SteamUserId, "SetSettings", changeData);
                 }
                 else
                 {
                     SaveSettings();
-                    SendToClient(0);
+                    SendCallServer(new ulong[] { }, "SetSettings", changeData);
                 }
             }
             catch (Exception ex)
@@ -352,18 +387,22 @@ namespace AILogisticsAutomation
 
         private int CountAIInventoryManager(IMyCubeGrid grid)
         {
-            if (ExtendedSurvivalCoreAPI.Registered)
+            if (grid != null)
             {
-                var lista = ExtendedSurvivalCoreAPI.GetGridBlocks(grid.EntityId, typeof(MyObjectBuilder_OreDetector), "AIInventoryManager");
-                return lista.Count;
+                if (ExtendedSurvivalCoreAPI.Registered && IsServer)
+                {
+                    var lista = ExtendedSurvivalCoreAPI.GetGridBlocks(grid.EntityId, typeof(MyObjectBuilder_OreDetector), "AIInventoryManager");
+                    return lista?.Count ?? 0;
+                }
+                else
+                {
+                    var targetId = new MyDefinitionId(typeof(MyObjectBuilder_OreDetector), "AIInventoryManager");
+                    List<IMySlimBlock> lista = new List<IMySlimBlock>();
+                    grid.GetBlocks(lista, x => x.BlockDefinition.Id == targetId);
+                    return lista.Count;
+                }
             }
-            else
-            {
-                var targetId = new MyDefinitionId(typeof(MyObjectBuilder_OreDetector), "AIInventoryManager");
-                List<IMySlimBlock> lista = new List<IMySlimBlock>();
-                grid.GetBlocks(lista, x => x.BlockDefinition.Id == targetId);
-                return lista.Count;
-            }
+            return 0;
         }
 
         private Dictionary<IMyShipConnector, ShipConnected> GetConnectedGrids()
@@ -537,48 +576,51 @@ namespace AILogisticsAutomation
                 if (Settings.GetDefinitions().Any(x => x.EntityId == listaToCheck[i].EntityId))
                     continue;
 
-                var inventoryBase = listaToCheck[i].GetInventory(0);
-                if (inventoryBase != null)
+                int targetInventory = 0;
+                IMyReactor reactor = null;
+                if (listaToCheck[i].BlockDefinition.Id.IsReactor())
                 {
-                    IMyReactor reactor = null;
-                    if (listaToCheck[i].BlockDefinition.Id.IsReactor())
-                    {
-                        reactor = (listaToCheck[i] as IMyReactor);
-                        if (!reactors.Contains(reactor))
-                            reactors.Add(reactor);
-                    }
-                    IMyGasGenerator gasGenerator = null;
-                    if (listaToCheck[i].BlockDefinition.Id.IsGasGenerator())
-                    {
-                        gasGenerator = (listaToCheck[i] as IMyGasGenerator);
-                        if (!gasGenerators.Contains(gasGenerator))
-                            gasGenerators.Add(gasGenerator);
-                    }
-                    if (listaToCheck[i].BlockDefinition.Id.IsFishTrap())
-                    {
-                        gasGenerator = (listaToCheck[i] as IMyGasGenerator);
-                        if (!fishTraps.Contains(gasGenerator))
-                            fishTraps.Add(gasGenerator);
-                    }
-                    if (listaToCheck[i].BlockDefinition.Id.IsRefrigerator())
-                    {
-                        gasGenerator = (listaToCheck[i] as IMyGasGenerator);
-                        if (!refrigerators.Contains(gasGenerator))
-                            refrigerators.Add(gasGenerator);
-                    }
-                    if (listaToCheck[i].BlockDefinition.Id.IsComposter())
-                    {
-                        gasGenerator = (listaToCheck[i] as IMyGasGenerator);
-                        if (!composters.Contains(gasGenerator))
-                            composters.Add(gasGenerator);
-                    }
-                    IMyGasTank gasTank = null;
-                    if (listaToCheck[i].BlockDefinition.Id.IsGasTank())
-                    {
-                        gasTank = (listaToCheck[i] as IMyGasTank);
-                        if (!gasTanks.Contains(gasTank))
-                            gasTanks.Add(gasTank);
-                    }
+                    reactor = (listaToCheck[i] as IMyReactor);
+                    if (!reactors.Contains(reactor))
+                        reactors.Add(reactor);
+                }
+                IMyGasGenerator gasGenerator = null;
+                if (listaToCheck[i].BlockDefinition.Id.IsGasGenerator())
+                {
+                    gasGenerator = (listaToCheck[i] as IMyGasGenerator);
+                    if (!gasGenerators.Contains(gasGenerator))
+                        gasGenerators.Add(gasGenerator);
+                }
+                if (listaToCheck[i].BlockDefinition.Id.IsFishTrap())
+                {
+                    gasGenerator = (listaToCheck[i] as IMyGasGenerator);
+                    if (!fishTraps.Contains(gasGenerator))
+                        fishTraps.Add(gasGenerator);
+                }
+                if (listaToCheck[i].BlockDefinition.Id.IsRefrigerator())
+                {
+                    gasGenerator = (listaToCheck[i] as IMyGasGenerator);
+                    if (!refrigerators.Contains(gasGenerator))
+                        refrigerators.Add(gasGenerator);
+                }
+                if (listaToCheck[i].BlockDefinition.Id.IsComposter())
+                {
+                    gasGenerator = (listaToCheck[i] as IMyGasGenerator);
+                    if (!composters.Contains(gasGenerator))
+                        composters.Add(gasGenerator);
+                }
+                IMyGasTank gasTank = null;
+                if (listaToCheck[i].BlockDefinition.Id.IsGasTank())
+                {
+                    gasTank = (listaToCheck[i] as IMyGasTank);
+                    if (!gasTanks.Contains(gasTank))
+                        gasTanks.Add(gasTank);
+                }
+                if (listaToCheck[i].BlockDefinition.Id.IsAssembler() || listaToCheck[i].BlockDefinition.Id.IsRefinery())
+                    targetInventory = 1;
+                var inventoryBase = listaToCheck[i].GetInventory(targetInventory);
+                if (inventoryBase != null)
+                {                    
                     if (inventoryBase.GetItemsCount() > 0)
                     {
                         // Move itens para o iventário possivel
@@ -587,7 +629,7 @@ namespace AILogisticsAutomation
                         if (listaToCheck[i].BlockDefinition.Id.IsAssembler())
                         {
                             var assembler = (listaToCheck[i] as IMyAssembler);
-                            var inventoryProd = listaToCheck[i].GetInventory(1);
+                            var inventoryProd = listaToCheck[i].GetInventory(0);
                             TryToFullFromInventory(inventoryProd, listaToCheck, assembler, null, null);
                         }
                     }
@@ -640,8 +682,11 @@ namespace AILogisticsAutomation
                                         {
                                             var builder = ItensConstants.GetPhysicalObjectBuilder(new UniqueEntityId(targetFuelId));
                                             var amountToTransfer = fuelAmount > fuelToAdd ? fuelToAdd : fuelAmount;
-                                            var amountTransfered = fishTrapInventory.AddMaxItems(amountToTransfer, builder);
-                                            targetInventory.RemoveItemsOfType((MyFixedPoint)amountTransfered, builder);
+                                            InvokeOnGameThread(() =>
+                                            {
+                                                var amountTransfered = fishTrapInventory.AddMaxItems(amountToTransfer, builder);
+                                                targetInventory.RemoveItemsOfType((MyFixedPoint)amountTransfered, builder);
+                                            });
                                             break;
                                         }
                                     }
@@ -683,8 +728,11 @@ namespace AILogisticsAutomation
                                     {
                                         var builder = ItensConstants.GetPhysicalObjectBuilder(new UniqueEntityId(targetFuelId));
                                         var amountToTransfer = fuelAmount > fuelToAdd ? fuelToAdd : fuelAmount;
-                                        var amountTransfered = composterInventory.AddMaxItems(amountToTransfer, builder);
-                                        targetInventory.RemoveItemsOfType((MyFixedPoint)amountTransfered, builder);
+                                        InvokeOnGameThread(() =>
+                                        {
+                                            var amountTransfered = composterInventory.AddMaxItems(amountToTransfer, builder);
+                                            targetInventory.RemoveItemsOfType((MyFixedPoint)amountTransfered, builder);
+                                        });
                                         break;
                                     }
                                 }
@@ -728,8 +776,11 @@ namespace AILogisticsAutomation
                                                     var itemSlot = targetInventory.GetItemByID(item.Value.ItemId);
                                                     if (itemSlot.HasValue)
                                                     {
-                                                        var amountTransfered = refrigeratorInventory.AddMaxItems((float)item.Value.Amount, itemSlot.Value.Content);
-                                                        targetInventory.RemoveItemsOfType((MyFixedPoint)amountTransfered, itemSlot.Value.Content);
+                                                        InvokeOnGameThread(() =>
+                                                        {
+                                                            var amountTransfered = refrigeratorInventory.AddMaxItems((float)item.Value.Amount, itemSlot.Value.Content);
+                                                            targetInventory.RemoveItemsOfType((MyFixedPoint)amountTransfered, itemSlot.Value.Content);
+                                                        });
                                                         break;
                                                     }
                                                 }
@@ -774,8 +825,11 @@ namespace AILogisticsAutomation
                                     {
                                         var builder = ItensConstants.GetPhysicalObjectBuilder(new UniqueEntityId(targetFuelId));
                                         var amountToTransfer = fuelAmount > fuelToAdd ? fuelToAdd : fuelAmount;
-                                        var amountTransfered = gasGeneratorInventory.AddMaxItems(amountToTransfer, builder);
-                                        targetInventory.RemoveItemsOfType((MyFixedPoint)amountTransfered, builder);
+                                        InvokeOnGameThread(() =>
+                                        {
+                                            var amountTransfered = gasGeneratorInventory.AddMaxItems(amountToTransfer, builder);
+                                            targetInventory.RemoveItemsOfType((MyFixedPoint)amountTransfered, builder);
+                                        });
                                         break;
                                     }
                                 }
@@ -818,8 +872,11 @@ namespace AILogisticsAutomation
                                     {
                                         var builder = ItensConstants.GetPhysicalObjectBuilder(new UniqueEntityId(targetFuelId));
                                         var amountToTransfer = fuelAmount > fuelToAdd ? fuelToAdd : fuelAmount;
-                                        var amountTransfered = reactorInventory.AddMaxItems(amountToTransfer, builder);
-                                        targetInventory.RemoveItemsOfType((MyFixedPoint)amountTransfered, builder);
+                                        InvokeOnGameThread(() =>
+                                        {
+                                            var amountTransfered = reactorInventory.AddMaxItems(amountToTransfer, builder);
+                                            targetInventory.RemoveItemsOfType((MyFixedPoint)amountTransfered, builder);
+                                        });
                                         break;
                                     }
                                 }
@@ -851,20 +908,39 @@ namespace AILogisticsAutomation
                             var itemBeforeDef = MyDefinitionManager.Static.GetPhysicalItemDefinition(itemBefore.Value.Type);
                             var itemDef = MyDefinitionManager.Static.GetPhysicalItemDefinition(item.Value.Type);
                             int dif = 0;
+                            MyFixedPoint itemTotalMass = 0;
+                            MyFixedPoint itemBeforeTotalMass = 0;
                             switch (Settings.GetSortItensType())
                             {
                                 case 1: /* NAME */
                                     dif = itemDef.DisplayNameText.CompareTo(itemBeforeDef.DisplayNameText) * -1; /* A -> Z */
                                     break;
                                 case 2: /* MASS */
-                                    var itemTotalMass = itemDef.Mass * item.Value.Amount;
-                                    var itemBeforeTotalMass = itemBeforeDef.Mass * itemBefore.Value.Amount;
+                                    itemTotalMass = itemDef.Mass * item.Value.Amount;
+                                    itemBeforeTotalMass = itemBeforeDef.Mass * itemBefore.Value.Amount;
                                     dif = itemTotalMass < itemBeforeTotalMass ? -1 : (itemTotalMass > itemBeforeTotalMass ? 1 : 0); /* + -> - */
+                                    break;
+                                case 3: /* TYPE NAME (ITEM NAME) */
+                                    dif = itemDef.Id.TypeId.ToString().CompareTo(itemBeforeDef.Id.TypeId.ToString()) * -1; /* A -> Z */
+                                    if (dif == 0)
+                                        dif = itemDef.DisplayNameText.CompareTo(itemBeforeDef.DisplayNameText) * -1; /* A -> Z */
+                                    break;
+                                case 4: /* TYPE NAME (ITEM MASS) */
+                                    dif = itemDef.Id.TypeId.ToString().CompareTo(itemBeforeDef.Id.TypeId.ToString()) * -1; /* A -> Z */
+                                    if (dif == 0)
+                                    {
+                                        itemTotalMass = itemDef.Mass * item.Value.Amount;
+                                        itemBeforeTotalMass = itemBeforeDef.Mass * itemBefore.Value.Amount;
+                                        dif = itemTotalMass < itemBeforeTotalMass ? -1 : (itemTotalMass > itemBeforeTotalMass ? 1 : 0); /* + -> - */
+                                    }
                                     break;
                             }
                             if (dif > 0)
                             {
-                                MyInventory.Transfer(targetInventory, targetInventory, item.Value.ItemId, p - 1);
+                                InvokeOnGameThread(() =>
+                                {
+                                    MyInventory.Transfer(targetInventory, targetInventory, item.Value.ItemId, p - 1);
+                                });
                             }
                             else
                                 p++;
@@ -882,7 +958,7 @@ namespace AILogisticsAutomation
             if (power != Settings.GetPowerConsumption())
             {
                 Settings.SetPowerConsumption(power);
-                SendToClient(0);
+                SendPowerToClient();
                 CurrentEntity.RefreshCustomInfo();
             }
             if (IsWorking)
@@ -1011,12 +1087,36 @@ namespace AILogisticsAutomation
                             var targetInventory = targetBlock.GetInventory(0);
                             if ((inventoryBase as IMyInventory).CanTransferItemTo(targetInventory, itemid))
                             {
-                                var amountTransfered = targetInventory.AddMaxItems(maxForIds.ContainsKey(itemid) ? (float)maxForIds[itemid] : (float)itemsToCheck[j].Amount, itemsToCheck[j].Content);
-                                inventoryBase.RemoveItemsOfType((MyFixedPoint)amountTransfered, itemid);
+                                InvokeOnGameThread(() =>
+                                {
+                                    var amountTransfered = targetInventory.AddMaxItems(maxForIds.ContainsKey(itemid) ? (float)maxForIds[itemid] : (float)itemsToCheck[j].Amount, itemsToCheck[j].Content);
+                                    inventoryBase.RemoveItemsOfType((MyFixedPoint)amountTransfered, itemid);
+                                });
                             }
                         }
                     }
                 }
+            }
+        }
+
+        private void InvokeOnGameThread(Action action, bool wait = true)
+        {
+            bool isExecuting = true;
+            MyAPIGateway.Utilities.InvokeOnGameThread(() =>
+            {
+                try
+                {
+                    action.Invoke();
+                }
+                finally
+                {
+                    isExecuting = false;
+                }
+            });
+            while (wait && isExecuting)
+            {
+                if (MyAPIGateway.Parallel != null)
+                    MyAPIGateway.Parallel.Sleep(25);
             }
         }
 
@@ -1025,13 +1125,21 @@ namespace AILogisticsAutomation
             base.CallFromClient(caller, method, extraParams);
             try
             {
+                if (AILogisticsAutomationSettings.Instance.Debug)
+                    AILogisticsAutomationLogging.Instance.LogInfo(GetType(), $"CallFromClient: caller={caller} - method={method}");
                 switch (method)
                 {
                     case "RequestSettings":
                         SendToClient(caller);
                         break;
-                    case "UpdateSettings":
-                        ReciveFromClient(extraParams.extraParams.FirstOrDefault(x => x.id == "DATA")?.data);
+                    case "SetSettings":
+                        ReciveFromClient(
+                            caller, 
+                            extraParams.extraParams.FirstOrDefault(x => x.id == "KEY")?.data,
+                            extraParams.extraParams.FirstOrDefault(x => x.id == "ACTION")?.data,
+                            extraParams.extraParams.FirstOrDefault(x => x.id == "VALUE")?.data,
+                            extraParams.extraParams.FirstOrDefault(x => x.id == "OWNER")?.data
+                        );
                         break;
                 }
             }
@@ -1050,6 +1158,18 @@ namespace AILogisticsAutomation
                 {
                     case "UpdateSettings":
                         ReciveFromServer(extraParams.extraParams.FirstOrDefault(x => x.id == "DATA")?.data);
+                        break;
+                    case "UpdatePower":
+                        var power = float.Parse(extraParams.extraParams.FirstOrDefault(x => x.id == "POWER")?.data);
+                        Settings.SetPowerConsumption(power);
+                        break;
+                    case "SetSettings":
+                        Settings.UpdateData(
+                            extraParams.extraParams.FirstOrDefault(x => x.id == "KEY")?.data,
+                            extraParams.extraParams.FirstOrDefault(x => x.id == "ACTION")?.data,
+                            extraParams.extraParams.FirstOrDefault(x => x.id == "VALUE")?.data,
+                            extraParams.extraParams.FirstOrDefault(x => x.id == "OWNER")?.data
+                        );
                         break;
                 }
             }

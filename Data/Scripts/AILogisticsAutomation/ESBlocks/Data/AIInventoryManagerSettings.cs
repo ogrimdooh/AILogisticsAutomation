@@ -277,11 +277,11 @@ namespace AILogisticsAutomation
 
         /* Contrutor */
 
-        public AIInventoryManagerSettingsData GetData(bool checkFlag)
+        public AIInventoryManagerSettingsData GetData()
         {
             var data = new AIInventoryManagerSettingsData
             {
-                definitions = definitions.Select(x => x.GetData(checkFlag)).ToArray(),
+                definitions = definitions.Select(x => x.GetData()).ToArray(),
                 ignoreCargos = ignoreCargos.ToArray(),
                 ignoreFunctionalBlocks = ignoreFunctionalBlocks.ToArray(),
                 ignoreConnectors = ignoreConnectors.ToArray(),
@@ -310,6 +310,248 @@ namespace AILogisticsAutomation
                 pullRefrigerator = pullRefrigerator
             };
             return data;
+        }
+
+        public bool UpdateData(string key, string action, string value, string owner)
+        {
+            long valueAsId = 0;
+            bool valueAsFlag = false;
+            int valueAsIndex = 0;
+            float valueAsFloat = 0f;
+            switch (key)
+            {
+                case "ValidIds":
+                case "ValidTypes":
+                case "IgnoreIds":
+                case "IgnoreTypes":
+                    if (long.TryParse(owner, out valueAsId))
+                    {
+                        var def = definitions.FirstOrDefault(x => x.EntityId == valueAsId);
+                        if (def != null)
+                        {
+                            return def.UpdateData(key, action, value);
+                        }
+                    }
+                    break;
+                case "Definitions":
+                    if (long.TryParse(value, out valueAsId))
+                    {
+                        switch (action)
+                        {
+                            case "ADD":
+                                definitions.Add(new AIInventoryManagerCargoDefinition() { EntityId = valueAsId });
+                                return true;
+                            case "DEL":
+                                definitions.RemoveAll(x => x.EntityId == valueAsId);
+                                return true;
+                        }
+                    }
+                    break;
+                case "IgnoreCargos":
+                    if (long.TryParse(value, out valueAsId))
+                    {
+                        switch (action)
+                        {
+                            case "ADD":
+                                ignoreCargos.Add(valueAsId);
+                                return true;
+                            case "DEL":
+                                ignoreCargos.Remove(valueAsId);
+                                return true;
+                        }
+                    }
+                    break;
+                case "IgnoreFunctionalBlocks":
+                    if (long.TryParse(value, out valueAsId))
+                    {
+                        switch (action)
+                        {
+                            case "ADD":
+                                ignoreFunctionalBlocks.Add(valueAsId);
+                                return true;
+                            case "DEL":
+                                ignoreFunctionalBlocks.Remove(valueAsId);
+                                return true;
+                        }
+                    }
+                    break;
+                case "IgnoreConnectors":
+                    if (long.TryParse(value, out valueAsId))
+                    {
+                        switch (action)
+                        {
+                            case "ADD":
+                                ignoreConnectors.Add(valueAsId);
+                                return true;
+                            case "DEL":
+                                ignoreConnectors.Remove(valueAsId);
+                                return true;
+                        }
+                    }
+                    break;
+                case "PullFromConnectedGrids":
+                    if (bool.TryParse(value, out valueAsFlag))
+                    {
+                        pullFromConnectedGrids = valueAsFlag;
+                        return true;
+                    }
+                    break;
+                case "PullSubGrids":
+                    if (bool.TryParse(value, out valueAsFlag))
+                    {
+                        pullSubGrids = valueAsFlag;
+                        return true;
+                    }
+                    break;
+                case "SortItensType":
+                    if (int.TryParse(value, out valueAsIndex))
+                    {
+                        sortItensType = valueAsIndex;
+                        return true;
+                    }
+                    break;
+                case "FillReactor":
+                    if (bool.TryParse(value, out valueAsFlag))
+                    {
+                        fillReactor = valueAsFlag;
+                        return true;
+                    }
+                    break;
+                case "PullFromReactor":
+                    if (bool.TryParse(value, out valueAsFlag))
+                    {
+                        pullFromReactor = valueAsFlag;
+                        return true;
+                    }
+                    break;
+                case "FillBottles":
+                    if (bool.TryParse(value, out valueAsFlag))
+                    {
+                        fillBottles = valueAsFlag;
+                        return true;
+                    }
+                    break;
+                case "PullFromAssembler":
+                    if (bool.TryParse(value, out valueAsFlag))
+                    {
+                        pullFromAssembler = valueAsFlag;
+                        return true;
+                    }
+                    break;
+                case "Enabled":
+                    if (bool.TryParse(value, out valueAsFlag))
+                    {
+                        enabled = valueAsFlag;
+                        return true;
+                    }
+                    break;
+                case "PullFromRefinary":
+                    if (bool.TryParse(value, out valueAsFlag))
+                    {
+                        pullFromRefinary = valueAsFlag;
+                        return true;
+                    }
+                    break;
+                case "PowerConsumption":
+                    if (float.TryParse(value, out valueAsFloat))
+                    {
+                        powerConsumption = valueAsFloat;
+                        return true;
+                    }
+                    break;
+                case "LargeReactorFuelAmount":
+                    if (float.TryParse(value, out valueAsFloat))
+                    {
+                        largeReactorFuelAmount = valueAsFloat;
+                        return true;
+                    }
+                    break;
+                case "SmallReactorFuelAmount":
+                    if (float.TryParse(value, out valueAsFloat))
+                    {
+                        smallReactorFuelAmount = valueAsFloat;
+                        return true;
+                    }
+                    break;
+                case "FillGasGenerator":
+                    if (bool.TryParse(value, out valueAsFlag))
+                    {
+                        fillGasGenerator = valueAsFlag;
+                        return true;
+                    }
+                    break;
+                case "PullFromGasGenerator":
+                    if (bool.TryParse(value, out valueAsFlag))
+                    {
+                        pullFromGasGenerator = valueAsFlag;
+                        return true;
+                    }
+                    break;
+                case "SmallGasGeneratorAmount":
+                    if (float.TryParse(value, out valueAsFloat))
+                    {
+                        smallGasGeneratorAmount = valueAsFloat;
+                        return true;
+                    }
+                    break;
+                case "LargeGasGeneratorAmount":
+                    if (float.TryParse(value, out valueAsFloat))
+                    {
+                        largeGasGeneratorAmount = valueAsFloat;
+                        return true;
+                    }
+                    break;
+                case "PullFromGasTank":
+                    if (bool.TryParse(value, out valueAsFlag))
+                    {
+                        pullFromGasTank = valueAsFlag;
+                        return true;
+                    }
+                    break;
+                case "FillComposter":
+                    if (bool.TryParse(value, out valueAsFlag))
+                    {
+                        fillComposter = valueAsFlag;
+                        return true;
+                    }
+                    break;
+                case "FillFishTrap":
+                    if (bool.TryParse(value, out valueAsFlag))
+                    {
+                        fillFishTrap = valueAsFlag;
+                        return true;
+                    }
+                    break;
+                case "FillRefrigerator":
+                    if (bool.TryParse(value, out valueAsFlag))
+                    {
+                        fillRefrigerator = valueAsFlag;
+                        return true;
+                    }
+                    break;
+                case "PullFishTrap":
+                    if (bool.TryParse(value, out valueAsFlag))
+                    {
+                        pullFishTrap = valueAsFlag;
+                        return true;
+                    }
+                    break;
+                case "PullFromComposter":
+                    if (bool.TryParse(value, out valueAsFlag))
+                    {
+                        pullFromComposter = valueAsFlag;
+                        return true;
+                    }
+                    break;
+                case "PullRefrigerator":
+                    if (bool.TryParse(value, out valueAsFlag))
+                    {
+                        pullRefrigerator = valueAsFlag;
+                        return true;
+                    }
+                    break;
+            }
+            return false;
         }
 
         public void UpdateData(AIInventoryManagerSettingsData data)

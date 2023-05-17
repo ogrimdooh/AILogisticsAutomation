@@ -206,14 +206,23 @@ namespace AILogisticsAutomation
             );
         }
 
-        protected void SendCallServer(ulong target, string method, Dictionary<string, string> extraParams)
+        protected void SendCallServer(ulong[] target, string method, Dictionary<string, string> extraParams)
         {
+            if (IsDedicated && !target.Any())
+            {
+                var players = new List<IMyPlayer>();
+                MyAPIGateway.Players.GetPlayers(players);
+                if (players.Any())
+                    target = players.Select(x => x.SteamUserId).ToArray();
+                else
+                    return;
+            }
             var cmd = new Command(0, CurrentEntity.EntityId.ToString(), GetType().Name, method);
             var extraData = new CommandExtraParams() { extraParams = extraParams.Select(x => new CommandExtraParam() { id = x.Key, data = x.Value }).ToArray() };
             string extraDataToSend = MyAPIGateway.Utilities.SerializeToXML<CommandExtraParams>(extraData);
             cmd.data = Encoding.Unicode.GetBytes(extraDataToSend);
             string messageToSend = MyAPIGateway.Utilities.SerializeToXML<Command>(cmd);
-            if (target == 0)
+            if (!target.Any())
             {
                 MyAPIGateway.Multiplayer.SendMessageToOthers(
                     AILogisticsAutomationSession.NETWORK_ID_ENTITYCALLS,
@@ -222,11 +231,14 @@ namespace AILogisticsAutomation
             }
             else
             {
-                MyAPIGateway.Multiplayer.SendMessageTo(
-                    AILogisticsAutomationSession.NETWORK_ID_ENTITYCALLS,
-                    Encoding.Unicode.GetBytes(messageToSend),
-                    target
-                );
+                foreach (var item in target)
+                {
+                    MyAPIGateway.Multiplayer.SendMessageTo(
+                        AILogisticsAutomationSession.NETWORK_ID_ENTITYCALLS,
+                        Encoding.Unicode.GetBytes(messageToSend),
+                        item
+                    );
+                }
             }
         }
 

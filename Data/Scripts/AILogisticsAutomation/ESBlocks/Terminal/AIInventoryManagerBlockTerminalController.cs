@@ -143,7 +143,7 @@ namespace AILogisticsAutomation
                 if (system != null)
                 {
                     system.Settings.SetEnabled(value);
-                    system.SendToServer();
+                    system.SendToServer("Enabled", "SET", value.ToString());
                     UpdateVisual(block);
                 }
             };
@@ -177,7 +177,7 @@ namespace AILogisticsAutomation
                     if (system != null)
                     {
                         system.Settings.SetPullFromConnectedGrids(value);
-                        system.SendToServer();
+                        system.SendToServer("PullFromConnectedGrids", "SET", value.ToString());
                     }
                 };
                 checkboxPullFromConnectedGrids.SupportsMultipleBlocks = true;
@@ -205,7 +205,7 @@ namespace AILogisticsAutomation
                     if (system != null)
                     {
                         system.Settings.SetPullSubGrids(value);
-                        system.SendToServer();
+                        system.SendToServer("PullFromSubGrids", "SET", value.ToString());
                     }
                 };
                 checkboxPullFromSubGrids.SupportsMultipleBlocks = true;
@@ -222,6 +222,8 @@ namespace AILogisticsAutomation
                     list.Add(new MyTerminalControlComboBoxItem() { Key = 0, Value = MyStringId.GetOrCompute("None") });
                     list.Add(new MyTerminalControlComboBoxItem() { Key = 1, Value = MyStringId.GetOrCompute("Name") });
                     list.Add(new MyTerminalControlComboBoxItem() { Key = 2, Value = MyStringId.GetOrCompute("Mass") });
+                    list.Add(new MyTerminalControlComboBoxItem() { Key = 3, Value = MyStringId.GetOrCompute("Type Name [Item Name]") });
+                    list.Add(new MyTerminalControlComboBoxItem() { Key = 4, Value = MyStringId.GetOrCompute("Type Name [Item Mass]") });
                 };
                 comboBoxSortItensType.Getter = (block) =>
                 {
@@ -235,7 +237,7 @@ namespace AILogisticsAutomation
                     if (system != null)
                     {
                         system.Settings.SetSortItensType(value);
-                        system.SendToServer();
+                        system.SendToServer("SortItensType", "SET", value.ToString());
                     }
                 };
                 comboBoxSortItensType.SupportsMultipleBlocks = true;
@@ -330,12 +332,13 @@ namespace AILogisticsAutomation
                                     {
                                         EntityId = system.Settings.SelectedEntityId
                                     });
+                                    system.SendToServer("Definitions", "ADD", system.Settings.SelectedEntityId.ToString());
                                     if (system.Settings.GetIgnoreCargos().Contains(system.Settings.SelectedEntityId))
                                     {
                                         system.Settings.GetIgnoreCargos().Remove(system.Settings.SelectedEntityId);
+                                        system.SendToServer("IgnoreCargos", "DEL", system.Settings.SelectedEntityId.ToString());
                                     }
                                     UpdateVisual(block);
-                                    system.SendToServer();
                                 }
                             }
                             else
@@ -346,9 +349,9 @@ namespace AILogisticsAutomation
                                     foreach (var data in dataToRemove)
                                     {
                                         system.Settings.GetDefinitions().Remove(data);
+                                        system.SendToServer("Definitions", "ADD", data.EntityId.ToString());
                                     }
                                     UpdateVisual(block);
-                                    system.SendToServer();
                                 }
                             }
                         }
@@ -511,8 +514,8 @@ namespace AILogisticsAutomation
                                             if (!def.ValidIds.Contains(idToUse))
                                             {
                                                 def.ValidIds.Add(idToUse);
+                                                system.SendToServer("ValidIds", "ADD", idToUse.ToString(), def.EntityId.ToString());
                                                 UpdateVisual(block);
-                                                system.SendToServer();
                                             }
                                         }
                                         else
@@ -521,8 +524,8 @@ namespace AILogisticsAutomation
                                             if (!def.ValidTypes.Contains(typeToUse))
                                             {
                                                 def.ValidTypes.Add(typeToUse);
+                                                system.SendToServer("ValidTypes", "ADD", typeToUse.ToString(), def.EntityId.ToString());
                                                 UpdateVisual(block);
-                                                system.SendToServer();
                                             }
                                         }
                                         break;
@@ -533,8 +536,8 @@ namespace AILogisticsAutomation
                                             if (!def.IgnoreIds.Contains(idToIgnore))
                                             {
                                                 def.IgnoreIds.Add(idToIgnore);
+                                                system.SendToServer("IgnoreIds", "ADD", idToIgnore.ToString(), def.EntityId.ToString());
                                                 UpdateVisual(block);
-                                                system.SendToServer();
                                             }
                                         }
                                         else
@@ -543,8 +546,8 @@ namespace AILogisticsAutomation
                                             if (!def.IgnoreTypes.Contains(typeToIgnore))
                                             {
                                                 def.IgnoreTypes.Add(typeToIgnore);
+                                                system.SendToServer("IgnoreTypes", "ADD", typeToIgnore.ToString(), def.EntityId.ToString());
                                                 UpdateVisual(block);
-                                                system.SendToServer();
                                             }
                                         }
                                         break;
@@ -652,8 +655,8 @@ namespace AILogisticsAutomation
                                             if (def.ValidTypes.Contains(itemVT))
                                             {
                                                 def.ValidTypes.Remove(itemVT);
+                                                system.SendToServer("validTypes", "DEL", itemVT.ToString(), def.EntityId.ToString());
                                                 UpdateVisual(block);
-                                                system.SendToServer();
                                             }
                                             break;
                                         case "VI":
@@ -661,8 +664,8 @@ namespace AILogisticsAutomation
                                             if (def.ValidIds.Contains(itemVI))
                                             {
                                                 def.ValidIds.Remove(itemVI);
+                                                system.SendToServer("ValidIds", "DEL", itemVI.ToString(), def.EntityId.ToString());
                                                 UpdateVisual(block);
-                                                system.SendToServer();
                                             }
                                             break;
                                         case "IT":
@@ -670,8 +673,8 @@ namespace AILogisticsAutomation
                                             if (def.IgnoreTypes.Contains(itemIT))
                                             {
                                                 def.IgnoreTypes.Remove(itemIT);
+                                                system.SendToServer("IgnoreTypes", "DEL", itemIT.ToString(), def.EntityId.ToString());
                                                 UpdateVisual(block);
-                                                system.SendToServer();
                                             }
                                             break;
                                         case "II":
@@ -679,8 +682,8 @@ namespace AILogisticsAutomation
                                             if (def.IgnoreIds.Contains(itemII))
                                             {
                                                 def.IgnoreIds.Remove(itemII);
+                                                system.SendToServer("IgnoreIds", "DEL", itemII.ToString(), def.EntityId.ToString());
                                                 UpdateVisual(block);
-                                                system.SendToServer();
                                             }
                                             break;
                                     }
@@ -836,8 +839,8 @@ namespace AILogisticsAutomation
                                 if (!system.Settings.GetIgnoreCargos().Contains(system.Settings.SelectedIgnoreEntityId))
                                 {
                                     system.Settings.GetIgnoreCargos().Add(system.Settings.SelectedIgnoreEntityId);
+                                    system.SendToServer("IgnoreCargos", "ADD", system.Settings.SelectedIgnoreEntityId.ToString());
                                     UpdateVisual(block);
-                                    system.SendToServer();
                                 }
                             }
                             else if (targetFunctionalFilter.Contains(inventory.BlockDefinition.Id.TypeId))
@@ -845,8 +848,8 @@ namespace AILogisticsAutomation
                                 if (!system.Settings.GetIgnoreFunctionalBlocks().Contains(system.Settings.SelectedIgnoreEntityId))
                                 {
                                     system.Settings.GetIgnoreFunctionalBlocks().Add(system.Settings.SelectedIgnoreEntityId);
+                                    system.SendToServer("IgnoreFunctionalBlocks", "ADD", system.Settings.SelectedIgnoreEntityId.ToString());
                                     UpdateVisual(block);
-                                    system.SendToServer();
                                 }
                             }
                             else if (targetConnectorFilter.Contains(inventory.BlockDefinition.Id.TypeId))
@@ -854,8 +857,8 @@ namespace AILogisticsAutomation
                                 if (!system.Settings.GetIgnoreConnectors().Contains(system.Settings.SelectedIgnoreEntityId))
                                 {
                                     system.Settings.GetIgnoreConnectors().Add(system.Settings.SelectedIgnoreEntityId);
+                                    system.SendToServer("IgnoreConnectors", "ADD", system.Settings.SelectedIgnoreEntityId.ToString());
                                     UpdateVisual(block);
-                                    system.SendToServer();
                                 }
                             }
 
@@ -953,20 +956,20 @@ namespace AILogisticsAutomation
                         if (system.Settings.GetIgnoreCargos().Contains(system.Settings.SelectedAddedIgnoreEntityId))
                         {
                             system.Settings.GetIgnoreCargos().Remove(system.Settings.SelectedAddedIgnoreEntityId);
+                            system.SendToServer("IgnoreCargos", "DEL", system.Settings.SelectedAddedIgnoreEntityId.ToString());
                             UpdateVisual(block);
-                            system.SendToServer();
                         }
                         else if (system.Settings.GetIgnoreFunctionalBlocks().Contains(system.Settings.SelectedAddedIgnoreEntityId))
                         {
                             system.Settings.GetIgnoreFunctionalBlocks().Remove(system.Settings.SelectedAddedIgnoreEntityId);
+                            system.SendToServer("IgnoreFunctionalBlocks", "DEL", system.Settings.SelectedAddedIgnoreEntityId.ToString());
                             UpdateVisual(block);
-                            system.SendToServer();
                         }
                         else if (system.Settings.GetIgnoreConnectors().Contains(system.Settings.SelectedAddedIgnoreEntityId))
                         {
                             system.Settings.GetIgnoreConnectors().Remove(system.Settings.SelectedAddedIgnoreEntityId);
+                            system.SendToServer("IgnoreConnectors", "DEL", system.Settings.SelectedAddedIgnoreEntityId.ToString());
                             UpdateVisual(block);
-                            system.SendToServer();
                         }
                         system.Settings.SelectedAddedIgnoreEntityId = 0;
                     }
@@ -1002,7 +1005,7 @@ namespace AILogisticsAutomation
                     if (system != null)
                     {
                         system.Settings.SetPullFromAssembler(value);
-                        system.SendToServer();
+                        system.SendToServer("PullFromAssembler", "SET", value.ToString());
                     }
                 };
                 checkboxPullFromAssembler.SupportsMultipleBlocks = true;
@@ -1030,7 +1033,7 @@ namespace AILogisticsAutomation
                     if (system != null)
                     {
                         system.Settings.SetPullFromRefinary(value);
-                        system.SendToServer();
+                        system.SendToServer("PullFromRefinary", "SET", value.ToString());
                     }
                 };
                 checkboxPullFromRefinery.SupportsMultipleBlocks = true;
@@ -1058,7 +1061,7 @@ namespace AILogisticsAutomation
                     if (system != null)
                     {
                         system.Settings.SetPullFromReactor(value);
-                        system.SendToServer();
+                        system.SendToServer("PullFromReactor", "SET", value.ToString());
                         UpdateVisual(block);
                     }
                 };
@@ -1093,7 +1096,7 @@ namespace AILogisticsAutomation
                     if (system != null)
                     {
                         system.Settings.SetFillReactor(value);
-                        system.SendToServer();
+                        system.SendToServer("FillReactor", "SET", value.ToString());
                         UpdateVisual(block);
                     }
                 };
@@ -1123,7 +1126,7 @@ namespace AILogisticsAutomation
                     if (system != null)
                     {
                         system.Settings.SetSmallReactorFuelAmount(value);
-                        system.SendToServer();
+                        system.SendToServer("SmallReactorFuelAmount", "SET", value.ToString());
                     }
                 };
                 sliderFillSmallReactor.Writer = (block, val) =>
@@ -1160,7 +1163,7 @@ namespace AILogisticsAutomation
                     if (system != null)
                     {
                         system.Settings.SetLargeReactorFuelAmount(value);
-                        system.SendToServer();
+                        system.SendToServer("LargeReactorFuelAmount", "SET", value.ToString());
                     }
                 };
                 sliderFillLargeReactor.Writer = (block, val) =>
@@ -1196,7 +1199,7 @@ namespace AILogisticsAutomation
                     if (system != null)
                     {
                         system.Settings.SetPullFromGasGenerator(value);
-                        system.SendToServer();
+                        system.SendToServer("PullFromGasGenerator", "SET", value.ToString());
                         UpdateVisual(block);
                     }
                 };
@@ -1231,7 +1234,7 @@ namespace AILogisticsAutomation
                     if (system != null)
                     {
                         system.Settings.SetFillGasGenerator(value);
-                        system.SendToServer();
+                        system.SendToServer("FillGasGenerator", "SET", value.ToString());
                         UpdateVisual(block);
                     }
                 };
@@ -1261,7 +1264,7 @@ namespace AILogisticsAutomation
                     if (system != null)
                     {
                         system.Settings.SetSmallGasGeneratorAmount(value);
-                        system.SendToServer();
+                        system.SendToServer("SmallGasGeneratorAmount", "SET", value.ToString());
                     }
                 };
                 sliderFillSmallGasGenerator.Writer = (block, val) =>
@@ -1298,7 +1301,7 @@ namespace AILogisticsAutomation
                     if (system != null)
                     {
                         system.Settings.SetLargeGasGeneratorAmount(value);
-                        system.SendToServer();
+                        system.SendToServer("LargeGasGeneratorAmount", "SET", value.ToString());
                     }
                 };
                 sliderFillLargeGasGenerator.Writer = (block, val) =>
@@ -1334,7 +1337,7 @@ namespace AILogisticsAutomation
                     if (system != null)
                     {
                         system.Settings.SetPullFromGasTank(value);
-                        system.SendToServer();
+                        system.SendToServer("PullFromGasTank", "SET", value.ToString());
                         UpdateVisual(block);
                     }
                 };
@@ -1369,7 +1372,7 @@ namespace AILogisticsAutomation
                     if (system != null)
                     {
                         system.Settings.SetFillBottles(value);
-                        system.SendToServer();
+                        system.SendToServer("FillBottles", "SET", value.ToString());
                     }
                 };
                 checkboxFillBottles.SupportsMultipleBlocks = true;
@@ -1404,7 +1407,7 @@ namespace AILogisticsAutomation
                         if (system != null)
                         {
                             system.Settings.SetPullFromComposter(value);
-                            system.SendToServer();
+                            system.SendToServer("PullFromComposter", "SET", value.ToString());
                             UpdateVisual(block);
                         }
                     };
@@ -1439,7 +1442,7 @@ namespace AILogisticsAutomation
                         if (system != null)
                         {
                             system.Settings.SetFillComposter(value);
-                            system.SendToServer();
+                            system.SendToServer("FillComposter", "SET", value.ToString());
                             UpdateVisual(block);
                         }
                     };
@@ -1468,7 +1471,7 @@ namespace AILogisticsAutomation
                         if (system != null)
                         {
                             system.Settings.SetPullFishTrap(value);
-                            system.SendToServer();
+                            system.SendToServer("PullFishTrap", "SET", value.ToString());
                             UpdateVisual(block);
                         }
                     };
@@ -1503,7 +1506,7 @@ namespace AILogisticsAutomation
                         if (system != null)
                         {
                             system.Settings.SetFillFishTrap(value);
-                            system.SendToServer();
+                            system.SendToServer("FillFishTrap", "SET", value.ToString());
                             UpdateVisual(block);
                         }
                     };
@@ -1532,7 +1535,7 @@ namespace AILogisticsAutomation
                         if (system != null)
                         {
                             system.Settings.SetPullRefrigerator(value);
-                            system.SendToServer();
+                            system.SendToServer("PullRefrigerator", "SET", value.ToString());
                             UpdateVisual(block);
                         }
                     };
@@ -1567,7 +1570,7 @@ namespace AILogisticsAutomation
                         if (system != null)
                         {
                             system.Settings.SetFillRefrigerator(value);
-                            system.SendToServer();
+                            system.SendToServer("FillRefrigerator", "SET", value.ToString());
                             UpdateVisual(block);
                         }
                     };
