@@ -65,6 +65,9 @@ namespace AILogisticsAutomation
         [XmlElement]
         public bool Debug { get; set; } = false;
 
+        [XmlElement]
+        public EnergyCostSettings EnergyCost { get; set; } = new EnergyCostSettings();
+
         public AILogisticsAutomationSettings()
         {
 

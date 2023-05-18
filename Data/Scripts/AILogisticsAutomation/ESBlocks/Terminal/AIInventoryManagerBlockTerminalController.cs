@@ -99,7 +99,7 @@ namespace AILogisticsAutomation
                 {
                     var targetGrid = system.CurrentEntity.CubeGrid as MyCubeGrid;
                     var exits = targetGrid.Inventories.Any(x => x.EntityId == system.Settings.SelectedEntityId);
-                    var added = system.Settings.GetDefinitions().Any(x => x.EntityId == system.Settings.SelectedEntityId);
+                    var added = system.Settings.GetDefinitions().ContainsKey(system.Settings.SelectedEntityId);
                     return exits && added && isWorkingAndEnabled.Invoke(block);
                 }
                 return false;
@@ -112,7 +112,7 @@ namespace AILogisticsAutomation
                 {
                     var targetGrid = system.CurrentEntity.CubeGrid as MyCubeGrid;
                     var exits = targetGrid.Inventories.Any(x => x.EntityId == system.Settings.SelectedEntityId);
-                    var added = system.Settings.GetDefinitions().Any(x => x.EntityId == system.Settings.SelectedEntityId);
+                    var added = system.Settings.GetDefinitions().ContainsKey(system.Settings.SelectedEntityId);
                     return exits && added && !string.IsNullOrWhiteSpace(system.Settings.SelectedAddedFilterId) && isWorkingAndEnabled.Invoke(block);
                 }
                 return false;
@@ -257,7 +257,7 @@ namespace AILogisticsAutomation
                         var targetGrid = system.CurrentEntity.CubeGrid as MyCubeGrid;
                         foreach (var inventory in targetGrid.Inventories.Where(x => x.BlockDefinition.Id.TypeId == typeof(MyObjectBuilder_CargoContainer)))
                         {
-                            var added = system.Settings.GetDefinitions().Any(x => x.EntityId == inventory.EntityId);
+                            var added = system.Settings.GetDefinitions().ContainsKey(inventory.EntityId);
 
                             var name = string.Format("[{0}] {2} - ({1})", added ? "X" : " ", inventory.BlockDefinition.DisplayNameText, inventory.DisplayNameText);
                             var item = new MyTerminalControlListBoxItem(MyStringId.GetOrCompute(name), MyStringId.GetOrCompute(name), inventory.EntityId);
@@ -309,7 +309,7 @@ namespace AILogisticsAutomation
                         var exists = targetGrid.Inventories.Any(x => x.EntityId == system.Settings.SelectedEntityId);
                         if (exists)
                         {
-                            return system.Settings.GetDefinitions().Any(x => x.EntityId == system.Settings.SelectedEntityId);
+                            return system.Settings.GetDefinitions().ContainsKey(system.Settings.SelectedEntityId);
                         }
                     }
                     return false;
@@ -323,15 +323,15 @@ namespace AILogisticsAutomation
                         var exists = targetGrid.Inventories.Any(x => x.EntityId == system.Settings.SelectedEntityId);
                         if (exists)
                         {
-                            var added = system.Settings.GetDefinitions().Any(x => x.EntityId == system.Settings.SelectedEntityId);
+                            var added = system.Settings.GetDefinitions().ContainsKey(system.Settings.SelectedEntityId);
                             if (value)
                             {
                                 if (!added)
                                 {
-                                    system.Settings.GetDefinitions().Add(new AIInventoryManagerCargoDefinition()
+                                    system.Settings.GetDefinitions()[system.Settings.SelectedEntityId] = new AIInventoryManagerCargoDefinition()
                                     {
                                         EntityId = system.Settings.SelectedEntityId
-                                    });
+                                    };
                                     system.SendToServer("Definitions", "ADD", system.Settings.SelectedEntityId.ToString());
                                     if (system.Settings.GetIgnoreCargos().Contains(system.Settings.SelectedEntityId))
                                     {
@@ -345,11 +345,11 @@ namespace AILogisticsAutomation
                             {
                                 if (added)
                                 {
-                                    var dataToRemove = system.Settings.GetDefinitions().Where(x => x.EntityId == system.Settings.SelectedEntityId).ToArray();
-                                    foreach (var data in dataToRemove)
+                                    var dataToRemove = system.Settings.GetDefinitions().ContainsKey(system.Settings.SelectedEntityId);
+                                    if (dataToRemove)
                                     {
-                                        system.Settings.GetDefinitions().Remove(data);
-                                        system.SendToServer("Definitions", "ADD", data.EntityId.ToString());
+                                        system.Settings.GetDefinitions().Remove(system.Settings.SelectedEntityId);
+                                        system.SendToServer("Definitions", "ADD", system.Settings.SelectedEntityId.ToString());
                                     }
                                     UpdateVisual(block);
                                 }
@@ -501,7 +501,8 @@ namespace AILogisticsAutomation
                         var exits = targetGrid.Inventories.Any(x => x.EntityId == system.Settings.SelectedEntityId);
                         if (exits)
                         {
-                            var def = system.Settings.GetDefinitions().FirstOrDefault(x => x.EntityId == system.Settings.SelectedEntityId);
+                            var lista = system.Settings.GetDefinitions();
+                            var def = lista.ContainsKey(system.Settings.SelectedEntityId) ? lista[system.Settings.SelectedEntityId] : null;
                             if (def != null)
                             {
                                 var useId = selectedFilterGroup == 0;
@@ -573,7 +574,8 @@ namespace AILogisticsAutomation
                         var exits = targetGrid.Inventories.Any(x => x.EntityId == system.Settings.SelectedEntityId);
                         if (exits)
                         {
-                            var def = system.Settings.GetDefinitions().FirstOrDefault(x => x.EntityId == system.Settings.SelectedEntityId);
+                            var lista = system.Settings.GetDefinitions();
+                            var def = lista.ContainsKey(system.Settings.SelectedEntityId) ? lista[system.Settings.SelectedEntityId] : null;
                             if (def != null)
                             {
                                 foreach (var validType in def.ValidTypes)
@@ -641,7 +643,8 @@ namespace AILogisticsAutomation
                         var exits = targetGrid.Inventories.Any(x => x.EntityId == system.Settings.SelectedEntityId);
                         if (exits)
                         {
-                            var def = system.Settings.GetDefinitions().FirstOrDefault(x => x.EntityId == system.Settings.SelectedEntityId);
+                            var lista = system.Settings.GetDefinitions();
+                            var def = lista.ContainsKey(system.Settings.SelectedEntityId) ? lista[system.Settings.SelectedEntityId] : null;
                             if (def != null)
                             {
                                 var parts = system.Settings.SelectedAddedFilterId.Split('_');
@@ -763,7 +766,7 @@ namespace AILogisticsAutomation
 
                         foreach (var inventory in targetGrid.Inventories.Where(x => targetFilter.Contains(x.BlockDefinition.Id.TypeId)))
                         {
-                            var added = system.Settings.GetDefinitions().Any(x => x.EntityId == inventory.EntityId);
+                            var added = system.Settings.GetDefinitions().ContainsKey(inventory.EntityId);
                             if (!added)
                             {
                                 if (!ignoreBlocks.Contains(inventory.EntityId))

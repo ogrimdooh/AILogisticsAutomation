@@ -11,10 +11,10 @@ namespace AILogisticsAutomation
         /* Data Flags */
 
         public long EntityId { get; set; }
-        public List<SerializableDefinitionId> ValidIds { get; set; } = new List<SerializableDefinitionId>();
-        public List<MyObjectBuilderType> ValidTypes { get; set; } = new List<MyObjectBuilderType>();
-        public List<SerializableDefinitionId> IgnoreIds { get; set; } = new List<SerializableDefinitionId>();
-        public List<MyObjectBuilderType> IgnoreTypes { get; set; } = new List<MyObjectBuilderType>();
+        public HashSet<SerializableDefinitionId> ValidIds { get; set; } = new HashSet<SerializableDefinitionId>();
+        public HashSet<MyObjectBuilderType> ValidTypes { get; set; } = new HashSet<MyObjectBuilderType>();
+        public HashSet<SerializableDefinitionId> IgnoreIds { get; set; } = new HashSet<SerializableDefinitionId>();
+        public HashSet<MyObjectBuilderType> IgnoreTypes { get; set; } = new HashSet<MyObjectBuilderType>();
 
         public AIInventoryManagerCargoDefinitionData GetData()
         {
@@ -33,9 +33,9 @@ namespace AILogisticsAutomation
         {
             MyDefinitionId valueAsId;
             MyObjectBuilderType valueAsType;
-            switch (key)
+            switch (key.ToUpper())
             {
-                case "ValidIds":
+                case "VALIDIDS":
                     if (MyDefinitionId.TryParse(value, out valueAsId))
                     {
                         switch (action)
@@ -49,7 +49,7 @@ namespace AILogisticsAutomation
                         }
                     }
                     break;
-                case "ValidTypes":
+                case "VALIDTYPES":
                     if (MyObjectBuilderType.TryParse(value, out valueAsType))
                     {
                         switch (action)
@@ -63,7 +63,7 @@ namespace AILogisticsAutomation
                         }
                     }
                     break;
-                case "IgnoreIds":
+                case "IGNOREIDS":
                     if (MyDefinitionId.TryParse(value, out valueAsId))
                     {
                         switch (action)
@@ -77,7 +77,7 @@ namespace AILogisticsAutomation
                         }
                     }
                     break;
-                case "IgnoreTypes":
+                case "IGNORETYPES":
                     if (MyObjectBuilderType.TryParse(value, out valueAsType))
                     {
                         switch (action)

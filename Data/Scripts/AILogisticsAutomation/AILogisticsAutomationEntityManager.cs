@@ -87,7 +87,7 @@ namespace AILogisticsAutomation
                             {
                                 var componentParamData = Encoding.Unicode.GetString(mCommandData.data);
                                 var componentParams = MyAPIGateway.Utilities.SerializeFromXML<CommandExtraParams>(componentParamData);
-                                if (steamId == 0)
+                                if (fromServer)
                                     syncComponent.CallFromServer(mCommandData.content[2], componentParams);
                                 else
                                     syncComponent.CallFromClient(steamId, mCommandData.content[2], componentParams);

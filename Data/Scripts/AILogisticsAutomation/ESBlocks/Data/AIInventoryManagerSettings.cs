@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Linq;
 
 namespace AILogisticsAutomation
@@ -15,26 +16,26 @@ namespace AILogisticsAutomation
 
         /* Data Properties */
 
-        private readonly List<AIInventoryManagerCargoDefinition> definitions = new List<AIInventoryManagerCargoDefinition>();
-        public List<AIInventoryManagerCargoDefinition> GetDefinitions()
+        private readonly ConcurrentDictionary<long, AIInventoryManagerCargoDefinition> definitions = new ConcurrentDictionary<long, AIInventoryManagerCargoDefinition>();
+        public ConcurrentDictionary<long, AIInventoryManagerCargoDefinition> GetDefinitions()
         {
             return definitions;
         }
 
-        private List<long> ignoreCargos = new List<long>();
-        public List<long> GetIgnoreCargos()
+        private HashSet<long> ignoreCargos = new HashSet<long>();
+        public HashSet<long> GetIgnoreCargos()
         {
             return ignoreCargos;
         }
 
-        private readonly List<long> ignoreFunctionalBlocks = new List<long>();
-        public List<long> GetIgnoreFunctionalBlocks()
+        private readonly HashSet<long> ignoreFunctionalBlocks = new HashSet<long>();
+        public HashSet<long> GetIgnoreFunctionalBlocks()
         {
             return ignoreFunctionalBlocks;
         }
 
-        private readonly List<long> ignoreConnectors = new List<long>();
-        public List<long> GetIgnoreConnectors()
+        private readonly HashSet<long> ignoreConnectors = new HashSet<long>();
+        public HashSet<long> GetIgnoreConnectors()
         {
             return ignoreConnectors;
         }
@@ -281,7 +282,7 @@ namespace AILogisticsAutomation
         {
             var data = new AIInventoryManagerSettingsData
             {
-                definitions = definitions.Select(x => x.GetData()).ToArray(),
+                definitions = definitions.Select(x => x.Value.GetData()).ToArray(),
                 ignoreCargos = ignoreCargos.ToArray(),
                 ignoreFunctionalBlocks = ignoreFunctionalBlocks.ToArray(),
                 ignoreConnectors = ignoreConnectors.ToArray(),
@@ -318,36 +319,36 @@ namespace AILogisticsAutomation
             bool valueAsFlag = false;
             int valueAsIndex = 0;
             float valueAsFloat = 0f;
-            switch (key)
+            switch (key.ToUpper())
             {
-                case "ValidIds":
-                case "ValidTypes":
-                case "IgnoreIds":
-                case "IgnoreTypes":
+                case "VALIDIDS":
+                case "VALIDTYPES":
+                case "IGNOREIDS":
+                case "IGNORETYPES":
                     if (long.TryParse(owner, out valueAsId))
                     {
-                        var def = definitions.FirstOrDefault(x => x.EntityId == valueAsId);
+                        var def = definitions.ContainsKey(valueAsId) ? definitions[valueAsId] : null;
                         if (def != null)
                         {
                             return def.UpdateData(key, action, value);
                         }
                     }
                     break;
-                case "Definitions":
+                case "DEFINITIONS":
                     if (long.TryParse(value, out valueAsId))
                     {
                         switch (action)
                         {
                             case "ADD":
-                                definitions.Add(new AIInventoryManagerCargoDefinition() { EntityId = valueAsId });
+                                definitions[valueAsId] = new AIInventoryManagerCargoDefinition() { EntityId = valueAsId };
                                 return true;
                             case "DEL":
-                                definitions.RemoveAll(x => x.EntityId == valueAsId);
+                                definitions.Remove(valueAsId);
                                 return true;
                         }
                     }
                     break;
-                case "IgnoreCargos":
+                case "IGNORECARGOS":
                     if (long.TryParse(value, out valueAsId))
                     {
                         switch (action)
@@ -361,7 +362,7 @@ namespace AILogisticsAutomation
                         }
                     }
                     break;
-                case "IgnoreFunctionalBlocks":
+                case "IGNOREFUNCTIONALBLOCKS":
                     if (long.TryParse(value, out valueAsId))
                     {
                         switch (action)
@@ -375,7 +376,7 @@ namespace AILogisticsAutomation
                         }
                     }
                     break;
-                case "IgnoreConnectors":
+                case "IGNORECONNECTORS":
                     if (long.TryParse(value, out valueAsId))
                     {
                         switch (action)
@@ -389,161 +390,161 @@ namespace AILogisticsAutomation
                         }
                     }
                     break;
-                case "PullFromConnectedGrids":
+                case "PULLFROMCONNECTEDGRIDS":
                     if (bool.TryParse(value, out valueAsFlag))
                     {
                         pullFromConnectedGrids = valueAsFlag;
                         return true;
                     }
                     break;
-                case "PullSubGrids":
+                case "PULLSUBGRIDS":
                     if (bool.TryParse(value, out valueAsFlag))
                     {
                         pullSubGrids = valueAsFlag;
                         return true;
                     }
                     break;
-                case "SortItensType":
+                case "SORTITENSTYPE":
                     if (int.TryParse(value, out valueAsIndex))
                     {
                         sortItensType = valueAsIndex;
                         return true;
                     }
                     break;
-                case "FillReactor":
+                case "FILLREACTOR":
                     if (bool.TryParse(value, out valueAsFlag))
                     {
                         fillReactor = valueAsFlag;
                         return true;
                     }
                     break;
-                case "PullFromReactor":
+                case "PULLFROMREACTOR":
                     if (bool.TryParse(value, out valueAsFlag))
                     {
                         pullFromReactor = valueAsFlag;
                         return true;
                     }
                     break;
-                case "FillBottles":
+                case "FILLBOTTLES":
                     if (bool.TryParse(value, out valueAsFlag))
                     {
                         fillBottles = valueAsFlag;
                         return true;
                     }
                     break;
-                case "PullFromAssembler":
+                case "PULLFROMASSEMBLER":
                     if (bool.TryParse(value, out valueAsFlag))
                     {
                         pullFromAssembler = valueAsFlag;
                         return true;
                     }
                     break;
-                case "Enabled":
+                case "ENABLED":
                     if (bool.TryParse(value, out valueAsFlag))
                     {
                         enabled = valueAsFlag;
                         return true;
                     }
                     break;
-                case "PullFromRefinary":
+                case "PULLFROMREFINARY":
                     if (bool.TryParse(value, out valueAsFlag))
                     {
                         pullFromRefinary = valueAsFlag;
                         return true;
                     }
                     break;
-                case "PowerConsumption":
+                case "POWERCONSUMPTION":
                     if (float.TryParse(value, out valueAsFloat))
                     {
                         powerConsumption = valueAsFloat;
                         return true;
                     }
                     break;
-                case "LargeReactorFuelAmount":
+                case "LARGEREACTORFUELAMOUNT":
                     if (float.TryParse(value, out valueAsFloat))
                     {
                         largeReactorFuelAmount = valueAsFloat;
                         return true;
                     }
                     break;
-                case "SmallReactorFuelAmount":
+                case "SMALLREACTORFUELAMOUNT":
                     if (float.TryParse(value, out valueAsFloat))
                     {
                         smallReactorFuelAmount = valueAsFloat;
                         return true;
                     }
                     break;
-                case "FillGasGenerator":
+                case "FILLGASGENERATOR":
                     if (bool.TryParse(value, out valueAsFlag))
                     {
                         fillGasGenerator = valueAsFlag;
                         return true;
                     }
                     break;
-                case "PullFromGasGenerator":
+                case "PULLFROMGASGENERATOR":
                     if (bool.TryParse(value, out valueAsFlag))
                     {
                         pullFromGasGenerator = valueAsFlag;
                         return true;
                     }
                     break;
-                case "SmallGasGeneratorAmount":
+                case "SMALLGASGENERATORAMOUNT":
                     if (float.TryParse(value, out valueAsFloat))
                     {
                         smallGasGeneratorAmount = valueAsFloat;
                         return true;
                     }
                     break;
-                case "LargeGasGeneratorAmount":
+                case "LARGEGASGENERATORAMOUNT":
                     if (float.TryParse(value, out valueAsFloat))
                     {
                         largeGasGeneratorAmount = valueAsFloat;
                         return true;
                     }
                     break;
-                case "PullFromGasTank":
+                case "PULLFROMGASTANK":
                     if (bool.TryParse(value, out valueAsFlag))
                     {
                         pullFromGasTank = valueAsFlag;
                         return true;
                     }
                     break;
-                case "FillComposter":
+                case "FILLCOMPOSTER":
                     if (bool.TryParse(value, out valueAsFlag))
                     {
                         fillComposter = valueAsFlag;
                         return true;
                     }
                     break;
-                case "FillFishTrap":
+                case "FILLFISHTRAP":
                     if (bool.TryParse(value, out valueAsFlag))
                     {
                         fillFishTrap = valueAsFlag;
                         return true;
                     }
                     break;
-                case "FillRefrigerator":
+                case "FILLREFRIGERATOR":
                     if (bool.TryParse(value, out valueAsFlag))
                     {
                         fillRefrigerator = valueAsFlag;
                         return true;
                     }
                     break;
-                case "PullFishTrap":
+                case "PULLFISHTRAP":
                     if (bool.TryParse(value, out valueAsFlag))
                     {
                         pullFishTrap = valueAsFlag;
                         return true;
                     }
                     break;
-                case "PullFromComposter":
+                case "PULLFROMCOMPOSTER":
                     if (bool.TryParse(value, out valueAsFlag))
                     {
                         pullFromComposter = valueAsFlag;
                         return true;
                     }
                     break;
-                case "PullRefrigerator":
+                case "PULLREFRIGERATOR":
                     if (bool.TryParse(value, out valueAsFlag))
                     {
                         pullRefrigerator = valueAsFlag;
@@ -556,18 +557,17 @@ namespace AILogisticsAutomation
 
         public void UpdateData(AIInventoryManagerSettingsData data)
         {
-            var dataToRemove = definitions.Where(x => !data.definitions.Any(y => y.entityId == x.EntityId)).ToArray();
+            var dataToRemove = definitions.Keys.Where(x => !data.definitions.Any(y => y.entityId == x)).ToArray();
             foreach (var item in dataToRemove)
             {
                 definitions.Remove(item);
             }
             foreach (var item in data.definitions)
             {
-                var query = definitions.Where(x => x.EntityId == item.entityId);
-                if (query.Any())
+                var def = definitions.ContainsKey(item.entityId) ? definitions[item.entityId] : null;
+                if (def != null)
                 {
-                    var savedItem = query.FirstOrDefault();
-                    savedItem.UpdateData(item);
+                    def.UpdateData(item);
                 }
                 else
                 {
@@ -576,7 +576,7 @@ namespace AILogisticsAutomation
                         EntityId = item.entityId
                     };
                     newItem.UpdateData(item);
-                    definitions.Add(newItem);
+                    definitions[item.entityId] = newItem;
                 }
             }
             ignoreCargos.Clear();

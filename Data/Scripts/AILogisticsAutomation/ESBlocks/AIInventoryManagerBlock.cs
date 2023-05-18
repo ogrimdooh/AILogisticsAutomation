@@ -175,6 +175,11 @@ namespace AILogisticsAutomation
                         }
                     }
                 }
+                else
+                {
+                    AILogisticsAutomationLogging.Instance.LogWarning(GetType(), $"Failed to update key={key} : will force configs in client");
+                    SendToClient(caller);
+                }
             }
             catch (Exception ex)
             {
@@ -280,10 +285,8 @@ namespace AILogisticsAutomation
             {
                 try
                 {
-
                     if (deltaTime == 0)
                         DoRefreshDeltaTime();
-
                     if (deltaTime != 0)
                     {
                         var updateTime = GetGameTime() - deltaTime;
@@ -300,7 +303,6 @@ namespace AILogisticsAutomation
                         }
 
                     }
-
                 }
                 catch (Exception ex)
                 {
@@ -324,6 +326,7 @@ namespace AILogisticsAutomation
             }
             sb.Append('-', 30).Append('\n');
             sb.Append("Is Powered: ").Append(IsPowered ? "Yes" : "No").Append('\n');
+            var RequiredPower = Settings.GetPowerConsumption();
             sb.Append("Required Power: ").Append(string.Format("{0}{1}", RequiredPower >= 1 ? RequiredPower : RequiredPower * 1000, RequiredPower >= 1 ? "MW" : "KW")).Append('\n');
             sb.Append("Current Power: ").Append(string.Format("{0}{1}", CurrentPower >= 1 ? CurrentPower : CurrentPower * 1000, CurrentPower >= 1 ? "MW" : "KW")).Append('\n');
         }
@@ -464,42 +467,42 @@ namespace AILogisticsAutomation
         {
             var totalInventories = blocks.Count();
 
-            power += 0.05f * totalInventories;
+            power += AILogisticsAutomationSettings.Instance.EnergyCost.DefaultBlockCost * totalInventories;
 
             if (Settings.GetFillReactor())
             {
                 var totalReactors = blocks.Count(x => x.BlockDefinition.Id.IsReactor());
-                power += 0.05f * totalReactors;
+                power += AILogisticsAutomationSettings.Instance.EnergyCost.FillReactorCost * totalReactors;
             }
 
             if (Settings.GetFillGasGenerator())
             {
                 var totalGasGenerator = blocks.Count(x => x.BlockDefinition.Id.IsGasGenerator());
-                power += 0.05f * totalGasGenerator;
+                power += AILogisticsAutomationSettings.Instance.EnergyCost.FillGasGeneratorCost * totalGasGenerator;
             }
 
             if (Settings.GetFillRefrigerator())
             {
                 var totalReactors = blocks.Count(x => x.BlockDefinition.Id.IsRefrigerator());
-                power += 0.05f * totalReactors;
+                power += AILogisticsAutomationSettings.Instance.EnergyCost.ExtendedSurvival.FillRefrigeratorCost * totalReactors;
             }
 
             if (Settings.GetFillFishTrap())
             {
                 var totalReactors = blocks.Count(x => x.BlockDefinition.Id.IsFishTrap());
-                power += 0.05f * totalReactors;
+                power += AILogisticsAutomationSettings.Instance.EnergyCost.ExtendedSurvival.FillFishTrapCost * totalReactors;
             }
 
             if (Settings.GetFillComposter())
             {
                 var totalReactors = blocks.Count(x => x.BlockDefinition.Id.IsComposter());
-                power += 0.05f * totalReactors;
+                power += AILogisticsAutomationSettings.Instance.EnergyCost.ExtendedSurvival.FillComposterCost * totalReactors;
             }
 
             if (Settings.GetFillBottles())
             {
                 var totalBottleTargets = blocks.Count(x => x.BlockDefinition.Id.IsBottleTaget());
-                power += 0.05f * totalBottleTargets;
+                power += AILogisticsAutomationSettings.Instance.EnergyCost.FillBottlesCost * totalBottleTargets;
             }
 
             return power;
@@ -517,11 +520,14 @@ namespace AILogisticsAutomation
             var power = CalcPowerFromBlocks(0, ValidInventories);
 
             // Get pull containers power
-            power += (0.15f + (Settings.GetSortItensType() > 0 ? 0.075f : 0) ) * Settings.GetDefinitions().Count;
+            power += (
+                        AILogisticsAutomationSettings.Instance.EnergyCost.DefaultPullCost + 
+                        (Settings.GetSortItensType() > 0 ? AILogisticsAutomationSettings.Instance.EnergyCost.SortCost : 0) 
+                    ) * Settings.GetDefinitions().Count;
             
             // Get filter power
-            var totalFilters = Settings.GetDefinitions().Sum(x => x.IgnoreIds.Count + x.IgnoreTypes.Count + x.ValidTypes.Count + x.ValidIds.Count);
-            power += 0.025f * totalFilters;
+            var totalFilters = Settings.GetDefinitions().Values.Sum(x => x.IgnoreIds.Count + x.IgnoreTypes.Count + x.ValidTypes.Count + x.ValidIds.Count);
+            power += AILogisticsAutomationSettings.Instance.EnergyCost.FilterCost * totalFilters;
 
             // Get subgrids
             if (Settings.GetPullSubGrids())
@@ -573,7 +579,7 @@ namespace AILogisticsAutomation
                     continue;
 
                 // Pula inventorios de despejo
-                if (Settings.GetDefinitions().Any(x => x.EntityId == listaToCheck[i].EntityId))
+                if (Settings.GetDefinitions().Values.Any(x => x.EntityId == listaToCheck[i].EntityId))
                     continue;
 
                 int targetInventory = 0;
@@ -670,9 +676,10 @@ namespace AILogisticsAutomation
                             if (fuelInFishTrap < targetFuel)
                             {
                                 var fuelToAdd = targetFuel - fuelInFishTrap;
-                                for (int i = 0; i < Settings.GetDefinitions().Count; i++)
+                                var keys = Settings.GetDefinitions().Keys.ToArray();
+                                for (int i = 0; i < keys.Length; i++)
                                 {
-                                    var def = Settings.GetDefinitions()[i];
+                                    var def = Settings.GetDefinitions()[keys[i]];
                                     var targetBlock = ValidInventories.FirstOrDefault(x => x.EntityId == def.EntityId);
                                     var targetInventory = targetBlock.GetInventory(0);
                                     var fuelAmount = (float)targetInventory.GetItemAmount(targetFuelId);
@@ -684,8 +691,7 @@ namespace AILogisticsAutomation
                                             var amountToTransfer = fuelAmount > fuelToAdd ? fuelToAdd : fuelAmount;
                                             InvokeOnGameThread(() =>
                                             {
-                                                var amountTransfered = fishTrapInventory.AddMaxItems(amountToTransfer, builder);
-                                                targetInventory.RemoveItemsOfType((MyFixedPoint)amountTransfered, builder);
+                                                MyInventory.Transfer(targetInventory, fishTrapInventory, targetFuelId, amount: (MyFixedPoint)amountToTransfer);
                                             });
                                             break;
                                         }
@@ -716,9 +722,10 @@ namespace AILogisticsAutomation
                         if (fuelInComposter < targetFuel)
                         {
                             var fuelToAdd = targetFuel - fuelInComposter;
-                            for (int i = 0; i < Settings.GetDefinitions().Count; i++)
+                            var keys = Settings.GetDefinitions().Keys.ToArray();
+                            for (int i = 0; i < keys.Length; i++)
                             {
-                                var def = Settings.GetDefinitions()[i];
+                                var def = Settings.GetDefinitions()[keys[i]];
                                 var targetBlock = ValidInventories.FirstOrDefault(x => x.EntityId == def.EntityId);
                                 var targetInventory = targetBlock.GetInventory(0);
                                 var fuelAmount = (float)targetInventory.GetItemAmount(targetFuelId);
@@ -730,8 +737,7 @@ namespace AILogisticsAutomation
                                         var amountToTransfer = fuelAmount > fuelToAdd ? fuelToAdd : fuelAmount;
                                         InvokeOnGameThread(() =>
                                         {
-                                            var amountTransfered = composterInventory.AddMaxItems(amountToTransfer, builder);
-                                            targetInventory.RemoveItemsOfType((MyFixedPoint)amountTransfered, builder);
+                                            MyInventory.Transfer(targetInventory, composterInventory, targetFuelId, amount: (MyFixedPoint)amountToTransfer);
                                         });
                                         break;
                                     }
@@ -748,7 +754,7 @@ namespace AILogisticsAutomation
             if (Settings.GetFillRefrigerator())
             {
                 MyObjectBuilderType targetType = typeof(MyObjectBuilder_ConsumableItem);
-                var query = Settings.GetDefinitions().Where(x => x.ValidTypes.Contains(targetType) || x.ValidIds.Any(y => y.TypeId == targetType));
+                var query = Settings.GetDefinitions().Values.Where(x => x.ValidTypes.Contains(targetType) || x.ValidIds.Any(y => y.TypeId == targetType));
                 if (query.Any())
                 {
                     foreach (var def in query)
@@ -778,8 +784,7 @@ namespace AILogisticsAutomation
                                                     {
                                                         InvokeOnGameThread(() =>
                                                         {
-                                                            var amountTransfered = refrigeratorInventory.AddMaxItems((float)item.Value.Amount, itemSlot.Value.Content);
-                                                            targetInventory.RemoveItemsOfType((MyFixedPoint)amountTransfered, itemSlot.Value.Content);
+                                                            MyInventory.Transfer(targetInventory, refrigeratorInventory, itemSlot.Value.ItemId);
                                                         });
                                                         break;
                                                     }
@@ -813,9 +818,10 @@ namespace AILogisticsAutomation
                         if (fuelInGasGenerator < targetFuel)
                         {
                             var fuelToAdd = targetFuel - fuelInGasGenerator;
-                            for (int i = 0; i < Settings.GetDefinitions().Count; i++)
+                            var keys = Settings.GetDefinitions().Keys.ToArray();
+                            for (int i = 0; i < keys.Length; i++)
                             {
-                                var def = Settings.GetDefinitions()[i];
+                                var def = Settings.GetDefinitions()[keys[i]];
                                 var targetBlock = ValidInventories.FirstOrDefault(x => x.EntityId == def.EntityId);
                                 var targetInventory = targetBlock.GetInventory(0);
                                 var fuelAmount = (float)targetInventory.GetItemAmount(targetFuelId);
@@ -827,8 +833,7 @@ namespace AILogisticsAutomation
                                         var amountToTransfer = fuelAmount > fuelToAdd ? fuelToAdd : fuelAmount;
                                         InvokeOnGameThread(() =>
                                         {
-                                            var amountTransfered = gasGeneratorInventory.AddMaxItems(amountToTransfer, builder);
-                                            targetInventory.RemoveItemsOfType((MyFixedPoint)amountTransfered, builder);
+                                            MyInventory.Transfer(targetInventory, gasGeneratorInventory, targetFuelId, amount: (MyFixedPoint)amountToTransfer);
                                         });
                                         break;
                                     }
@@ -860,9 +865,10 @@ namespace AILogisticsAutomation
                         if (fuelInReactor < targetFuel)
                         {
                             var fuelToAdd = targetFuel - fuelInReactor;
-                            for (int i = 0; i < Settings.GetDefinitions().Count; i++)
+                            var keys = Settings.GetDefinitions().Keys.ToArray();
+                            for (int i = 0; i < keys.Length; i++)
                             {
-                                var def = Settings.GetDefinitions()[i];
+                                var def = Settings.GetDefinitions()[keys[i]];
                                 var targetBlock = ValidInventories.FirstOrDefault(x => x.EntityId == def.EntityId);
                                 var targetInventory = targetBlock.GetInventory(0);
                                 var fuelAmount = (float)targetInventory.GetItemAmount(targetFuelId);
@@ -874,10 +880,62 @@ namespace AILogisticsAutomation
                                         var amountToTransfer = fuelAmount > fuelToAdd ? fuelToAdd : fuelAmount;
                                         InvokeOnGameThread(() =>
                                         {
-                                            var amountTransfered = reactorInventory.AddMaxItems(amountToTransfer, builder);
-                                            targetInventory.RemoveItemsOfType((MyFixedPoint)amountTransfered, builder);
+                                            MyInventory.Transfer(targetInventory, reactorInventory, targetFuelId, amount: (MyFixedPoint)amountToTransfer);
                                         });
                                         break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        private void DoCheckAnyCanGoInOtherInventory()
+        {
+            if (Settings.GetSortItensType() != 0)
+            {
+                var keys = Settings.GetDefinitions().Keys.ToArray();
+                for (int i = 0; i < keys.Length; i++)
+                {
+                    var def = Settings.GetDefinitions()[keys[i]];
+                    var targetBlock = ValidInventories.FirstOrDefault(x => x.EntityId == def.EntityId);
+                    var targetInventory = targetBlock.GetInventory(0);
+                    if (targetInventory.ItemCount > 0)
+                    {
+                        for (int p = targetInventory.ItemCount - 1; p >= 0; p--)
+                        {
+                            var item = targetInventory.GetItemAt(p);
+                            if (!item.HasValue)
+                                break;
+                            var itemid = new MyDefinitionId(MyObjectBuilderType.Parse(item.Value.Type.TypeId), item.Value.Type.SubtypeId);
+                            if (!(
+                                    (def.ValidIds.Contains(itemid) || def.ValidTypes.Contains(itemid.TypeId)) &&
+                                    !def.IgnoreIds.Contains(itemid) && 
+                                    !def.IgnoreTypes.Contains(itemid.TypeId)
+                                ))
+                            {
+                                var validTargets = Settings.GetDefinitions().Values.Where(x =>
+                                    (x.ValidIds.Contains(itemid) || x.ValidTypes.Contains(itemid.TypeId)) &&
+                                    (!x.IgnoreIds.Contains(itemid) && !x.IgnoreTypes.Contains(itemid.TypeId))
+                                );
+                                if (validTargets.Any())
+                                {
+                                    foreach (var validTarget in validTargets)
+                                    {
+                                        var targetBlockToSend = ValidInventories.FirstOrDefault(x => x.EntityId == validTarget.EntityId);
+                                        if (targetBlockToSend != null)
+                                        {
+                                            var targetInventoryToSend = targetBlockToSend.GetInventory(0);
+                                            if ((targetInventory as IMyInventory).CanTransferItemTo(targetInventoryToSend, itemid))
+                                            {
+                                                InvokeOnGameThread(() =>
+                                                {
+                                                    MyInventory.Transfer(targetInventory, targetInventoryToSend, item.Value.ItemId);
+                                                });
+                                            }
+                                        }
                                     }
                                 }
                             }
@@ -891,9 +949,10 @@ namespace AILogisticsAutomation
         {
             if (Settings.GetSortItensType() != 0)
             {
-                for (int i = 0; i < Settings.GetDefinitions().Count; i++)
+                var keys = Settings.GetDefinitions().Keys.ToArray();
+                for (int i = 0; i < keys.Length; i++)
                 {
-                    var def = Settings.GetDefinitions()[i];
+                    var def = Settings.GetDefinitions()[keys[i]];
                     var targetBlock = ValidInventories.FirstOrDefault(x => x.EntityId == def.EntityId);
                     var targetInventory = targetBlock.GetInventory(0);
                     if (targetInventory.ItemCount > 1)
@@ -993,6 +1052,7 @@ namespace AILogisticsAutomation
                 DoFillRefrigerator(refrigerators);
                 DoFillComposter(composters);
                 DoFillBottles(gasGenerators, gasTanks);
+                DoCheckAnyCanGoInOtherInventory();
                 DoSortPullInventories();
             }
         }
@@ -1073,7 +1133,7 @@ namespace AILogisticsAutomation
                     }
                 }
 
-                var validTargets = Settings.GetDefinitions().Where(x =>
+                var validTargets = Settings.GetDefinitions().Values.Where(x =>
                     (x.ValidIds.Contains(itemid) || x.ValidTypes.Contains(itemid.TypeId)) &&
                     (!x.IgnoreIds.Contains(itemid) && !x.IgnoreTypes.Contains(itemid.TypeId))
                 );
@@ -1089,8 +1149,7 @@ namespace AILogisticsAutomation
                             {
                                 InvokeOnGameThread(() =>
                                 {
-                                    var amountTransfered = targetInventory.AddMaxItems(maxForIds.ContainsKey(itemid) ? (float)maxForIds[itemid] : (float)itemsToCheck[j].Amount, itemsToCheck[j].Content);
-                                    inventoryBase.RemoveItemsOfType((MyFixedPoint)amountTransfered, itemid);
+                                    MyInventory.Transfer(inventoryBase, targetInventory, itemsToCheck[j].ItemId);
                                 });
                             }
                         }
