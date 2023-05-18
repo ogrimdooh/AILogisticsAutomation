@@ -5,9 +5,30 @@
     <ResearchBlock xsi:type="ResearchBlock">
       <Id Type="MyObjectBuilder_OreDetector" Subtype="AIInventoryManager" />
       <UnlockedByGroups>
-        <GroupSubtype>0</GroupSubtype>
+        <GroupSubtype>22</GroupSubtype>
       </UnlockedByGroups>
     </ResearchBlock>
 
+    <ResearchBlock xsi:type="ResearchBlock">
+      <Id Type="MyObjectBuilder_OreDetector" Subtype="AIRefineryController" />
+      <UnlockedByGroups>
+        <GroupSubtype>12201</GroupSubtype>
+      </UnlockedByGroups>
+    </ResearchBlock>
+
+    <ResearchBlock xsi:type="ResearchBlock">
+      <Id Type="MyObjectBuilder_OreDetector" Subtype="AIAssemblerController" />
+      <UnlockedByGroups>
+        <GroupSubtype>12201</GroupSubtype>
+      </UnlockedByGroups>
+    </ResearchBlock>
+
+    <ResearchBlock xsi:type="ResearchBlock">
+      <Id Type="MyObjectBuilder_OreDetector" Subtype="AIDisplayMonitor" />
+      <UnlockedByGroups>
+        <GroupSubtype>12201</GroupSubtype>
+      </UnlockedByGroups>
+    </ResearchBlock>
+    
   </ResearchBlocks>
 </Definitions>

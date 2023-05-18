@@ -80,7 +80,7 @@ namespace AILogisticsAutomation
                     _writer.WriteLine($"{GetTimeString()} [{level}] - {message}");
                     _writer.Flush();
                 }
-            MyLog.Default.WriteLineAndConsole($"ExtendedSurvival [{level}] - {message}");
+            MyLog.Default.WriteLineAndConsole($"AILogisticsAutomation [{level}] - {message}");
         }
 
         public void LogError(Type caller, Exception ex, bool fatal = false)

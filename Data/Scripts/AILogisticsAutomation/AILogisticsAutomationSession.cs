@@ -80,6 +80,15 @@ namespace AILogisticsAutomation
             if (!AIInventoryManagerBlockTerminal.Controller.CustomControlsInit)
                 AIInventoryManagerBlockTerminal.InitializeControls();
 
+            if (!AIRefineryControllerBlockTerminal.Controller.CustomControlsInit)
+                AIRefineryControllerBlockTerminal.InitializeControls();
+
+            if (!AIAssemblerControllerBlockTerminal.Controller.CustomControlsInit)
+                AIAssemblerControllerBlockTerminal.InitializeControls();
+
+            if (!AIDisplayMonitorBlockTerminal.Controller.CustomControlsInit)
+                AIDisplayMonitorBlockTerminal.InitializeControls();
+
         }
 
         private const string SETTINGS_COMMAND = "settings";

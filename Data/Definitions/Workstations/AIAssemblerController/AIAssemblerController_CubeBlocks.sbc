@@ -5,11 +5,11 @@
     <Definition xsi:type="MyObjectBuilder_OreDetectorDefinition">
       <Id>
         <TypeId>OreDetector</TypeId>
-        <SubtypeId>AIInventoryManager</SubtypeId>
+        <SubtypeId>AIAssemblerController</SubtypeId>
       </Id>
       <Public>true</Public>
-      <DisplayName>AI Inventory Manager</DisplayName>
-      <Icon>Textures\GUI\Icons\Cubes\AIInventoryManager.dds</Icon>
+      <DisplayName>AI Assembler Controller</DisplayName>
+      <Icon>Textures\GUI\Icons\Cubes\AIAssemblerController.dds</Icon>
       <Description></Description>
       <CubeSize>Large</CubeSize>
       <BlockTopology>TriangleMesh</BlockTopology>
@@ -32,7 +32,7 @@
         <Model BuildPercentUpperBound="0.66" File="Models\Cubes\Large\TimerBlockConstruction_2.mwm" />
         <Model BuildPercentUpperBound="1.00" File="Models\Cubes\Large\TimerBlockConstruction_3.mwm" />
       </BuildProgressModels>
-      <BlockPairName>AIInventoryManager</BlockPairName>
+      <BlockPairName>AIAssemblerController</BlockPairName>
       <MirroringY>Z</MirroringY>
       <MirroringZ>Y</MirroringZ>
       <EdgeType>Light</EdgeType>

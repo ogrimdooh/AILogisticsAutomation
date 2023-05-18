@@ -5,7 +5,7 @@ using System.Linq;
 namespace AILogisticsAutomation
 {
 
-    public class AIInventoryManagerSettings : IBlockSettings<AIInventoryManagerSettingsData>
+    public class AIInventoryManagerSettings : IAIBlockSettings<AIInventoryManagerSettingsData>
     {
 
         /* Interface Properties */

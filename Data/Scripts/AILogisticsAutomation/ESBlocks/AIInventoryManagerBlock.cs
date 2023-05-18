@@ -7,8 +7,6 @@ using System.Collections.Generic;
 using System;
 using Sandbox.Game.Entities;
 using System.Linq;
-using Sandbox.Game.EntityComponents;
-using System.Text;
 using Sandbox.Common.ObjectBuilders;
 using VRage.Game.ModAPI;
 using VRage;
@@ -22,7 +20,7 @@ namespace AILogisticsAutomation
 {
 
     [MyEntityComponentDescriptor(typeof(MyObjectBuilder_OreDetector), false, "AIInventoryManager")]
-    public class AIInventoryManagerBlock : BaseWithSettingLogicComponent<IMyOreDetector, AIInventoryManagerSettings, AIInventoryManagerSettingsData>
+    public class AIInventoryManagerBlock : BaseAIBlock<IMyOreDetector, AIInventoryManagerSettings, AIInventoryManagerSettingsData>
     {
 
         private const float IDEAL_COMPOSTER_ORGANIC = 100;
@@ -31,40 +29,15 @@ namespace AILogisticsAutomation
 
         private readonly ConcurrentDictionary<long, MyInventoryMap> inventoryMap = new ConcurrentDictionary<long, MyInventoryMap>();
 
-        public bool IsValidToWork
+        protected override bool GetHadWorkToDo()
         {
-            get
-            {
-                return CurrentEntity.IsFunctional && IsPowered && IsEnabled && CountAIInventoryManager(Grid) == 1;
-            }
+            return Settings?.GetDefinitions().Any() ?? false;
         }
 
-        public bool IsWorking
+        protected override bool GetIsValidToWork()
         {
-            get
-            {
-                return IsValidToWork && HadWorkToDo;
-            }
+            return true;
         }
-
-        public bool HadWorkToDo 
-        { 
-            get
-            {
-                return Settings?.GetDefinitions().Any() ?? false;
-            }
-        }
-
-        public bool IsEnabled
-        {
-            get
-            {
-                return Settings?.GetEnabled() ?? false;
-            }
-        }
-
-        public const float StandbyPowerConsumption = 0.05f;
-        public const float OperationalPowerConsumption = 0.5f;
 
         protected override void OnInit(MyObjectBuilder_EntityBase objectBuilder)
         {
@@ -73,114 +46,6 @@ namespace AILogisticsAutomation
             NeedsUpdate |= MyEntityUpdateEnum.EACH_100TH_FRAME;
         }
 
-        protected override void CurrentEntity_OnClose(IMyEntity obj)
-        {
-            base.CurrentEntity_OnClose(obj);
-            canRun = false;
-        }
-
-        private float ComputeRequiredPower()
-        {            
-            if (!CurrentEntity.IsFunctional || !Settings.GetEnabled())
-                return 0.0f;
-            return !HadWorkToDo ? StandbyPowerConsumption : Settings.GetPowerConsumption();
-        }
-
-        private long GetGameTime()
-        {
-            return ExtendedSurvivalCoreAPI.Registered ? ExtendedSurvivalCoreAPI.GetGameTime() : AILogisticsAutomationTimeManager.Instance.GameTime;
-        }
-
-        private long deltaTime = 0;
-        private long spendTime = 0;
-        public void DoRefreshDeltaTime()
-        {
-            deltaTime = GetGameTime();
-        }
-
-        private readonly long cicleType = 3000; /* default cycle time */
-        protected override void OnUpdateAfterSimulation100()
-        {
-            base.OnUpdateAfterSimulation100();
-            if (IsServer)
-            {
-                try
-                {
-                    if (deltaTime == 0)
-                        DoRefreshDeltaTime();
-                    if (deltaTime != 0)
-                    {
-                        var updateTime = GetGameTime() - deltaTime;
-                        DoRefreshDeltaTime();
-
-                        if (!cycleIsRuning)
-                        {
-                            spendTime += updateTime;
-                            if (spendTime >= cicleType)
-                            {
-                                spendTime = 0;
-                                DoCallExecuteCycle();
-                            }
-                        }
-
-                    }
-                }
-                catch (Exception ex)
-                {
-                    AILogisticsAutomationLogging.Instance.LogError(GetType(), ex);
-                }
-            }
-            CurrentEntity.ResourceSink.SetRequiredInputByType(MyResourceDistributorComponent.ElectricityId, ComputeRequiredPower());
-            CurrentEntity.RefreshCustomInfo();
-            UpdateEmissiveState();
-        }
-
-        protected override void OnAppendingCustomInfo(StringBuilder sb)
-        {
-            base.OnAppendingCustomInfo(sb);
-            sb.Append("Is Enabled: ").Append(Settings.GetEnabled() ? "Yes" : "No").Append('\n');
-            if (Settings.GetEnabled())
-            {
-                sb.Append("Is Valid To Work: ").Append(IsValidToWork ? "Yes" : "No").Append('\n');
-                sb.Append("Had Work To Do: ").Append(HadWorkToDo ? "Yes" : "No").Append('\n');
-                sb.Append("Is Working: ").Append(IsWorking ? "Yes" : "No").Append('\n');
-            }
-            sb.Append('-', 30).Append('\n');
-            sb.Append("Is Powered: ").Append(IsPowered ? "Yes" : "No").Append('\n');
-            var RequiredPower = Settings.GetPowerConsumption();
-            sb.Append("Required Power: ").Append(string.Format("{0}{1}", RequiredPower >= 1 ? RequiredPower : RequiredPower * 1000, RequiredPower >= 1 ? "MW" : "KW")).Append('\n');
-            sb.Append("Current Power: ").Append(string.Format("{0}{1}", CurrentPower >= 1 ? CurrentPower : CurrentPower * 1000, CurrentPower >= 1 ? "MW" : "KW")).Append('\n');
-        }
-
-        private bool cycleIsRuning = false;
-        protected bool canRun = true;
-        protected ParallelTasks.Task task;
-        protected void DoCallExecuteCycle()
-        {
-            if (!cycleIsRuning)
-            {
-                cycleIsRuning = true;
-                task = MyAPIGateway.Parallel.StartBackground(() =>
-                {
-                    try
-                    {
-                        try
-                        {
-                            
-                            DoExecuteCycle();
-                        }
-                        catch (Exception ex)
-                        {
-                            AILogisticsAutomationLogging.Instance.LogError(GetType(), ex);
-                        }
-                    }
-                    finally
-                    {
-                        cycleIsRuning = false;
-                    }
-                });
-            }
-        }
 
         private MyCubeGrid CubeGrid
         {
@@ -207,26 +72,6 @@ namespace AILogisticsAutomation
                 Grid = connector.CubeGrid as MyCubeGrid;
             }
 
-        }
-
-        private int CountAIInventoryManager(IMyCubeGrid grid)
-        {
-            if (grid != null)
-            {
-                if (ExtendedSurvivalCoreAPI.Registered && IsServer)
-                {
-                    var lista = ExtendedSurvivalCoreAPI.GetGridBlocks(grid.EntityId, typeof(MyObjectBuilder_OreDetector), "AIInventoryManager");
-                    return lista?.Count ?? 0;
-                }
-                else
-                {
-                    var targetId = new MyDefinitionId(typeof(MyObjectBuilder_OreDetector), "AIInventoryManager");
-                    List<IMySlimBlock> lista = new List<IMySlimBlock>();
-                    grid.GetBlocks(lista, x => x.BlockDefinition.Id == targetId);
-                    return lista.Count;
-                }
-            }
-            return 0;
         }
 
         private Dictionary<IMyShipConnector, ShipConnected> GetConnectedGrids()
@@ -910,7 +755,7 @@ namespace AILogisticsAutomation
             }
         }
 
-        protected void DoExecuteCycle()
+        protected override void DoExecuteCycle()
         {
             List<MyCubeGrid> subgrids;
             Dictionary<IMyShipConnector, ShipConnected > connectedGrids;
@@ -1060,17 +905,6 @@ namespace AILogisticsAutomation
                     }
                 }
             }
-        }
-
-        protected bool UpdateEmissiveState()
-        {
-            if (!IsEnabled)
-                return SetEmissiveState(EmissiveState.Disabled);
-            if (!IsWorking)
-                return SetEmissiveState(EmissiveState.Warning);
-            if (cycleIsRuning)
-                return SetEmissiveState(EmissiveState.Working);
-            return SetEmissiveState(EmissiveState.Alternative);
         }
 
     }

@@ -11,6 +11,9 @@
       <Name>AILogisticsAutomation</Name>
       <ItemIds>
         <string>OreDetector/AIInventoryManager</string>
+        <string>OreDetector/AIRefineryController</string>
+        <string>OreDetector/AIAssemblerController</string>
+        <string>OreDetector/AIDisplayMonitor</string>
       </ItemIds>
     </Category>
     

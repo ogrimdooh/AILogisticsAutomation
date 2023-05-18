@@ -9,5 +9,26 @@
       </Members>
     </ResearchGroup>
 
+    <ResearchGroup xsi:type="ResearchGroup">
+      <Id Type="MyObjectBuilder_ResearchGroupDefinition" Subtype="12202" />
+      <Members>
+        <BlockId Type="MyObjectBuilder_OreDetector" Subtype="AIRefineryController" />
+      </Members>
+    </ResearchGroup>
+
+    <ResearchGroup xsi:type="ResearchGroup">
+      <Id Type="MyObjectBuilder_ResearchGroupDefinition" Subtype="12203" />
+      <Members>
+        <BlockId Type="MyObjectBuilder_OreDetector" Subtype="AIAssemblerController" />
+      </Members>
+    </ResearchGroup>
+    
+    <ResearchGroup xsi:type="ResearchGroup">
+      <Id Type="MyObjectBuilder_ResearchGroupDefinition" Subtype="12204" />
+      <Members>
+        <BlockId Type="MyObjectBuilder_OreDetector" Subtype="AIDisplayMonitor" />
+      </Members>
+    </ResearchGroup>
+    
   </ResearchGroups>
 </Definitions>
