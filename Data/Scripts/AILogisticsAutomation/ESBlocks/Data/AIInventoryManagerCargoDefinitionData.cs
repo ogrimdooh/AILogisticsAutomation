@@ -8,21 +8,18 @@ namespace AILogisticsAutomation
     {
 
         [ProtoMember(1)]
-        public int flags;
-
-        [ProtoMember(2)]
         public long entityId;
 
-        [ProtoMember(3)]
+        [ProtoMember(2)]
         public SerializableDefinitionId[] validIds = new SerializableDefinitionId[] { };
 
-        [ProtoMember(4)]
+        [ProtoMember(3)]
         public string[] validTypes = new string[] { };
 
-        [ProtoMember(5)]
+        [ProtoMember(4)]
         public SerializableDefinitionId[] ignoreIds = new SerializableDefinitionId[] { };
 
-        [ProtoMember(6)]
+        [ProtoMember(5)]
         public string[] ignoreTypes = new string[] { };
 
     }

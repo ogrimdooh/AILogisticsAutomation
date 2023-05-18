@@ -22,14 +22,12 @@ namespace AILogisticsAutomation
 {
 
     [MyEntityComponentDescriptor(typeof(MyObjectBuilder_OreDetector), false, "AIInventoryManager")]
-    public class AIInventoryManagerBlock : BaseLogicComponent<IMyOreDetector>
+    public class AIInventoryManagerBlock : BaseWithSettingLogicComponent<IMyOreDetector, AIInventoryManagerSettings, AIInventoryManagerSettingsData>
     {
 
         private const float IDEAL_COMPOSTER_ORGANIC = 100;
         private const float IDEAL_FISHTRAP_BAIT = 5;
         private const float IDEAL_FISHTRAP_NOBLEBAIT = 2.5f;
-
-        public AIInventoryManagerSettings Settings { get; set; } = new AIInventoryManagerSettings();
 
         private readonly ConcurrentDictionary<long, MyInventoryMap> inventoryMap = new ConcurrentDictionary<long, MyInventoryMap>();
 
@@ -70,205 +68,15 @@ namespace AILogisticsAutomation
 
         protected override void OnInit(MyObjectBuilder_EntityBase objectBuilder)
         {
-            if (IsServer)
-            {
-                LoadSettings();
-                CurrentEntity.OnClose += CurrentEntity_OnClose;
-            }
-            else
-            {
-                RequestSettings();
-            }
+            Settings = new AIInventoryManagerSettings();
+            base.OnInit(objectBuilder);
             NeedsUpdate |= MyEntityUpdateEnum.EACH_100TH_FRAME;
         }
 
-        private void CurrentEntity_OnClose(IMyEntity obj)
+        protected override void CurrentEntity_OnClose(IMyEntity obj)
         {
-            AILogisticsAutomationStorage.Instance.RemoveEntity(CurrentEntity.EntityId);
+            base.CurrentEntity_OnClose(obj);
             canRun = false;
-        }
-
-        protected void ReciveFromServer(string encodeData)
-        {
-            try
-            {
-                if (!string.IsNullOrWhiteSpace(encodeData))
-                {
-                    var decodeData = Base64Utils.DecodeFrom64(encodeData);
-                    var data = MyAPIGateway.Utilities.SerializeFromXML<AIInventoryManagerSettingsData>(decodeData);
-                    Settings.UpdateData(data);
-                }
-            }
-            catch (Exception ex)
-            {
-                AILogisticsAutomationLogging.Instance.LogError(GetType(), ex);
-            }
-        }
-
-        protected string GetEncodedData()
-        {
-            try
-            {
-                var data = Settings.GetData();
-                var dataToSend = MyAPIGateway.Utilities.SerializeToXML<AIInventoryManagerSettingsData>(data);
-                return Base64Utils.EncodeToBase64(dataToSend);
-            }
-            catch (Exception ex)
-            {
-                AILogisticsAutomationLogging.Instance.LogError(GetType(), ex);
-                return null;
-            }
-        }
-
-        protected void SendToClient(params ulong[] clientIds)
-        {
-            try
-            {
-                if (AILogisticsAutomationSettings.Instance.Debug)
-                    AILogisticsAutomationLogging.Instance.LogInfo(GetType(), $"SendToClient: clientId={string.Join(",", clientIds.Select(x => x.ToString()))}");
-                var encodeData = GetEncodedData();
-                SendCallServer(clientIds, "UpdateSettings", new Dictionary<string, string>() { { "DATA", encodeData } });
-            }
-            catch (Exception ex)
-            {
-                AILogisticsAutomationLogging.Instance.LogError(GetType(), ex);
-            }
-        }
-
-        protected void SendPowerToClient(params ulong[] clientIds)
-        {
-            try
-            {
-                if (AILogisticsAutomationSettings.Instance.Debug)
-                    AILogisticsAutomationLogging.Instance.LogInfo(GetType(), $"SendPowerToClient: POWER={Settings.GetPowerConsumption()}");
-                SendCallServer(clientIds, "UpdatePower", new Dictionary<string, string>() { { "POWER", Settings.GetPowerConsumption().ToString() } });
-            }
-            catch (Exception ex)
-            {
-                AILogisticsAutomationLogging.Instance.LogError(GetType(), ex);
-            }
-        }
-
-        protected void ReciveFromClient(ulong caller, string key, string action, string value, string owner)
-        {
-            try
-            {
-                if (AILogisticsAutomationSettings.Instance.Debug)
-                    AILogisticsAutomationLogging.Instance.LogInfo(GetType(), $"ReciveFromClient: caller={caller} - key={key} - action={action} - value={value} - owner={owner}");
-                if (Settings.UpdateData(key, action, value, owner))
-                {
-                    SaveSettings();
-                    var players = new List<IMyPlayer>();
-                    MyAPIGateway.Players.GetPlayers(players);
-                    if (players.Any(x => x.SteamUserId != caller))
-                    {
-                        var ids = players.Where(x => x.SteamUserId != caller).Select(x => x.SteamUserId).ToArray();
-                        if (ids.Any())
-                        {
-                            var changeData = new Dictionary<string, string>()
-                            {
-                                { "KEY", key },
-                                { "ACTION", action },
-                                { "VALUE", value },
-                                { "OWNER", owner }
-                            };
-                            SendCallServer(ids, "SetSettings", changeData);
-                        }
-                    }
-                }
-                else
-                {
-                    AILogisticsAutomationLogging.Instance.LogWarning(GetType(), $"Failed to update key={key} : will force configs in client");
-                    SendToClient(caller);
-                }
-            }
-            catch (Exception ex)
-            {
-                AILogisticsAutomationLogging.Instance.LogError(GetType(), ex);
-            }
-        }
-
-        protected void LoadSettings()
-        {
-            try
-            {
-                var storedData = AILogisticsAutomationStorage.Instance.GetEntityValue(CurrentEntity.EntityId, "DATA");
-                if (!string.IsNullOrWhiteSpace(storedData))
-                {
-                    var decodeData = Base64Utils.DecodeFrom64(storedData);
-                    var data = MyAPIGateway.Utilities.SerializeFromXML<AIInventoryManagerSettingsData>(decodeData);
-                    Settings.UpdateData(data);
-                }
-            }
-            catch (Exception ex)
-            {
-                AILogisticsAutomationLogging.Instance.LogError(GetType(), ex);
-            }
-        }
-
-        protected void RequestPower()
-        {
-            try
-            {
-                SendCallClient(MyAPIGateway.Session.Player.SteamUserId, "RequestPower", new Dictionary<string, string>() { });
-            }
-            catch (Exception ex)
-            {
-                AILogisticsAutomationLogging.Instance.LogError(GetType(), ex);
-            }
-        }
-
-        protected void RequestSettings()
-        {
-            try
-            {
-                SendCallClient(MyAPIGateway.Session.Player.SteamUserId, "RequestSettings", new Dictionary<string, string>() { });
-            }
-            catch (Exception ex)
-            {
-                AILogisticsAutomationLogging.Instance.LogError(GetType(), ex);
-            }
-        }
-
-        protected void SaveSettings()
-        {
-            try
-            {
-                var encodeData = GetEncodedData();
-                AILogisticsAutomationStorage.Instance.SetEntityValue(CurrentEntity.EntityId, "DATA", encodeData);
-            }
-            catch (Exception ex)
-            {
-                AILogisticsAutomationLogging.Instance.LogError(GetType(), ex);
-            }
-        }
-
-        public void SendToServer(string key, string action, string value, string owner = null)
-        {
-            try
-            {
-                var changeData = new Dictionary<string, string>() 
-                { 
-                    { "KEY", key },
-                    { "ACTION", action },
-                    { "VALUE", value },
-                    { "OWNER", owner }
-                };
-                if (!IsServer)
-                {
-                    var encodeData = GetEncodedData();
-                    SendCallClient(MyAPIGateway.Session.Player.SteamUserId, "SetSettings", changeData);
-                }
-                else
-                {
-                    SaveSettings();
-                    SendCallServer(new ulong[] { }, "SetSettings", changeData);
-                }
-            }
-            catch (Exception ex)
-            {
-                AILogisticsAutomationLogging.Instance.LogError(GetType(), ex);
-            }
         }
 
         private float ComputeRequiredPower()
@@ -290,7 +98,6 @@ namespace AILogisticsAutomation
             deltaTime = GetGameTime();
         }
 
-        private int lientCicleCount = 0;
         private readonly long cicleType = 3000; /* default cycle time */
         protected override void OnUpdateAfterSimulation100()
         {
@@ -321,19 +128,6 @@ namespace AILogisticsAutomation
                 catch (Exception ex)
                 {
                     AILogisticsAutomationLogging.Instance.LogError(GetType(), ex);
-                }
-            }
-            else
-            {
-                if (HadWorkToDo && Settings.GetPowerConsumption() == 0)
-                {
-                    if (lientCicleCount <= 0 || lientCicleCount > 15)
-                    {
-                        lientCicleCount = 1;
-                        RequestPower();
-                    }
-                    else
-                        lientCicleCount++;
                 }
             }
             CurrentEntity.ResourceSink.SetRequiredInputByType(MyResourceDistributorComponent.ElectricityId, ComputeRequiredPower());
@@ -678,7 +472,7 @@ namespace AILogisticsAutomation
         {
             if (Settings.GetFillBottles())
             {
-
+                // TODO: Implementar
             }
         }
 
@@ -1268,102 +1062,6 @@ namespace AILogisticsAutomation
             }
         }
 
-        private void InvokeOnGameThread(Action action, bool wait = true)
-        {
-            bool isExecuting = true;
-            MyAPIGateway.Utilities.InvokeOnGameThread(() =>
-            {
-                try
-                {
-                    action.Invoke();
-                }
-                finally
-                {
-                    isExecuting = false;
-                }
-            });
-            while (wait && isExecuting)
-            {
-                if (MyAPIGateway.Parallel != null)
-                    MyAPIGateway.Parallel.Sleep(25);
-            }
-        }
-
-        public override void CallFromClient(ulong caller, string method, CommandExtraParams extraParams)
-        {
-            base.CallFromClient(caller, method, extraParams);
-            try
-            {
-                if (AILogisticsAutomationSettings.Instance.Debug)
-                    AILogisticsAutomationLogging.Instance.LogInfo(GetType(), $"CallFromClient: caller={caller} - method={method}");
-                switch (method)
-                {
-                    case "RequestSettings":
-                        SendToClient(caller);
-                        break;
-                    case "RequestPower":
-                        SendPowerToClient(caller);
-                        break;
-                    case "SetSettings":
-                        ReciveFromClient(
-                            caller, 
-                            extraParams.extraParams.FirstOrDefault(x => x.id == "KEY")?.data,
-                            extraParams.extraParams.FirstOrDefault(x => x.id == "ACTION")?.data,
-                            extraParams.extraParams.FirstOrDefault(x => x.id == "VALUE")?.data,
-                            extraParams.extraParams.FirstOrDefault(x => x.id == "OWNER")?.data
-                        );
-                        break;
-                }
-            }
-            catch (Exception ex)
-            {
-                AILogisticsAutomationLogging.Instance.LogError(GetType(), ex);
-            }
-        }
-
-        public override void CallFromServer(string method, CommandExtraParams extraParams)
-        {
-            base.CallFromServer(method, extraParams);
-            try
-            {
-                switch (method)
-                {
-                    case "UpdateSettings":
-                        ReciveFromServer(extraParams.extraParams.FirstOrDefault(x => x.id == "DATA")?.data);
-                        break;
-                    case "UpdatePower":
-                        var power = float.Parse(extraParams.extraParams.FirstOrDefault(x => x.id == "POWER")?.data);
-                        Settings.SetPowerConsumption(power);
-                        lientCicleCount = 0;
-                        break;
-                    case "SetSettings":
-                        Settings.UpdateData(
-                            extraParams.extraParams.FirstOrDefault(x => x.id == "KEY")?.data,
-                            extraParams.extraParams.FirstOrDefault(x => x.id == "ACTION")?.data,
-                            extraParams.extraParams.FirstOrDefault(x => x.id == "VALUE")?.data,
-                            extraParams.extraParams.FirstOrDefault(x => x.id == "OWNER")?.data
-                        );
-                        break;
-                }
-            }
-            catch (Exception ex)
-            {
-                AILogisticsAutomationLogging.Instance.LogError(GetType(), ex);
-            }
-        }
-
-        public enum EmissiveState
-        {
-            Working,
-            Disabled,
-            Warning,
-            Damaged,
-            Alternative,
-            Locked,
-            Autolock,
-            Constraint
-        }
-
         protected bool UpdateEmissiveState()
         {
             if (!IsEnabled)
@@ -1373,41 +1071,6 @@ namespace AILogisticsAutomation
             if (cycleIsRuning)
                 return SetEmissiveState(EmissiveState.Working);
             return SetEmissiveState(EmissiveState.Alternative);
-        }
-
-        protected bool SetEmissiveState(EmissiveState state)
-        {
-            if (CurrentEntity.Render.RenderObjectIDs[0] != uint.MaxValue)
-            {
-                switch (state)
-                {
-                    case EmissiveState.Working:
-                        (CurrentEntity as MyCubeBlock).SetEmissiveState(MyCubeBlock.m_emissiveNames.Working, CurrentEntity.Render.RenderObjectIDs[0]);
-                        return true;
-                    case EmissiveState.Disabled:
-                        (CurrentEntity as MyCubeBlock).SetEmissiveState(MyCubeBlock.m_emissiveNames.Disabled, CurrentEntity.Render.RenderObjectIDs[0]);
-                        return true;
-                    case EmissiveState.Warning:
-                        (CurrentEntity as MyCubeBlock).SetEmissiveState(MyCubeBlock.m_emissiveNames.Warning, CurrentEntity.Render.RenderObjectIDs[0]);
-                        return true;
-                    case EmissiveState.Damaged:
-                        (CurrentEntity as MyCubeBlock).SetEmissiveState(MyCubeBlock.m_emissiveNames.Damaged, CurrentEntity.Render.RenderObjectIDs[0]);
-                        return true;
-                    case EmissiveState.Alternative:
-                        (CurrentEntity as MyCubeBlock).SetEmissiveState(MyCubeBlock.m_emissiveNames.Alternative, CurrentEntity.Render.RenderObjectIDs[0]);
-                        return true;
-                    case EmissiveState.Locked:
-                        (CurrentEntity as MyCubeBlock).SetEmissiveState(MyCubeBlock.m_emissiveNames.Locked, CurrentEntity.Render.RenderObjectIDs[0]);
-                        return true;
-                    case EmissiveState.Autolock:
-                        (CurrentEntity as MyCubeBlock).SetEmissiveState(MyCubeBlock.m_emissiveNames.Autolock, CurrentEntity.Render.RenderObjectIDs[0]);
-                        return true;
-                    case EmissiveState.Constraint:
-                        (CurrentEntity as MyCubeBlock).SetEmissiveState(MyCubeBlock.m_emissiveNames.Constraint, CurrentEntity.Render.RenderObjectIDs[0]);
-                        return true;
-                }
-            }
-            return false;
         }
 
     }

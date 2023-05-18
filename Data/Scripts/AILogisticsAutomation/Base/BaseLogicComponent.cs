@@ -1,4 +1,5 @@
 ﻿using Sandbox.Definitions;
+using Sandbox.Game.Entities;
 using Sandbox.Game.EntityComponents;
 using Sandbox.ModAPI;
 using System;
@@ -7,7 +8,6 @@ using System.Linq;
 using System.Text;
 using VRage.Game.Components;
 using VRage.Game.ModAPI;
-using VRage.ModAPI;
 using VRage.ObjectBuilders;
 
 namespace AILogisticsAutomation
@@ -23,6 +23,18 @@ namespace AILogisticsAutomation
 
     public abstract class BaseLogicComponent<T> : MyGameLogicComponent, IMySyncDataComponent where T : IMyCubeBlock
     {
+
+        public enum EmissiveState
+        {
+            Working,
+            Disabled,
+            Warning,
+            Damaged,
+            Alternative,
+            Locked,
+            Autolock,
+            Constraint
+        }
 
         public bool IsServer
         {
@@ -250,6 +262,62 @@ namespace AILogisticsAutomation
         public virtual void CallFromServer(string method, CommandExtraParams extraParams)
         {
 
+        }
+
+        protected void InvokeOnGameThread(Action action, bool wait = true)
+        {
+            bool isExecuting = true;
+            MyAPIGateway.Utilities.InvokeOnGameThread(() =>
+            {
+                try
+                {
+                    action.Invoke();
+                }
+                finally
+                {
+                    isExecuting = false;
+                }
+            });
+            while (wait && isExecuting)
+            {
+                if (MyAPIGateway.Parallel != null)
+                    MyAPIGateway.Parallel.Sleep(25);
+            }
+        }
+
+        protected bool SetEmissiveState(EmissiveState state)
+        {
+            if (CurrentEntity.Render.RenderObjectIDs[0] != uint.MaxValue)
+            {
+                switch (state)
+                {
+                    case EmissiveState.Working:
+                        (CurrentEntity as MyCubeBlock).SetEmissiveState(MyCubeBlock.m_emissiveNames.Working, CurrentEntity.Render.RenderObjectIDs[0]);
+                        return true;
+                    case EmissiveState.Disabled:
+                        (CurrentEntity as MyCubeBlock).SetEmissiveState(MyCubeBlock.m_emissiveNames.Disabled, CurrentEntity.Render.RenderObjectIDs[0]);
+                        return true;
+                    case EmissiveState.Warning:
+                        (CurrentEntity as MyCubeBlock).SetEmissiveState(MyCubeBlock.m_emissiveNames.Warning, CurrentEntity.Render.RenderObjectIDs[0]);
+                        return true;
+                    case EmissiveState.Damaged:
+                        (CurrentEntity as MyCubeBlock).SetEmissiveState(MyCubeBlock.m_emissiveNames.Damaged, CurrentEntity.Render.RenderObjectIDs[0]);
+                        return true;
+                    case EmissiveState.Alternative:
+                        (CurrentEntity as MyCubeBlock).SetEmissiveState(MyCubeBlock.m_emissiveNames.Alternative, CurrentEntity.Render.RenderObjectIDs[0]);
+                        return true;
+                    case EmissiveState.Locked:
+                        (CurrentEntity as MyCubeBlock).SetEmissiveState(MyCubeBlock.m_emissiveNames.Locked, CurrentEntity.Render.RenderObjectIDs[0]);
+                        return true;
+                    case EmissiveState.Autolock:
+                        (CurrentEntity as MyCubeBlock).SetEmissiveState(MyCubeBlock.m_emissiveNames.Autolock, CurrentEntity.Render.RenderObjectIDs[0]);
+                        return true;
+                    case EmissiveState.Constraint:
+                        (CurrentEntity as MyCubeBlock).SetEmissiveState(MyCubeBlock.m_emissiveNames.Constraint, CurrentEntity.Render.RenderObjectIDs[0]);
+                        return true;
+                }
+            }
+            return false;
         }
 
     }

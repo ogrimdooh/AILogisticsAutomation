@@ -8,6 +8,7 @@ using VRage;
 using VRage.Game.ModAPI;
 using VRageMath;
 using System.Linq;
+using VRage.Utils;
 
 namespace AILogisticsAutomation
 {
@@ -165,7 +166,7 @@ namespace AILogisticsAutomation
             MyAPIGateway.TerminalControls.AddAction<K>(action);
         }
 
-        protected void CreateProperty<T>(IMyTerminalValueControl<T> control, bool readOnly = false)
+        protected void CreateProperty(IMyTerminalValueControl<T> control, bool readOnly = false)
         {
             var property = MyAPIGateway.TerminalControls.CreateProperty<T, K>(GetActionPrefix() + "." + control.Id);
             property.SupportsMultipleBlocks = false;
@@ -220,6 +221,131 @@ namespace AILogisticsAutomation
             return new Vector3(value.X * 360f,
                               (value.Y + SATURATION_DELTA) * 100f,
                               (value.Z + VALUE_DELTA - VALUE_COLORIZE_DELTA) * 100f);
+        }
+
+        protected IMyTerminalControlLabel CreateTerminalLabel(string name, string text)
+        {
+            var label = MyAPIGateway.TerminalControls.CreateControl<IMyTerminalControlLabel, K>(name);
+            label.Label = MyStringId.GetOrCompute(text);
+            CustomControls.Add(label);
+            return label;
+        }
+
+        protected IMyTerminalControlSeparator CreateTerminalSeparator(string name)
+        {
+            var separator = MyAPIGateway.TerminalControls.CreateControl<IMyTerminalControlSeparator, K>(name);
+            CustomControls.Add(separator);
+            return separator;
+        }
+
+        protected IMyTerminalControlCheckbox CreateCheckbox(string name, string title, Func<IMyTerminalBlock, bool> enabled,
+            Func<IMyTerminalBlock, bool> getter, Action<IMyTerminalBlock, bool> setter, bool supMultiple = false, string tooltip = null,
+            string onText = "Yes", string offText = "No", Func<IMyTerminalBlock, bool> visible = null)
+        {
+            var onOffSwitch = MyAPIGateway.TerminalControls.CreateControl<IMyTerminalControlCheckbox, K>(name);
+            onOffSwitch.Title = MyStringId.GetOrCompute(title);
+            onOffSwitch.Tooltip = MyStringId.GetOrCompute(tooltip);
+            onOffSwitch.Enabled = enabled;
+            if (visible != null)
+                onOffSwitch.Visible = visible;
+            onOffSwitch.Getter = getter;
+            onOffSwitch.Setter = setter;
+            onOffSwitch.OnText = MyStringId.GetOrCompute(onText);
+            onOffSwitch.OffText = MyStringId.GetOrCompute(offText);
+            onOffSwitch.SupportsMultipleBlocks = supMultiple;
+            CustomControls.Add(onOffSwitch);
+            return onOffSwitch;
+        }
+
+        protected IMyTerminalControlOnOffSwitch CreateOnOffSwitch(string name, string title, Func<IMyTerminalBlock, bool> enabled,
+            Func<IMyTerminalBlock, bool> getter, Action<IMyTerminalBlock, bool> setter, bool supMultiple = false, string tooltip = null,
+            string onText = "On", string offText = "Off", Func<IMyTerminalBlock, bool> visible = null)
+        {
+            var onOffSwitch = MyAPIGateway.TerminalControls.CreateControl<IMyTerminalControlOnOffSwitch, K>(name);
+            onOffSwitch.Title = MyStringId.GetOrCompute(title);
+            onOffSwitch.Tooltip = MyStringId.GetOrCompute(tooltip);
+            onOffSwitch.Enabled = enabled;
+            if (visible != null)
+                onOffSwitch.Visible = visible;
+            onOffSwitch.Getter = getter;
+            onOffSwitch.Setter = setter;
+            onOffSwitch.OnText = MyStringId.GetOrCompute(onText);
+            onOffSwitch.OffText = MyStringId.GetOrCompute(offText);
+            onOffSwitch.SupportsMultipleBlocks = supMultiple;
+            CustomControls.Add(onOffSwitch);
+            return onOffSwitch;
+        }
+
+        protected IMyTerminalControlCombobox CreateCombobox(string name, string title, Func<IMyTerminalBlock, bool> enabled,
+            Func<IMyTerminalBlock, long> getter, Action<IMyTerminalBlock, long> setter, Action<List<MyTerminalControlComboBoxItem>> comboBoxContent, 
+            bool supMultiple = false, string tooltip = null, Func<IMyTerminalBlock, bool> visible = null)
+        {
+            var combobox = MyAPIGateway.TerminalControls.CreateControl<IMyTerminalControlCombobox, K>(name);
+            combobox.Title = MyStringId.GetOrCompute(title);
+            combobox.Tooltip = MyStringId.GetOrCompute(tooltip);
+            combobox.Enabled = enabled;
+            if (visible != null)
+                combobox.Visible = visible;
+            combobox.ComboBoxContent = comboBoxContent;
+            combobox.Getter = getter;
+            combobox.Setter = setter;
+            combobox.SupportsMultipleBlocks = supMultiple;
+            CustomControls.Add(combobox);
+            return combobox;
+        }
+
+        protected IMyTerminalControlSlider CreateSlider(string name, string title, Func<IMyTerminalBlock, bool> enabled,
+            Func<IMyTerminalBlock, float> getter, Action<IMyTerminalBlock, float> setter, Action<IMyTerminalBlock, StringBuilder> writer,
+            Vector2 limits, bool supMultiple = false, string tooltip = null, Func<IMyTerminalBlock, bool> visible = null)
+        {
+            var slider = MyAPIGateway.TerminalControls.CreateControl<IMyTerminalControlSlider, K>(name);
+            slider.Title = MyStringId.GetOrCompute(title);
+            slider.Tooltip = MyStringId.GetOrCompute(tooltip);
+            slider.SetLimits(limits.X, limits.Y);
+            slider.Enabled = enabled;
+            if (visible != null)
+                slider.Visible = visible;
+            slider.Writer = writer;
+            slider.Getter = getter;
+            slider.Setter = setter;
+            slider.SupportsMultipleBlocks = supMultiple;
+            CustomControls.Add(slider);
+            return slider;
+        }
+
+        protected IMyTerminalControlListbox CreateListbox(string name, string title, Func<IMyTerminalBlock, bool> enabled,
+            Action<IMyTerminalBlock, List<MyTerminalControlListBoxItem>, List<MyTerminalControlListBoxItem>> listContent,
+            Action<IMyTerminalBlock, List<MyTerminalControlListBoxItem>> itemSelected, int visibleRowsCount = 5,
+            bool supMultiple = false, string tooltip = null, Func<IMyTerminalBlock, bool> visible = null)
+        {
+            var listbox = MyAPIGateway.TerminalControls.CreateControl<IMyTerminalControlListbox, K>(name);
+            listbox.Title = MyStringId.GetOrCompute(title);
+            listbox.Tooltip = MyStringId.GetOrCompute(tooltip);
+            listbox.Enabled = enabled;
+            if (visible != null)
+                listbox.Visible = visible;
+            listbox.ListContent = listContent;
+            listbox.ItemSelected = itemSelected;
+            listbox.SupportsMultipleBlocks = supMultiple;
+            listbox.VisibleRowsCount = visibleRowsCount;
+            CustomControls.Add(listbox);
+            return listbox;
+        }
+
+        protected IMyTerminalControlButton CreateTerminalButton(string name, string title, Func<IMyTerminalBlock, bool> enabled, 
+            Action<IMyTerminalBlock> action, bool supMultiple = false, string tooltip = null, 
+            Func<IMyTerminalBlock, bool> visible = null) 
+        {
+            var button = MyAPIGateway.TerminalControls.CreateControl<IMyTerminalControlButton, K>(name);
+            button.Title = MyStringId.GetOrCompute(title);
+            button.Tooltip = MyStringId.GetOrCompute(tooltip);            
+            button.Enabled = enabled;
+            if (visible != null)
+                button.Visible = visible;
+            button.Action = action;
+            button.SupportsMultipleBlocks = supMultiple;
+            CustomControls.Add(button);
+            return button;
         }
 
         protected void UpdateVisual(IMyTerminalControl control)

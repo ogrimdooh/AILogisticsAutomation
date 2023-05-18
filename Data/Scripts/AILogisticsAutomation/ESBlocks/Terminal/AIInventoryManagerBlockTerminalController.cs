@@ -118,51 +118,66 @@ namespace AILogisticsAutomation
                 return false;
             };
 
-            var labelStartConfig = MyAPIGateway.TerminalControls.CreateControl<IMyTerminalControlLabel, IMyOreDetector>("StartConfig");
-            labelStartConfig.Label = MyStringId.GetOrCompute("AI Configuration");
-            CustomControls.Add(labelStartConfig);
+            if (!MyAPIGateway.Session.IsServer)
+            {
 
-            var checkboxEnabled = MyAPIGateway.TerminalControls.CreateControl<IMyTerminalControlCheckbox, IMyOreDetector>("CheckboxEnabled");
-            checkboxEnabled.Title = MyStringId.GetOrCompute("Enabled");
-            checkboxEnabled.Tooltip = MyStringId.GetOrCompute("Set if the block will work or not.");
-            checkboxEnabled.OnText = MyStringId.GetOrCompute("Yes");
-            checkboxEnabled.OffText = MyStringId.GetOrCompute("No");
-            checkboxEnabled.Enabled = isWorking;
-            checkboxEnabled.Getter = (block) =>
-            {
-                var system = GetSystem(block);
-                if (system != null)
-                {
-                    return system.Settings.GetEnabled();
-                }
-                return false;
-            };
-            checkboxEnabled.Setter = (block, value) =>
-            {
-                var system = GetSystem(block);
-                if (system != null)
-                {
-                    system.Settings.SetEnabled(value);
-                    system.SendToServer("Enabled", "SET", value.ToString());
-                    UpdateVisual(block);
-                }
-            };
-            checkboxEnabled.SupportsMultipleBlocks = true;
-            CreateCheckBoxAction("Enabled", checkboxEnabled);
-            CustomControls.Add(checkboxEnabled);
+                CreateTerminalLabel("AIMIClientConfig", "Client Configuration");
 
-            var labelCargoDefs = MyAPIGateway.TerminalControls.CreateControl<IMyTerminalControlLabel, IMyOreDetector>("CargosDefinition");
-            labelCargoDefs.Label = MyStringId.GetOrCompute("Cargos Definition");
-            CustomControls.Add(labelCargoDefs);
-            {
-                /* Simple Options */
-                var checkboxPullFromConnectedGrids = MyAPIGateway.TerminalControls.CreateControl<IMyTerminalControlCheckbox, IMyOreDetector>("CheckboxPullFromConnectedGrids");
-                checkboxPullFromConnectedGrids.Title = MyStringId.GetOrCompute("Pull from connected grids.");
-                checkboxPullFromConnectedGrids.Tooltip = MyStringId.GetOrCompute("If enabled will pull itens from connected grids, that is not using ignored connectors.");
-                checkboxPullFromConnectedGrids.OnText = MyStringId.GetOrCompute("Yes");
-                checkboxPullFromConnectedGrids.OffText = MyStringId.GetOrCompute("No");
-                checkboxPullFromConnectedGrids.Enabled = isWorkingAndEnabled;
-                checkboxPullFromConnectedGrids.Getter = (block) =>
+                /* Button Add Ignored */
+                CreateTerminalButton(
+                    "RequestConfigInfo", 
+                    "Request Configuration", 
+                    isWorking,
+                    (block) =>
+                    {
+                        var system = GetSystem(block);
+                        if (system != null)
+                        {
+                            system.RequestSettings();
+                        }
+                    },
+                    tooltip: "Sometimes the client desync the configs from the server, of you detect that just click in this button, close the terminal, wait some seconds and open again."
+                );
+
+            }
+
+            CreateTerminalLabel("AIMIStartConfig", "AI Configuration");
+
+            var checkboxEnabled = CreateOnOffSwitch(
+                "CheckboxEnabled",
+                "Enabled",
+                isWorking,
+                (block) =>
+                {
+                    var system = GetSystem(block);
+                    if (system != null)
+                    {
+                        return system.Settings.GetEnabled();
+                    }
+                    return false;
+                },
+                (block, value) =>
+                {
+                    var system = GetSystem(block);
+                    if (system != null)
+                    {
+                        system.Settings.SetEnabled(value);
+                        system.SendToServer("Enabled", "SET", value.ToString());
+                        UpdateVisual(block);
+                    }
+                },
+                tooltip: "Set if the block will work or not.",
+                supMultiple: true
+            );
+            CreateOnOffSwitchAction("AIEnabled", checkboxEnabled);
+
+            CreateTerminalLabel("CargosDefinition", "Cargos Definition");
+
+            var checkboxPullFromConnectedGrids = CreateCheckbox(
+                "CheckboxPullFromConnectedGrids",
+                "Pull from connected grids",
+                isWorkingAndEnabled,
+                (block) =>
                 {
                     var system = GetSystem(block);
                     if (system != null)
@@ -170,8 +185,8 @@ namespace AILogisticsAutomation
                         return system.Settings.GetPullFromConnectedGrids();
                     }
                     return false;
-                };
-                checkboxPullFromConnectedGrids.Setter = (block, value) =>
+                },
+                (block, value) =>
                 {
                     var system = GetSystem(block);
                     if (system != null)
@@ -179,18 +194,17 @@ namespace AILogisticsAutomation
                         system.Settings.SetPullFromConnectedGrids(value);
                         system.SendToServer("PullFromConnectedGrids", "SET", value.ToString());
                     }
-                };
-                checkboxPullFromConnectedGrids.SupportsMultipleBlocks = true;
-                CreateCheckBoxAction("PullFromConnectedGrids", checkboxPullFromConnectedGrids);
-                CustomControls.Add(checkboxPullFromConnectedGrids);
+                },
+                tooltip: "If enabled will pull itens from connected grids, that is not using ignored connectors.",
+                supMultiple: true
+            );
+            CreateCheckBoxAction("PullFromConnectedGrids", checkboxPullFromConnectedGrids);
 
-                var checkboxPullFromSubGrids = MyAPIGateway.TerminalControls.CreateControl<IMyTerminalControlCheckbox, IMyOreDetector>("CheckboxPullFromSubGrids");
-                checkboxPullFromSubGrids.Title = MyStringId.GetOrCompute("Pull from sub-grids.");
-                checkboxPullFromSubGrids.Tooltip = MyStringId.GetOrCompute("If enabled will pull itens from attached sub-grids.");
-                checkboxPullFromSubGrids.OnText = MyStringId.GetOrCompute("Yes");
-                checkboxPullFromSubGrids.OffText = MyStringId.GetOrCompute("No");
-                checkboxPullFromSubGrids.Enabled = isWorkingAndEnabled;
-                checkboxPullFromSubGrids.Getter = (block) =>
+            var checkboxPullFromSubGrids = CreateCheckbox(
+                "CheckboxPullFromSubGrids",
+                "Pull from sub-grids",
+                isWorkingAndEnabled,
+                (block) =>
                 {
                     var system = GetSystem(block);
                     if (system != null)
@@ -198,8 +212,8 @@ namespace AILogisticsAutomation
                         return system.Settings.GetPullSubGrids();
                     }
                     return false;
-                };
-                checkboxPullFromSubGrids.Setter = (block, value) =>
+                },
+                (block, value) =>
                 {
                     var system = GetSystem(block);
                     if (system != null)
@@ -207,31 +221,23 @@ namespace AILogisticsAutomation
                         system.Settings.SetPullSubGrids(value);
                         system.SendToServer("PullFromSubGrids", "SET", value.ToString());
                     }
-                };
-                checkboxPullFromSubGrids.SupportsMultipleBlocks = true;
-                CreateCheckBoxAction("PullFromSubGrids", checkboxPullFromSubGrids);
-                CustomControls.Add(checkboxPullFromSubGrids);
+                },
+                tooltip: "If enabled will pull itens from attached sub-grids.",
+                supMultiple: true
+            );
+            CreateCheckBoxAction("PullFromSubGrids", checkboxPullFromSubGrids);
 
-                /* Sort Type */
-                var comboBoxSortItensType = MyAPIGateway.TerminalControls.CreateControl<IMyTerminalControlCombobox, IMyOreDetector>("FilterType");
-                comboBoxSortItensType.Title = MyStringId.GetOrCompute("Sorter Type");
-                comboBoxSortItensType.Tooltip = MyStringId.GetOrCompute("Select a sorter type to do with the itens.");
-                comboBoxSortItensType.Enabled = isWorkingAndEnabled;
-                comboBoxSortItensType.ComboBoxContent = (list) =>
-                {
-                    list.Add(new MyTerminalControlComboBoxItem() { Key = 0, Value = MyStringId.GetOrCompute("None") });
-                    list.Add(new MyTerminalControlComboBoxItem() { Key = 1, Value = MyStringId.GetOrCompute("Name") });
-                    list.Add(new MyTerminalControlComboBoxItem() { Key = 2, Value = MyStringId.GetOrCompute("Mass") });
-                    list.Add(new MyTerminalControlComboBoxItem() { Key = 3, Value = MyStringId.GetOrCompute("Type Name [Item Name]") });
-                    list.Add(new MyTerminalControlComboBoxItem() { Key = 4, Value = MyStringId.GetOrCompute("Type Name [Item Mass]") });
-                };
-                comboBoxSortItensType.Getter = (block) =>
+            var comboBoxSortItensType = CreateCombobox(
+                "SorterType",
+                "Sorter Type",
+                isWorkingAndEnabled,
+                (block) =>
                 {
                     var system = GetSystem(block);
                     if (system == null) return 0;
                     else return system.Settings.GetSortItensType();
-                };
-                comboBoxSortItensType.Setter = (block, value) =>
+                },
+                (block, value) =>
                 {
                     var system = GetSystem(block);
                     if (system != null)
@@ -239,20 +245,25 @@ namespace AILogisticsAutomation
                         system.Settings.SetSortItensType(value);
                         system.SendToServer("SortItensType", "SET", value.ToString());
                     }
-                };
-                comboBoxSortItensType.SupportsMultipleBlocks = true;
-                CreateComboBoxAction("SortItensType", comboBoxSortItensType);
-                CustomControls.Add(comboBoxSortItensType);
+                },
+                (list) =>
+                {
+                    list.Add(new MyTerminalControlComboBoxItem() { Key = 0, Value = MyStringId.GetOrCompute("None") });
+                    list.Add(new MyTerminalControlComboBoxItem() { Key = 1, Value = MyStringId.GetOrCompute("Name") });
+                    list.Add(new MyTerminalControlComboBoxItem() { Key = 2, Value = MyStringId.GetOrCompute("Mass") });
+                    list.Add(new MyTerminalControlComboBoxItem() { Key = 3, Value = MyStringId.GetOrCompute("Type Name [Item Name]") });
+                    list.Add(new MyTerminalControlComboBoxItem() { Key = 4, Value = MyStringId.GetOrCompute("Type Name [Item Mass]") });
+                },
+                tooltip: "Select a sorter type to do with the itens.",
+                supMultiple: true
+            );
+            CreateComboBoxAction("SortItensType", comboBoxSortItensType);
 
-                /* stackIfPossible */
-
-                var checkboxStackIfPossible = MyAPIGateway.TerminalControls.CreateControl<IMyTerminalControlCheckbox, IMyOreDetector>("CheckboxStackIfPossible");
-                checkboxStackIfPossible.Title = MyStringId.GetOrCompute("Stack Items.");
-                checkboxStackIfPossible.Tooltip = MyStringId.GetOrCompute("If enabled will stack itens slots if possible.");
-                checkboxStackIfPossible.OnText = MyStringId.GetOrCompute("Yes");
-                checkboxStackIfPossible.OffText = MyStringId.GetOrCompute("No");
-                checkboxStackIfPossible.Enabled = isWorkingAndEnabled;
-                checkboxStackIfPossible.Getter = (block) =>
+            var checkboxStackIfPossible = CreateCheckbox(
+                "CheckboxStackIfPossible",
+                "Stack Items",
+                isWorkingAndEnabled,
+                (block) =>
                 {
                     var system = GetSystem(block);
                     if (system != null)
@@ -260,8 +271,8 @@ namespace AILogisticsAutomation
                         return system.Settings.GetStackIfPossible();
                     }
                     return false;
-                };
-                checkboxStackIfPossible.Setter = (block, value) =>
+                },
+                (block, value) =>
                 {
                     var system = GetSystem(block);
                     if (system != null)
@@ -269,17 +280,19 @@ namespace AILogisticsAutomation
                         system.Settings.SetStackIfPossible(value);
                         system.SendToServer("StackIfPossible", "SET", value.ToString());
                     }
-                };
-                checkboxStackIfPossible.SupportsMultipleBlocks = true;
-                CreateCheckBoxAction("StackIfPossible", checkboxStackIfPossible);
-                CustomControls.Add(checkboxStackIfPossible);
+                },
+                tooltip: "If enabled will stack itens slots if possible.",
+                supMultiple: true
+            );
+            CreateCheckBoxAction("StackIfPossible", checkboxStackIfPossible);
 
-                /* Cargo Container List */
-                var listCargoContainers = MyAPIGateway.TerminalControls.CreateControl<IMyTerminalControlListbox, IMyOreDetector>("ListCargoContainers");
-                listCargoContainers.Title = MyStringId.GetOrCompute("Cargo Container List");
-                listCargoContainers.Tooltip = MyStringId.GetOrCompute("Select a cargo container to set pull settings.");
-                listCargoContainers.Enabled = isWorkingAndEnabled;
-                listCargoContainers.ListContent = (block, list, selectedList) =>
+            CreateTerminalLabel("PullCargosDefinition", "Pull Cargos Definition");
+
+            CreateListbox(
+                "ListCargoContainers",
+                "Cargo Container List",
+                isWorkingAndEnabled,
+                (block, list, selectedList) =>
                 {
                     var system = GetSystem(block);
                     if (system != null)
@@ -301,8 +314,8 @@ namespace AILogisticsAutomation
                             }
                         }
                     }
-                };
-                listCargoContainers.ItemSelected = (block, selectedList) =>
+                },
+                (block, selectedList) =>
                 {
                     if (selectedList.Count == 0)
                         return;
@@ -318,19 +331,15 @@ namespace AILogisticsAutomation
                             UpdateVisual(block);
                         }
                     }
-                };
-                listCargoContainers.VisibleRowsCount = 5;
-                listCargoContainers.SupportsMultipleBlocks = false;
-                CustomControls.Add(listCargoContainers);
+                },
+                tooltip: "Select a cargo container to set pull settings."
+            );
 
-                /* Checkbox Cargo Container */
-                var checkboxAddContainer = MyAPIGateway.TerminalControls.CreateControl<IMyTerminalControlCheckbox, IMyOreDetector>("CheckboxAddContainer");
-                checkboxAddContainer.Title = MyStringId.GetOrCompute("Added selected cargo to pull list.");
-                checkboxAddContainer.Tooltip = MyStringId.GetOrCompute("Cargos added to list will be used as store to all containers in grid.");
-                checkboxAddContainer.OnText = MyStringId.GetOrCompute("Yes");
-                checkboxAddContainer.OffText = MyStringId.GetOrCompute("No");
-                checkboxAddContainer.Enabled = isWorkingAndCargoSelected;
-                checkboxAddContainer.Getter = (block) =>
+            CreateCheckbox(
+                "CheckboxAddContainer",
+                "Added selected cargo to pull list",
+                isWorkingAndEnabled,
+                (block) =>
                 {
                     var system = GetSystem(block);
                     if (system != null)
@@ -343,8 +352,8 @@ namespace AILogisticsAutomation
                         }
                     }
                     return false;
-                };
-                checkboxAddContainer.Setter = (block, value) =>
+                },
+                (block, value) =>
                 {
                     var system = GetSystem(block);
                     if (system != null)
@@ -386,61 +395,51 @@ namespace AILogisticsAutomation
                             }
                         }
                     }
-                };
-                checkboxAddContainer.SupportsMultipleBlocks = false;
-                CustomControls.Add(checkboxAddContainer);
+                },
+                tooltip: "Cargos added to list will be used as store to all containers in grid."
+            );
 
-                var cargoOptionsSeparator = MyAPIGateway.TerminalControls.CreateControl<IMyTerminalControlSeparator, IMyOreDetector>("CargoOptionsSeparator");
-                CustomControls.Add(cargoOptionsSeparator);
+            CreateTerminalSeparator("CargoOptionsSeparator");
 
-                var cargoOptionsSeparatorLable = MyAPIGateway.TerminalControls.CreateControl<IMyTerminalControlLabel, IMyOreDetector>("CargoOptionsSeparatorLable");
-                cargoOptionsSeparatorLable.Label = MyStringId.GetOrCompute("Selected Cargo Filter");
-                CustomControls.Add(cargoOptionsSeparatorLable);
+            CreateTerminalLabel("CargoOptionsSeparatorLable", "Selected Cargo Filter");
 
-                /* Filter Type */
-                var comboBoxFilterType = MyAPIGateway.TerminalControls.CreateControl<IMyTerminalControlCombobox, IMyOreDetector>("FilterType");
-                comboBoxFilterType.Title = MyStringId.GetOrCompute("Filter Type");
-                comboBoxFilterType.Tooltip = MyStringId.GetOrCompute("Select a filter type.");
-                comboBoxFilterType.Enabled = isWorkingAndCargoSelectedIsAdded;
-                comboBoxFilterType.ComboBoxContent = (list) =>
-                {
-                    list.Add(new MyTerminalControlComboBoxItem() { Key = 0, Value = MyStringId.GetOrCompute("Pull") });
-                    list.Add(new MyTerminalControlComboBoxItem() { Key = 1, Value = MyStringId.GetOrCompute("Ignore") });
-                };
-                comboBoxFilterType.Getter = (block) =>
+            CreateCombobox(
+                "FilterType",
+                "Filter Type",
+                isWorkingAndCargoSelectedIsAdded,
+                (block) =>
                 {
                     var system = GetSystem(block);
                     if (system == null) return 0;
                     else return selectedFilterType;
-                };
-                comboBoxFilterType.Setter = (block, value) =>
+                },
+                (block, value) =>
                 {
                     var system = GetSystem(block);
                     if (system != null)
                     {
                         selectedFilterType = value;
                     }
-                };
-                comboBoxFilterType.SupportsMultipleBlocks = false;
-                CustomControls.Add(comboBoxFilterType);
-
-                /* Filter Type */
-                var comboBoxFilterGroup = MyAPIGateway.TerminalControls.CreateControl<IMyTerminalControlCombobox, IMyOreDetector>("FilterGroup");
-                comboBoxFilterGroup.Title = MyStringId.GetOrCompute("Filter Group");
-                comboBoxFilterGroup.Tooltip = MyStringId.GetOrCompute("Select a filter group.");
-                comboBoxFilterGroup.Enabled = isWorkingAndCargoSelectedIsAdded;
-                comboBoxFilterGroup.ComboBoxContent = (list) =>
+                },
+                (list) =>
                 {
-                    list.Add(new MyTerminalControlComboBoxItem() { Key = 0, Value = MyStringId.GetOrCompute("Item Id") });
-                    list.Add(new MyTerminalControlComboBoxItem() { Key = 1, Value = MyStringId.GetOrCompute("Item Type") });
-                };
-                comboBoxFilterGroup.Getter = (block) =>
+                    list.Add(new MyTerminalControlComboBoxItem() { Key = 0, Value = MyStringId.GetOrCompute("Pull") });
+                    list.Add(new MyTerminalControlComboBoxItem() { Key = 1, Value = MyStringId.GetOrCompute("Ignore") });
+                },
+                tooltip: "Select a filter type."
+            );
+
+            CreateCombobox(
+                "FilterGroup",
+                "Filter Group",
+                isWorkingAndCargoSelectedIsAdded,
+                (block) =>
                 {
                     var system = GetSystem(block);
                     if (system == null) return 0;
                     else return selectedFilterGroup;
-                };
-                comboBoxFilterGroup.Setter = (block, value) =>
+                },
+                (block, value) =>
                 {
                     var system = GetSystem(block);
                     if (system != null)
@@ -448,26 +447,26 @@ namespace AILogisticsAutomation
                         selectedFilterGroup = value;
                         UpdateVisual(block);
                     }
-                };
-                comboBoxFilterGroup.SupportsMultipleBlocks = false;
-                CustomControls.Add(comboBoxFilterGroup);
-
-                /* Filter IdType */
-                var comboBoxFilterIdType = MyAPIGateway.TerminalControls.CreateControl<IMyTerminalControlCombobox, IMyOreDetector>("FilterItemType");
-                comboBoxFilterIdType.Title = MyStringId.GetOrCompute("Filter Type");
-                comboBoxFilterIdType.Tooltip = MyStringId.GetOrCompute("Select a filter item Type.");
-                comboBoxFilterIdType.Enabled = isWorkingAndCargoSelectedIsAdded;
-                comboBoxFilterIdType.ComboBoxContent = (list) =>
+                },
+                (list) =>
                 {
-                    list.AddRange(validTypesUI);
-                };
-                comboBoxFilterIdType.Getter = (block) =>
+                    list.Add(new MyTerminalControlComboBoxItem() { Key = 0, Value = MyStringId.GetOrCompute("Item Id") });
+                    list.Add(new MyTerminalControlComboBoxItem() { Key = 1, Value = MyStringId.GetOrCompute("Item Type") });
+                },
+                tooltip: "Select a filter group."
+            );
+
+            CreateCombobox(
+                "FilterItemType",
+                "Filter Item Type",
+                isWorkingAndCargoSelectedIsAdded,
+                (block) =>
                 {
                     var system = GetSystem(block);
                     if (system == null) return 0;
                     else return selectedFilterItemType;
-                };
-                comboBoxFilterIdType.Setter = (block, value) =>
+                },
+                (block, value) =>
                 {
                     var system = GetSystem(block);
                     if (system != null)
@@ -480,49 +479,53 @@ namespace AILogisticsAutomation
                             selectedFilterItemId = 0;
                         UpdateVisual(block);
                     }
-                };
-                comboBoxFilterIdType.SupportsMultipleBlocks = false;
-                CustomControls.Add(comboBoxFilterIdType);
+                },
+                (list) =>
+                {
+                    list.AddRange(validTypesUI);
+                },
+                tooltip: "Select a filter item Type."
+            );
 
-                /* Filter Id */
-                var comboBoxFilterId = MyAPIGateway.TerminalControls.CreateControl<IMyTerminalControlCombobox, IMyOreDetector>("FilterItemId");
-                comboBoxFilterId.Title = MyStringId.GetOrCompute("Filter Id");
-                comboBoxFilterId.Tooltip = MyStringId.GetOrCompute("Select a filter item Id.");
-                comboBoxFilterId.Enabled = (block) =>
+            CreateCombobox(
+                "FilterItemId",
+                "Filter Item Id",
+                (block) =>
                 {
                     var system = GetSystem(block);
                     if (system != null)
                         return isWorkingAndCargoSelectedIsAdded.Invoke(block) && selectedFilterGroup == 0 && selectedFilterItemType >= 0;
                     return false;
-                };
-                comboBoxFilterId.ComboBoxContent = (list) =>
-                {
-                    var typeToUse = validTypes[selectedFilterItemType];
-                    if (validIdsByTypeUI.ContainsKey(typeToUse))
-                        list.AddRange(validIdsByTypeUI[typeToUse]);
-                };
-                comboBoxFilterId.Getter = (block) =>
+                },
+                (block) =>
                 {
                     var system = GetSystem(block);
                     if (system == null) return 0;
                     else return selectedFilterItemId;
-                };
-                comboBoxFilterId.Setter = (block, value) =>
+                },
+                (block, value) =>
                 {
                     var system = GetSystem(block);
                     if (system != null)
                     {
                         selectedFilterItemId = (int)value;
                     }
-                };
-                comboBoxFilterId.SupportsMultipleBlocks = false;
-                CustomControls.Add(comboBoxFilterId);
+                },
+                (list) =>
+                {
+                    var typeToUse = validTypes[selectedFilterItemType];
+                    if (validIdsByTypeUI.ContainsKey(typeToUse))
+                        list.AddRange(validIdsByTypeUI[typeToUse]);
+                },
+                tooltip: "Select a filter item Id."
+            );
 
-                /* Button Add Filter */
-                var button = MyAPIGateway.TerminalControls.CreateControl<IMyTerminalControlButton, IMyOreDetector>("AddedSelectedFilter");
-                button.Title = MyStringId.GetOrCompute("Added Selected Filter");
-                button.Enabled = isWorkingAndCargoSelectedIsAdded;
-                button.Action = (block) =>
+            /* Button Add Filter */
+            CreateTerminalButton(
+                "AddedSelectedFilter",
+                "Added Selected Filter",
+                isWorkingAndCargoSelectedIsAdded,
+                (block) =>
                 {
                     var system = GetSystem(block);
                     if (system != null)
@@ -586,16 +589,16 @@ namespace AILogisticsAutomation
                             }
                         }
                     }
-                };
-                button.SupportsMultipleBlocks = false;
-                CustomControls.Add(button);
+                }
+            );
 
-                /* Filter List */
-                var listCargoContainerFilters = MyAPIGateway.TerminalControls.CreateControl<IMyTerminalControlListbox, IMyOreDetector>("ListCargoContainerFilters");
-                listCargoContainerFilters.Title = MyStringId.GetOrCompute("Cargo Container Filters List");
-                listCargoContainerFilters.Tooltip = MyStringId.GetOrCompute("Select a a filter to remove.");
-                listCargoContainerFilters.Enabled = isWorkingAndCargoSelectedIsAdded;
-                listCargoContainerFilters.ListContent = (block, list, selectedList) =>
+            /* Filter List */
+
+            CreateListbox(
+                "ListCargoContainerFilters",
+                "Cargo Container Filters List",
+                isWorkingAndCargoSelectedIsAdded,
+                (block, list, selectedList) =>
                 {
                     var system = GetSystem(block);
                     if (system != null)
@@ -643,8 +646,8 @@ namespace AILogisticsAutomation
                             }
                         }
                     }
-                };
-                listCargoContainerFilters.ItemSelected = (block, selectedList) =>
+                },
+                (block, selectedList) =>
                 {
                     if (selectedList.Count == 0)
                         return;
@@ -655,16 +658,15 @@ namespace AILogisticsAutomation
                         system.Settings.SelectedAddedFilterId = selectedList[0].UserData.ToString();
                         UpdateVisual(block);
                     }
-                };
-                listCargoContainerFilters.VisibleRowsCount = 5;
-                listCargoContainerFilters.SupportsMultipleBlocks = false;
-                CustomControls.Add(listCargoContainerFilters);
+                },
+                tooltip: "Select a a filter to remove."
+            );
 
-                /* Button Remove Filter */
-                var buttonRemoveFilter = MyAPIGateway.TerminalControls.CreateControl<IMyTerminalControlButton, IMyOreDetector>("AddedSelectedFilter");
-                buttonRemoveFilter.Title = MyStringId.GetOrCompute("Added Selected Filter");
-                buttonRemoveFilter.Enabled = isWorkingAndCargoSelectedIsAddedAndFilterIsSelected;
-                buttonRemoveFilter.Action = (block) =>
+            CreateTerminalButton(
+                "RemoveSelectedFilter",
+                "Remove Selected Filter",
+                isWorkingAndCargoSelectedIsAddedAndFilterIsSelected,
+                (block) =>
                 {
                     var system = GetSystem(block);
                     if (system != null)
@@ -724,52 +726,46 @@ namespace AILogisticsAutomation
                             }
                         }
                     }
-                };
-                buttonRemoveFilter.SupportsMultipleBlocks = false;
-                CustomControls.Add(buttonRemoveFilter);
+                }
+            );
 
-                var ignoreBlocksSeparator = MyAPIGateway.TerminalControls.CreateControl<IMyTerminalControlSeparator, IMyOreDetector>("IgnoreBlocksSeparator");
-                CustomControls.Add(ignoreBlocksSeparator);
+            CreateTerminalSeparator("IgnoreBlocksSeparator");
 
-                var ignoreBlocksSeparatorLable = MyAPIGateway.TerminalControls.CreateControl<IMyTerminalControlLabel, IMyOreDetector>("IgnoreBlocksSeparatorLable");
-                ignoreBlocksSeparatorLable.Label = MyStringId.GetOrCompute("Selected the Ignored Blocks");
-                CustomControls.Add(ignoreBlocksSeparatorLable);
+            CreateTerminalLabel("IgnoreBlocksSeparatorLable", "Selected the Ignored Blocks");
 
-                /* Filter Block Type */
-                var comboBoxFilterBlockType = MyAPIGateway.TerminalControls.CreateControl<IMyTerminalControlCombobox, IMyOreDetector>("FilterBlockType");
-                comboBoxFilterBlockType.Title = MyStringId.GetOrCompute("Filter Block Type");
-                comboBoxFilterBlockType.Tooltip = MyStringId.GetOrCompute("Select a filter to the block type.");
-                comboBoxFilterBlockType.Enabled = isWorkingAndEnabled;
-                comboBoxFilterBlockType.ComboBoxContent = (list) =>
-                {
-                    list.Add(new MyTerminalControlComboBoxItem() { Key = 0, Value = MyStringId.GetOrCompute("Cargo Container") });
-                    list.Add(new MyTerminalControlComboBoxItem() { Key = 1, Value = MyStringId.GetOrCompute("Functional Blocks") });
-                    list.Add(new MyTerminalControlComboBoxItem() { Key = 2, Value = MyStringId.GetOrCompute("Connector") });
-                };
-                comboBoxFilterBlockType.Getter = (block) =>
+            CreateCombobox(
+                "FilterBlockType",
+                "Filter Block Type",
+                isWorkingAndEnabled,
+                (block) =>
                 {
                     var system = GetSystem(block);
                     if (system == null) return 0;
                     else return selectedFilterBlockType;
-                };
-                comboBoxFilterBlockType.Setter = (block, value) =>
-                {
-                    var system = GetSystem(block);
-                    if (system != null)
-                    {
-                        selectedFilterBlockType = value;
-                        UpdateVisual(block);
-                    }
-                };
-                comboBoxFilterBlockType.SupportsMultipleBlocks = false;
-                CustomControls.Add(comboBoxFilterBlockType);
+                },
+                 (block, value) =>
+                 {
+                     var system = GetSystem(block);
+                     if (system != null)
+                     {
+                         selectedFilterBlockType = value;
+                         UpdateVisual(block);
+                     }
+                 },
+                 (list) =>
+                 {
+                     list.Add(new MyTerminalControlComboBoxItem() { Key = 0, Value = MyStringId.GetOrCompute("Cargo Container") });
+                     list.Add(new MyTerminalControlComboBoxItem() { Key = 1, Value = MyStringId.GetOrCompute("Functional Blocks") });
+                     list.Add(new MyTerminalControlComboBoxItem() { Key = 2, Value = MyStringId.GetOrCompute("Connector") });
+                 },
+                 tooltip: "Select a filter to the block type."
+            );
 
-                /* Block type List */
-                var listBlocksType = MyAPIGateway.TerminalControls.CreateControl<IMyTerminalControlListbox, IMyOreDetector>("ListBlocksType");
-                listBlocksType.Title = MyStringId.GetOrCompute("Blocks of selected type");
-                listBlocksType.Tooltip = MyStringId.GetOrCompute("Select one or more blocks to be ignored by the AI Block.");
-                listBlocksType.Enabled = isWorkingAndEnabled;
-                listBlocksType.ListContent = (block, list, selectedList) =>
+            CreateListbox(
+                "ListBlocksType",
+                "Blocks of selected type",
+                isWorkingAndEnabled,
+                (block, list, selectedList) =>
                 {
                     var system = GetSystem(block);
                     if (system != null)
@@ -817,8 +813,8 @@ namespace AILogisticsAutomation
                             }
                         }
                     }
-                };
-                listBlocksType.ItemSelected = (block, selectedList) =>
+                },
+                (block, selectedList) =>
                 {
                     if (selectedList.Count == 0)
                         return;
@@ -834,15 +830,14 @@ namespace AILogisticsAutomation
                             UpdateVisual(block);
                         }
                     }
-                };
-                listBlocksType.VisibleRowsCount = 5;
-                listBlocksType.SupportsMultipleBlocks = false;
-                CustomControls.Add(listBlocksType);
+                },
+                tooltip: "Select one or more blocks to be ignored by the AI Block."
+            );
 
-                /* Button Add Ignored */
-                var buttonAddIgnored = MyAPIGateway.TerminalControls.CreateControl<IMyTerminalControlButton, IMyOreDetector>("ButtonAddIgnored");
-                buttonAddIgnored.Title = MyStringId.GetOrCompute("Add Selected To Ignored");
-                buttonAddIgnored.Enabled = (block) =>
+            CreateTerminalButton(
+                "ButtonAddIgnored",
+                "Add Selected To Ignored",
+                (block) =>
                 {
                     var system = GetSystem(block);
                     if (system != null)
@@ -850,8 +845,8 @@ namespace AILogisticsAutomation
                         return isWorkingAndEnabled.Invoke(block) && system.Settings.SelectedIgnoreEntityId != 0;
                     }
                     return false;
-                };
-                buttonAddIgnored.Action = (block) =>
+                },
+                (block) =>
                 {
                     var system = GetSystem(block);
                     if (system != null)
@@ -898,17 +893,14 @@ namespace AILogisticsAutomation
                         }
                         system.Settings.SelectedIgnoreEntityId = 0;
                     }
-                };
-                buttonAddIgnored.SupportsMultipleBlocks = false;
-                CustomControls.Add(buttonAddIgnored);
+                }
+            );
 
-                /* Block type List */
-                var listBlocksIgnored = MyAPIGateway.TerminalControls.CreateControl<IMyTerminalControlListbox, IMyOreDetector>("ListBlocksIgnored");
-                listBlocksIgnored.Title = MyStringId.GetOrCompute("Ignored Blocks");
-                listBlocksIgnored.Tooltip = MyStringId.GetOrCompute("Select one or more blocks to be ignored by the AI Block.");
-                listBlocksIgnored.Enabled = isWorkingAndEnabled;
-                listBlocksIgnored.Multiselect = true;
-                listBlocksIgnored.ListContent = (block, list, selectedList) =>
+            CreateListbox(
+                "ListBlocksIgnored",
+                "Ignored Blocks",
+                isWorkingAndEnabled,
+                (block, list, selectedList) =>
                 {
                     var system = GetSystem(block);
                     if (system != null)
@@ -947,8 +939,8 @@ namespace AILogisticsAutomation
                             }
                         }
                     }
-                };
-                listBlocksIgnored.ItemSelected = (block, selectedList) =>
+                },
+                (block, selectedList) =>
                 {
                     if (selectedList.Count == 0)
                         return;
@@ -964,15 +956,14 @@ namespace AILogisticsAutomation
                             UpdateVisual(block);
                         }
                     }
-                };
-                listBlocksIgnored.VisibleRowsCount = 5;
-                listBlocksIgnored.SupportsMultipleBlocks = false;
-                CustomControls.Add(listBlocksIgnored);
+                },
+                tooltip: "Select one or more blocks to be ignored by the AI Block."
+            );
 
-                /* Button Remove Ignored */
-                var buttonRemoveIgnored = MyAPIGateway.TerminalControls.CreateControl<IMyTerminalControlButton, IMyOreDetector>("ButtonRemoveIgnored");
-                buttonRemoveIgnored.Title = MyStringId.GetOrCompute("Remove Selected Ignored Block");
-                buttonRemoveIgnored.Enabled = (block) =>
+            CreateTerminalButton(
+                "ButtonRemoveIgnored",
+                "Remove Selected Ignored Block",
+                (block) =>
                 {
                     var system = GetSystem(block);
                     if (system != null)
@@ -980,8 +971,8 @@ namespace AILogisticsAutomation
                         return isWorkingAndEnabled.Invoke(block) && system.Settings.SelectedAddedIgnoreEntityId != 0;
                     }
                     return false;
-                };
-                buttonRemoveIgnored.Action = (block) =>
+                },
+                (block) =>
                 {
                     var system = GetSystem(block);
                     if (system != null)
@@ -1006,24 +997,18 @@ namespace AILogisticsAutomation
                         }
                         system.Settings.SelectedAddedIgnoreEntityId = 0;
                     }
-                };
-                buttonRemoveIgnored.SupportsMultipleBlocks = false;
-                CustomControls.Add(buttonRemoveIgnored);
+                }
+            );
 
-                var funcionalBlockOptionsSeparator = MyAPIGateway.TerminalControls.CreateControl<IMyTerminalControlSeparator, IMyOreDetector>("FuncionalBlockOptionsSeparator");
-                CustomControls.Add(funcionalBlockOptionsSeparator);
+            CreateTerminalSeparator("FuncionalBlockOptionsSeparator");
 
-                var funcionalBlockOptionsLable = MyAPIGateway.TerminalControls.CreateControl<IMyTerminalControlLabel, IMyOreDetector>("FuncionalBlockOptionsLable");
-                funcionalBlockOptionsLable.Label = MyStringId.GetOrCompute("Funcional Blocks Options");
-                CustomControls.Add(funcionalBlockOptionsLable);
+            CreateTerminalLabel("FuncionalBlockOptionsLable", "Funcional Blocks Options");
 
-                var checkboxPullFromAssembler = MyAPIGateway.TerminalControls.CreateControl<IMyTerminalControlCheckbox, IMyOreDetector>("CheckboxPullFromAssembler");
-                checkboxPullFromAssembler.Title = MyStringId.GetOrCompute("Pull from assemblers.");
-                checkboxPullFromAssembler.Tooltip = MyStringId.GetOrCompute("If enabled will pull itens from assemblers result inventory and not used from queue inventory.");
-                checkboxPullFromAssembler.OnText = MyStringId.GetOrCompute("Yes");
-                checkboxPullFromAssembler.OffText = MyStringId.GetOrCompute("No");
-                checkboxPullFromAssembler.Enabled = isWorkingAndEnabled;
-                checkboxPullFromAssembler.Getter = (block) =>
+            var checkboxPullFromAssembler = CreateCheckbox(
+                "CheckboxPullFromAssembler",
+                "Pull from assemblers.",
+                isWorkingAndEnabled,
+                (block) =>
                 {
                     var system = GetSystem(block);
                     if (system != null)
@@ -1031,8 +1016,8 @@ namespace AILogisticsAutomation
                         return system.Settings.GetPullFromAssembler();
                     }
                     return false;
-                };
-                checkboxPullFromAssembler.Setter = (block, value) =>
+                },
+                (block, value) =>
                 {
                     var system = GetSystem(block);
                     if (system != null)
@@ -1040,18 +1025,17 @@ namespace AILogisticsAutomation
                         system.Settings.SetPullFromAssembler(value);
                         system.SendToServer("PullFromAssembler", "SET", value.ToString());
                     }
-                };
-                checkboxPullFromAssembler.SupportsMultipleBlocks = true;
-                CreateCheckBoxAction("PullFromAssembler", checkboxPullFromAssembler);
-                CustomControls.Add(checkboxPullFromAssembler);
+                },
+                tooltip: "If enabled will pull itens from assemblers result inventory and not used from queue inventory.",
+                supMultiple: true
+            );
+            CreateCheckBoxAction("PullFromAssembler", checkboxPullFromAssembler);
 
-                var checkboxPullFromRefinery = MyAPIGateway.TerminalControls.CreateControl<IMyTerminalControlCheckbox, IMyOreDetector>("CheckboxPullFromRefinery");
-                checkboxPullFromRefinery.Title = MyStringId.GetOrCompute("Pull from refineries.");
-                checkboxPullFromRefinery.Tooltip = MyStringId.GetOrCompute("If enabled will pull itens from refineries result inventory.");
-                checkboxPullFromRefinery.OnText = MyStringId.GetOrCompute("Yes");
-                checkboxPullFromRefinery.OffText = MyStringId.GetOrCompute("No");
-                checkboxPullFromRefinery.Enabled = isWorkingAndEnabled;
-                checkboxPullFromRefinery.Getter = (block) =>
+            var checkboxPullFromRefinery = CreateCheckbox(
+                "CheckboxPullFromRefinery",
+                "Pull from refineries.",
+                isWorkingAndEnabled,
+                (block) =>
                 {
                     var system = GetSystem(block);
                     if (system != null)
@@ -1059,8 +1043,8 @@ namespace AILogisticsAutomation
                         return system.Settings.GetPullFromRefinary();
                     }
                     return false;
-                };
-                checkboxPullFromRefinery.Setter = (block, value) =>
+                },
+                (block, value) =>
                 {
                     var system = GetSystem(block);
                     if (system != null)
@@ -1068,18 +1052,17 @@ namespace AILogisticsAutomation
                         system.Settings.SetPullFromRefinary(value);
                         system.SendToServer("PullFromRefinary", "SET", value.ToString());
                     }
-                };
-                checkboxPullFromRefinery.SupportsMultipleBlocks = true;
-                CreateCheckBoxAction("PullFromRefinery", checkboxPullFromRefinery);
-                CustomControls.Add(checkboxPullFromRefinery);
+                },
+                tooltip: "If enabled will pull itens from refineries result inventory.",
+                supMultiple: true
+            );
+            CreateCheckBoxAction("PullFromRefinery", checkboxPullFromRefinery);
 
-                var checkboxPullFromReactor = MyAPIGateway.TerminalControls.CreateControl<IMyTerminalControlCheckbox, IMyOreDetector>("CheckboxPullFromReactor");
-                checkboxPullFromReactor.Title = MyStringId.GetOrCompute("Pull from reactors/engines.");
-                checkboxPullFromReactor.Tooltip = MyStringId.GetOrCompute("If enabled will pull not fuel itens from reactors or engines.");
-                checkboxPullFromReactor.OnText = MyStringId.GetOrCompute("Yes");
-                checkboxPullFromReactor.OffText = MyStringId.GetOrCompute("No");
-                checkboxPullFromReactor.Enabled = isWorkingAndEnabled;
-                checkboxPullFromReactor.Getter = (block) =>
+            var checkboxPullFromReactor = CreateCheckbox(
+                "CheckboxPullFromReactor",
+                "Pull from reactors/engines.",
+                isWorkingAndEnabled,
+                (block) =>
                 {
                     var system = GetSystem(block);
                     if (system != null)
@@ -1087,8 +1070,8 @@ namespace AILogisticsAutomation
                         return system.Settings.GetPullFromReactor();
                     }
                     return false;
-                };
-                checkboxPullFromReactor.Setter = (block, value) =>
+                },
+                (block, value) =>
                 {
                     var system = GetSystem(block);
                     if (system != null)
@@ -1097,24 +1080,23 @@ namespace AILogisticsAutomation
                         system.SendToServer("PullFromReactor", "SET", value.ToString());
                         UpdateVisual(block);
                     }
-                };
-                checkboxPullFromReactor.SupportsMultipleBlocks = true;
-                CreateCheckBoxAction("PullFromReactor", checkboxPullFromReactor);
-                CustomControls.Add(checkboxPullFromReactor);
+                },
+                tooltip: "If enabled will pull not fuel itens from reactors or engines.",
+                supMultiple: true
+            );
+            CreateCheckBoxAction("PullFromReactor", checkboxPullFromReactor);
 
-                var checkboxFillReactor = MyAPIGateway.TerminalControls.CreateControl<IMyTerminalControlCheckbox, IMyOreDetector>("CheckboxFillReactor");
-                checkboxFillReactor.Title = MyStringId.GetOrCompute("Fill reactors/engines with fuel.");
-                checkboxFillReactor.Tooltip = MyStringId.GetOrCompute("If enabled will fill reactors or engines with fuel.");
-                checkboxFillReactor.OnText = MyStringId.GetOrCompute("Yes");
-                checkboxFillReactor.OffText = MyStringId.GetOrCompute("No");
-                checkboxFillReactor.Enabled = (block) =>
+            var checkboxFillReactor = CreateCheckbox(
+                "CheckboxFillReactor",
+                "Fill reactors/engines with fuel.",
+                (block) =>
                 {
                     var system = GetSystem(block);
                     if (system != null)
                         return isWorkingAndEnabled.Invoke(block) && system.Settings.GetPullFromReactor();
                     return false;
-                };
-                checkboxFillReactor.Getter = (block) =>
+                },
+                (block) =>
                 {
                     var system = GetSystem(block);
                     if (system != null)
@@ -1122,8 +1104,8 @@ namespace AILogisticsAutomation
                         return system.Settings.GetFillReactor();
                     }
                     return false;
-                };
-                checkboxFillReactor.Setter = (block, value) =>
+                },
+                (block, value) =>
                 {
                     var system = GetSystem(block);
                     if (system != null)
@@ -1132,28 +1114,28 @@ namespace AILogisticsAutomation
                         system.SendToServer("FillReactor", "SET", value.ToString());
                         UpdateVisual(block);
                     }
-                };
-                checkboxFillReactor.SupportsMultipleBlocks = true;
-                CreateCheckBoxAction("FillReactor", checkboxFillReactor);
-                CustomControls.Add(checkboxFillReactor);
+                },
+                tooltip: "If enabled will fill reactors or engines with fuel.",
+                supMultiple: true
+            );
+            CreateCheckBoxAction("FillReactor", checkboxFillReactor);
 
-                var sliderFillSmallReactor = MyAPIGateway.TerminalControls.CreateControl<IMyTerminalControlSlider, IMyOreDetector>("SliderFillSmallReactor");
-                sliderFillSmallReactor.Title = MyStringId.GetOrCompute("Small reactors/engines fuel");
-                sliderFillSmallReactor.Tooltip = MyStringId.GetOrCompute("Set the base amount to fill the small reactors/engines, the value will be multiply by the size of the block.");
-                sliderFillSmallReactor.SetLimits(1, 25);
-                sliderFillSmallReactor.Enabled = (block) =>
+            var sliderFillSmallReactor = CreateSlider(
+                "SliderFillSmallReactor",
+                "Small reactors/engines fuel",
+                (block) =>
                 {
                     var system = GetSystem(block);
                     if (system != null)
                         return isWorkingAndEnabled.Invoke(block) && system.Settings.GetPullFromReactor() && system.Settings.GetFillReactor();
                     return false;
-                };
-                sliderFillSmallReactor.Getter = (block) =>
+                },
+                (block) =>
                 {
                     var system = GetSystem(block);
                     return system != null ? system.Settings.GetSmallReactorFuelAmount() : 0;
-                };
-                sliderFillSmallReactor.Setter = (block, value) =>
+                },
+                (block, value) =>
                 {
                     var system = GetSystem(block);
                     if (system != null)
@@ -1161,36 +1143,37 @@ namespace AILogisticsAutomation
                         system.Settings.SetSmallReactorFuelAmount(value);
                         system.SendToServer("SmallReactorFuelAmount", "SET", value.ToString());
                     }
-                };
-                sliderFillSmallReactor.Writer = (block, val) =>
+                },
+                (block, val) =>
                 {
                     var system = GetSystem(block);
                     if (system != null)
                     {
                         val.Append(Math.Round(system.Settings.GetSmallReactorFuelAmount(), 2, MidpointRounding.AwayFromZero));
                     }
-                };
-                sliderFillSmallReactor.SupportsMultipleBlocks = true;
-                CustomControls.Add(sliderFillSmallReactor);
-                CreateSliderActions("FillSmallReactor", sliderFillSmallReactor);
+                },
+                new VRageMath.Vector2(1, 25),
+                tooltip: "Set the base amount to fill the small reactors/engines, the value will be multiply by the size of the block.",
+                supMultiple: true
+            );
+            CreateSliderActions("FillSmallReactor", sliderFillSmallReactor);
 
-                var sliderFillLargeReactor = MyAPIGateway.TerminalControls.CreateControl<IMyTerminalControlSlider, IMyOreDetector>("SliderFillLargeReactor");
-                sliderFillLargeReactor.Title = MyStringId.GetOrCompute("Large reactors/engines fuel");
-                sliderFillLargeReactor.Tooltip = MyStringId.GetOrCompute("Set the base amount to fill the large reactors/engines, the value will be multiply by the size of the block.");
-                sliderFillLargeReactor.SetLimits(10, 250);
-                sliderFillLargeReactor.Enabled = (block) =>
+            var sliderFillLargeReactor = CreateSlider(
+                "SliderFillLargeReactor",
+                "Large reactors/engines fuel",
+                (block) =>
                 {
                     var system = GetSystem(block);
                     if (system != null)
                         return isWorkingAndEnabled.Invoke(block) && system.Settings.GetPullFromReactor() && system.Settings.GetFillReactor();
                     return false;
-                };
-                sliderFillLargeReactor.Getter = (block) =>
+                },
+                (block) =>
                 {
                     var system = GetSystem(block);
                     return system != null ? system.Settings.GetLargeReactorFuelAmount() : 0;
-                };
-                sliderFillLargeReactor.Setter = (block, value) =>
+                },
+                (block, value) =>
                 {
                     var system = GetSystem(block);
                     if (system != null)
@@ -1198,26 +1181,26 @@ namespace AILogisticsAutomation
                         system.Settings.SetLargeReactorFuelAmount(value);
                         system.SendToServer("LargeReactorFuelAmount", "SET", value.ToString());
                     }
-                };
-                sliderFillLargeReactor.Writer = (block, val) =>
+                },
+                (block, val) =>
                 {
                     var system = GetSystem(block);
                     if (system != null)
                     {
                         val.Append(Math.Round(system.Settings.GetLargeReactorFuelAmount(), 2, MidpointRounding.AwayFromZero));
                     }
-                };
-                sliderFillLargeReactor.SupportsMultipleBlocks = true;
-                CustomControls.Add(sliderFillLargeReactor);
-                CreateSliderActions("FillLargeReactor", sliderFillLargeReactor);
+                },
+                new VRageMath.Vector2(10, 250),
+                tooltip: "Set the base amount to fill the large reactors/engines, the value will be multiply by the size of the block.",
+                supMultiple: true
+            );
+            CreateSliderActions("FillLargeReactor", sliderFillLargeReactor);
 
-                var checkboxPullFromGasGenerator = MyAPIGateway.TerminalControls.CreateControl<IMyTerminalControlCheckbox, IMyOreDetector>("CheckboxPullFromGasGenerator");
-                checkboxPullFromGasGenerator.Title = MyStringId.GetOrCompute("Pull from Gas Generators.");
-                checkboxPullFromGasGenerator.Tooltip = MyStringId.GetOrCompute("If enabled will pull not ice from Gas Generators.");
-                checkboxPullFromGasGenerator.OnText = MyStringId.GetOrCompute("Yes");
-                checkboxPullFromGasGenerator.OffText = MyStringId.GetOrCompute("No");
-                checkboxPullFromGasGenerator.Enabled = isWorkingAndEnabled;
-                checkboxPullFromGasGenerator.Getter = (block) =>
+            var checkboxPullFromGasGenerator = CreateCheckbox(
+                "CheckboxPullFromGasGenerator",
+                "Pull from Gas Generators.",
+                isWorkingAndEnabled,
+                (block) =>
                 {
                     var system = GetSystem(block);
                     if (system != null)
@@ -1225,8 +1208,8 @@ namespace AILogisticsAutomation
                         return system.Settings.GetPullFromGasGenerator();
                     }
                     return false;
-                };
-                checkboxPullFromGasGenerator.Setter = (block, value) =>
+                },
+                (block, value) =>
                 {
                     var system = GetSystem(block);
                     if (system != null)
@@ -1235,24 +1218,23 @@ namespace AILogisticsAutomation
                         system.SendToServer("PullFromGasGenerator", "SET", value.ToString());
                         UpdateVisual(block);
                     }
-                };
-                checkboxPullFromGasGenerator.SupportsMultipleBlocks = true;
-                CreateCheckBoxAction("PullFromGasGenerator", checkboxPullFromGasGenerator);
-                CustomControls.Add(checkboxPullFromGasGenerator);
+                },
+                tooltip: "If enabled will pull not ice from Gas Generators.",
+                supMultiple: true
+            );
+            CreateCheckBoxAction("PullFromGasGenerator", checkboxPullFromGasGenerator);
 
-                var checkboxFillGasGenerator = MyAPIGateway.TerminalControls.CreateControl<IMyTerminalControlCheckbox, IMyOreDetector>("CheckboxFillGasGenerator");
-                checkboxFillGasGenerator.Title = MyStringId.GetOrCompute("Fill Gas Generators with ice.");
-                checkboxFillGasGenerator.Tooltip = MyStringId.GetOrCompute("If enabled will fill Gas Generators with ice.");
-                checkboxFillGasGenerator.OnText = MyStringId.GetOrCompute("Yes");
-                checkboxFillGasGenerator.OffText = MyStringId.GetOrCompute("No");
-                checkboxFillGasGenerator.Enabled = (block) =>
+            var checkboxFillGasGenerator = CreateCheckbox(
+                "CheckboxFillGasGenerator",
+                "Fill Gas Generators with ice.",
+                (block) =>
                 {
                     var system = GetSystem(block);
                     if (system != null)
                         return isWorkingAndEnabled.Invoke(block) && system.Settings.GetPullFromGasGenerator();
                     return false;
-                };
-                checkboxFillGasGenerator.Getter = (block) =>
+                },
+                (block) =>
                 {
                     var system = GetSystem(block);
                     if (system != null)
@@ -1260,8 +1242,8 @@ namespace AILogisticsAutomation
                         return system.Settings.GetFillGasGenerator();
                     }
                     return false;
-                };
-                checkboxFillGasGenerator.Setter = (block, value) =>
+                },
+                (block, value) =>
                 {
                     var system = GetSystem(block);
                     if (system != null)
@@ -1270,28 +1252,28 @@ namespace AILogisticsAutomation
                         system.SendToServer("FillGasGenerator", "SET", value.ToString());
                         UpdateVisual(block);
                     }
-                };
-                checkboxFillGasGenerator.SupportsMultipleBlocks = true;
-                CreateCheckBoxAction("FillGasGenerator", checkboxFillGasGenerator);
-                CustomControls.Add(checkboxFillGasGenerator);
+                },
+                tooltip: "If enabled will fill Gas Generators with ice.",
+                supMultiple: true
+            );
+            CreateCheckBoxAction("FillGasGenerator", checkboxFillGasGenerator);
 
-                var sliderFillSmallGasGenerator = MyAPIGateway.TerminalControls.CreateControl<IMyTerminalControlSlider, IMyOreDetector>("SliderFillSmallGasGenerator");
-                sliderFillSmallGasGenerator.Title = MyStringId.GetOrCompute("Small Gas Generators ice");
-                sliderFillSmallGasGenerator.Tooltip = MyStringId.GetOrCompute("Set the base amount to fill the small Gas Generators, the value will be multiply by the size of the block.");
-                sliderFillSmallGasGenerator.SetLimits(16, 64);
-                sliderFillSmallGasGenerator.Enabled = (block) =>
+            var sliderFillSmallGasGenerator = CreateSlider(
+                "SliderFillSmallGasGenerator",
+                "Small Gas Generators ice",
+                (block) =>
                 {
                     var system = GetSystem(block);
                     if (system != null)
                         return isWorkingAndEnabled.Invoke(block) && system.Settings.GetPullFromGasGenerator() && system.Settings.GetFillGasGenerator();
                     return false;
-                };
-                sliderFillSmallGasGenerator.Getter = (block) =>
+                },
+                (block) =>
                 {
                     var system = GetSystem(block);
                     return system != null ? system.Settings.GetSmallGasGeneratorAmount() : 0;
-                };
-                sliderFillSmallGasGenerator.Setter = (block, value) =>
+                },
+                (block, value) =>
                 {
                     var system = GetSystem(block);
                     if (system != null)
@@ -1299,36 +1281,37 @@ namespace AILogisticsAutomation
                         system.Settings.SetSmallGasGeneratorAmount(value);
                         system.SendToServer("SmallGasGeneratorAmount", "SET", value.ToString());
                     }
-                };
-                sliderFillSmallGasGenerator.Writer = (block, val) =>
+                },
+                (block, val) =>
                 {
                     var system = GetSystem(block);
                     if (system != null)
                     {
                         val.Append(Math.Round(system.Settings.GetSmallGasGeneratorAmount(), 2, MidpointRounding.AwayFromZero));
                     }
-                };
-                sliderFillSmallGasGenerator.SupportsMultipleBlocks = true;
-                CustomControls.Add(sliderFillSmallGasGenerator);
-                CreateSliderActions("FillSmallGasGenerator", sliderFillSmallGasGenerator);
+                },
+                new VRageMath.Vector2(16, 64),
+                tooltip: "Set the base amount to fill the small Gas Generators, the value will be multiply by the size of the block.",
+                supMultiple: true
+            );
+            CreateSliderActions("FillSmallGasGenerator", sliderFillSmallGasGenerator);
 
-                var sliderFillLargeGasGenerator = MyAPIGateway.TerminalControls.CreateControl<IMyTerminalControlSlider, IMyOreDetector>("SliderFillLargeGasGenerator");
-                sliderFillLargeGasGenerator.Title = MyStringId.GetOrCompute("Large Gas Generators ice");
-                sliderFillLargeGasGenerator.Tooltip = MyStringId.GetOrCompute("Set the base amount to fill the large Gas Generators, the value will be multiply by the size of the block.");
-                sliderFillLargeGasGenerator.SetLimits(100, 2000);
-                sliderFillLargeGasGenerator.Enabled = (block) =>
+            var sliderFillLargeGasGenerator = CreateSlider(
+                "SliderFillLargeGasGenerator",
+                "Large Gas Generators ice",
+                (block) =>
                 {
                     var system = GetSystem(block);
                     if (system != null)
                         return isWorkingAndEnabled.Invoke(block) && system.Settings.GetPullFromGasGenerator() && system.Settings.GetFillGasGenerator();
                     return false;
-                };
-                sliderFillLargeGasGenerator.Getter = (block) =>
+                },
+                (block) =>
                 {
                     var system = GetSystem(block);
                     return system != null ? system.Settings.GetLargeGasGeneratorAmount() : 0;
-                };
-                sliderFillLargeGasGenerator.Setter = (block, value) =>
+                },
+                (block, value) =>
                 {
                     var system = GetSystem(block);
                     if (system != null)
@@ -1336,26 +1319,26 @@ namespace AILogisticsAutomation
                         system.Settings.SetLargeGasGeneratorAmount(value);
                         system.SendToServer("LargeGasGeneratorAmount", "SET", value.ToString());
                     }
-                };
-                sliderFillLargeGasGenerator.Writer = (block, val) =>
+                },
+                (block, val) =>
                 {
                     var system = GetSystem(block);
                     if (system != null)
                     {
                         val.Append(Math.Round(system.Settings.GetLargeGasGeneratorAmount(), 2, MidpointRounding.AwayFromZero));
                     }
-                };
-                sliderFillLargeGasGenerator.SupportsMultipleBlocks = true;
-                CustomControls.Add(sliderFillLargeGasGenerator);
-                CreateSliderActions("FillLargeGasGenerator", sliderFillLargeGasGenerator);
+                },
+                new VRageMath.Vector2(100, 2000),
+                tooltip: "Set the base amount to fill the large Gas Generators, the value will be multiply by the size of the block.",
+                supMultiple: true
+            );
+            CreateSliderActions("FillLargeGasGenerator", sliderFillLargeGasGenerator);
 
-                var checkboxPullFromGasTank = MyAPIGateway.TerminalControls.CreateControl<IMyTerminalControlCheckbox, IMyOreDetector>("CheckboxPullFromGasTank");
-                checkboxPullFromGasTank.Title = MyStringId.GetOrCompute("Pull from Gas Tanks.");
-                checkboxPullFromGasTank.Tooltip = MyStringId.GetOrCompute("If enabled will pull from Gas Tanks.");
-                checkboxPullFromGasTank.OnText = MyStringId.GetOrCompute("Yes");
-                checkboxPullFromGasTank.OffText = MyStringId.GetOrCompute("No");
-                checkboxPullFromGasTank.Enabled = isWorkingAndEnabled;
-                checkboxPullFromGasTank.Getter = (block) =>
+            var checkboxPullFromGasTank = CreateCheckbox(
+                "CheckboxPullFromGasTank",
+                "Pull from Gas Tanks.",
+                isWorkingAndEnabled,
+                (block) =>
                 {
                     var system = GetSystem(block);
                     if (system != null)
@@ -1363,8 +1346,8 @@ namespace AILogisticsAutomation
                         return system.Settings.GetPullFromGasTank();
                     }
                     return false;
-                };
-                checkboxPullFromGasTank.Setter = (block, value) =>
+                },
+                (block, value) =>
                 {
                     var system = GetSystem(block);
                     if (system != null)
@@ -1373,24 +1356,23 @@ namespace AILogisticsAutomation
                         system.SendToServer("PullFromGasTank", "SET", value.ToString());
                         UpdateVisual(block);
                     }
-                };
-                checkboxPullFromGasTank.SupportsMultipleBlocks = true;
-                CreateCheckBoxAction("PullFromGasTank", checkboxPullFromGasTank);
-                CustomControls.Add(checkboxPullFromGasTank);
+                },
+                tooltip: "If enabled will pull from Gas Tanks.",
+                supMultiple: true
+            );
+            CreateCheckBoxAction("PullFromGasTank", checkboxPullFromGasTank);
 
-                var checkboxFillBottles = MyAPIGateway.TerminalControls.CreateControl<IMyTerminalControlCheckbox, IMyOreDetector>("CheckboxFillBottles");
-                checkboxFillBottles.Title = MyStringId.GetOrCompute("Fill bottles with gas.");
-                checkboxFillBottles.Tooltip = MyStringId.GetOrCompute("If enabled will try to fill bottles in tanks or generators.");
-                checkboxFillBottles.OnText = MyStringId.GetOrCompute("Yes");
-                checkboxFillBottles.OffText = MyStringId.GetOrCompute("No");
-                checkboxFillBottles.Enabled = (block) =>
+            var checkboxFillBottles = CreateCheckbox(
+                "CheckboxFillBottles",
+                "Fill bottles with gas.",
+                (block) =>
                 {
                     var system = GetSystem(block);
                     if (system != null)
                         return isWorkingAndEnabled.Invoke(block) && (system.Settings.GetPullFromGasGenerator() || system.Settings.GetPullFromGasTank());
                     return false;
-                };
-                checkboxFillBottles.Getter = (block) =>
+                },
+                (block) =>
                 {
                     var system = GetSystem(block);
                     if (system != null)
@@ -1398,8 +1380,8 @@ namespace AILogisticsAutomation
                         return system.Settings.GetFillBottles();
                     }
                     return false;
-                };
-                checkboxFillBottles.Setter = (block, value) =>
+                },
+                (block, value) =>
                 {
                     var system = GetSystem(block);
                     if (system != null)
@@ -1407,25 +1389,21 @@ namespace AILogisticsAutomation
                         system.Settings.SetFillBottles(value);
                         system.SendToServer("FillBottles", "SET", value.ToString());
                     }
-                };
-                checkboxFillBottles.SupportsMultipleBlocks = true;
-                CreateCheckBoxAction("FillBottles", checkboxFillBottles);
-                CustomControls.Add(checkboxFillBottles);
+                },
+                tooltip: "If enabled will try to fill bottles in tanks or generators.",
+                supMultiple: true
+            );
 
-                if (AILogisticsAutomationSession.IsUsingStatsAndEffects())
-                {
+            if (AILogisticsAutomationSession.IsUsingStatsAndEffects())
+            {
 
-                    var labeESStats = MyAPIGateway.TerminalControls.CreateControl<IMyTerminalControlLabel, IMyOreDetector>("LabeESStats");
-                    labeESStats.Label = MyStringId.GetOrCompute("Stats & Effects Blocks");
-                    CustomControls.Add(labeESStats);
+                CreateTerminalLabel("LabeESStats", "Stats & Effects Blocks");
 
-                    var checkboxPullFromComposter = MyAPIGateway.TerminalControls.CreateControl<IMyTerminalControlCheckbox, IMyOreDetector>("CheckboxPullFromComposter");
-                    checkboxPullFromComposter.Title = MyStringId.GetOrCompute("Pull from Composter.");
-                    checkboxPullFromComposter.Tooltip = MyStringId.GetOrCompute("If enabled will pull not organic from Composter.");
-                    checkboxPullFromComposter.OnText = MyStringId.GetOrCompute("Yes");
-                    checkboxPullFromComposter.OffText = MyStringId.GetOrCompute("No");
-                    checkboxPullFromComposter.Enabled = isWorkingAndEnabled;
-                    checkboxPullFromComposter.Getter = (block) =>
+                var checkboxPullFromComposter = CreateCheckbox(
+                    "CheckboxPullFromComposter",
+                    "Pull from Composter.",
+                    isWorkingAndEnabled,
+                    (block) =>
                     {
                         var system = GetSystem(block);
                         if (system != null)
@@ -1433,8 +1411,8 @@ namespace AILogisticsAutomation
                             return system.Settings.GetPullFromComposter();
                         }
                         return false;
-                    };
-                    checkboxPullFromComposter.Setter = (block, value) =>
+                    },
+                    (block, value) =>
                     {
                         var system = GetSystem(block);
                         if (system != null)
@@ -1443,24 +1421,23 @@ namespace AILogisticsAutomation
                             system.SendToServer("PullFromComposter", "SET", value.ToString());
                             UpdateVisual(block);
                         }
-                    };
-                    checkboxPullFromComposter.SupportsMultipleBlocks = true;
-                    CreateCheckBoxAction("PullFromComposter", checkboxPullFromComposter);
-                    CustomControls.Add(checkboxPullFromComposter);
+                    },
+                    tooltip: "If enabled will pull not organic from Composter.",
+                    supMultiple: true
+                );
+                CreateCheckBoxAction("PullFromComposter", checkboxPullFromComposter);
 
-                    var checkboxFillComposter = MyAPIGateway.TerminalControls.CreateControl<IMyTerminalControlCheckbox, IMyOreDetector>("CheckboxFillComposter");
-                    checkboxFillComposter.Title = MyStringId.GetOrCompute("Fill Composter with organic.");
-                    checkboxFillComposter.Tooltip = MyStringId.GetOrCompute("If enabled will fill Composter with organic.");
-                    checkboxFillComposter.OnText = MyStringId.GetOrCompute("Yes");
-                    checkboxFillComposter.OffText = MyStringId.GetOrCompute("No");
-                    checkboxFillComposter.Enabled = (block) =>
+                var checkboxFillComposter = CreateCheckbox(
+                    "CheckboxFillComposter",
+                    "Fill Composter with organic.",
+                    (block) =>
                     {
                         var system = GetSystem(block);
                         if (system != null)
                             return isWorkingAndEnabled.Invoke(block) && system.Settings.GetPullFromComposter();
                         return false;
-                    };
-                    checkboxFillComposter.Getter = (block) =>
+                    },
+                    (block) =>
                     {
                         var system = GetSystem(block);
                         if (system != null)
@@ -1468,8 +1445,8 @@ namespace AILogisticsAutomation
                             return system.Settings.GetFillComposter();
                         }
                         return false;
-                    };
-                    checkboxFillComposter.Setter = (block, value) =>
+                    },
+                    (block, value) =>
                     {
                         var system = GetSystem(block);
                         if (system != null)
@@ -1478,18 +1455,17 @@ namespace AILogisticsAutomation
                             system.SendToServer("FillComposter", "SET", value.ToString());
                             UpdateVisual(block);
                         }
-                    };
-                    checkboxFillComposter.SupportsMultipleBlocks = true;
-                    CreateCheckBoxAction("FillComposter", checkboxFillComposter);
-                    CustomControls.Add(checkboxFillComposter);
+                    },
+                    tooltip: "If enabled will fill Composter with organic.",
+                    supMultiple: true
+                );
+                CreateCheckBoxAction("FillComposter", checkboxFillComposter);
 
-                    var checkboxPullFromFishTrap = MyAPIGateway.TerminalControls.CreateControl<IMyTerminalControlCheckbox, IMyOreDetector>("CheckboxPullFromFishTrap");
-                    checkboxPullFromFishTrap.Title = MyStringId.GetOrCompute("Pull from Fish Trap.");
-                    checkboxPullFromFishTrap.Tooltip = MyStringId.GetOrCompute("If enabled will pull not baits from FishTrap.");
-                    checkboxPullFromFishTrap.OnText = MyStringId.GetOrCompute("Yes");
-                    checkboxPullFromFishTrap.OffText = MyStringId.GetOrCompute("No");
-                    checkboxPullFromFishTrap.Enabled = isWorkingAndEnabled;
-                    checkboxPullFromFishTrap.Getter = (block) =>
+                var checkboxPullFromFishTrap = CreateCheckbox(
+                    "CheckboxPullFromFishTrap",
+                    "Pull from Fish Trap.",
+                    isWorkingAndEnabled,
+                    (block) =>
                     {
                         var system = GetSystem(block);
                         if (system != null)
@@ -1497,8 +1473,8 @@ namespace AILogisticsAutomation
                             return system.Settings.GetPullFishTrap();
                         }
                         return false;
-                    };
-                    checkboxPullFromFishTrap.Setter = (block, value) =>
+                    },
+                    (block, value) =>
                     {
                         var system = GetSystem(block);
                         if (system != null)
@@ -1507,24 +1483,23 @@ namespace AILogisticsAutomation
                             system.SendToServer("PullFishTrap", "SET", value.ToString());
                             UpdateVisual(block);
                         }
-                    };
-                    checkboxPullFromFishTrap.SupportsMultipleBlocks = true;
-                    CreateCheckBoxAction("PullFromFishTrap", checkboxPullFromFishTrap);
-                    CustomControls.Add(checkboxPullFromFishTrap);
+                    },
+                    tooltip: "If enabled will pull not baits from FishTrap.",
+                    supMultiple: true
+                );
+                CreateCheckBoxAction("PullFromFishTrap", checkboxPullFromFishTrap);
 
-                    var checkboxFillFishTrap = MyAPIGateway.TerminalControls.CreateControl<IMyTerminalControlCheckbox, IMyOreDetector>("CheckboxFillFishTrap");
-                    checkboxFillFishTrap.Title = MyStringId.GetOrCompute("Fill FishTrap with organic.");
-                    checkboxFillFishTrap.Tooltip = MyStringId.GetOrCompute("If enabled will fill Fish Traps with baits.");
-                    checkboxFillFishTrap.OnText = MyStringId.GetOrCompute("Yes");
-                    checkboxFillFishTrap.OffText = MyStringId.GetOrCompute("No");
-                    checkboxFillFishTrap.Enabled = (block) =>
+                var checkboxFillFishTrap = CreateCheckbox(
+                    "CheckboxFillFishTrap",
+                    "Fill FishTrap with organic.",
+                    (block) =>
                     {
                         var system = GetSystem(block);
                         if (system != null)
                             return isWorkingAndEnabled.Invoke(block) && system.Settings.GetPullFishTrap();
                         return false;
-                    };
-                    checkboxFillFishTrap.Getter = (block) =>
+                    },
+                    (block) =>
                     {
                         var system = GetSystem(block);
                         if (system != null)
@@ -1532,8 +1507,8 @@ namespace AILogisticsAutomation
                             return system.Settings.GetFillFishTrap();
                         }
                         return false;
-                    };
-                    checkboxFillFishTrap.Setter = (block, value) =>
+                    },
+                    (block, value) =>
                     {
                         var system = GetSystem(block);
                         if (system != null)
@@ -1542,18 +1517,17 @@ namespace AILogisticsAutomation
                             system.SendToServer("FillFishTrap", "SET", value.ToString());
                             UpdateVisual(block);
                         }
-                    };
-                    checkboxFillFishTrap.SupportsMultipleBlocks = true;
-                    CreateCheckBoxAction("FillFishTrap", checkboxFillFishTrap);
-                    CustomControls.Add(checkboxFillFishTrap);
+                    },
+                    tooltip: "If enabled will fill Fish Traps with baits.",
+                    supMultiple: true
+                );
+                CreateCheckBoxAction("FillFishTrap", checkboxFillFishTrap);
 
-                    var checkboxPullFromRefrigerator = MyAPIGateway.TerminalControls.CreateControl<IMyTerminalControlCheckbox, IMyOreDetector>("CheckboxPullFromRefrigerator");
-                    checkboxPullFromRefrigerator.Title = MyStringId.GetOrCompute("Pull from Refrigerator.");
-                    checkboxPullFromRefrigerator.Tooltip = MyStringId.GetOrCompute("If enabled will pull not foods from Refrigerator.");
-                    checkboxPullFromRefrigerator.OnText = MyStringId.GetOrCompute("Yes");
-                    checkboxPullFromRefrigerator.OffText = MyStringId.GetOrCompute("No");
-                    checkboxPullFromRefrigerator.Enabled = isWorkingAndEnabled;
-                    checkboxPullFromRefrigerator.Getter = (block) =>
+                var checkboxPullFromRefrigerator = CreateCheckbox(
+                    "CheckboxPullFromRefrigerator",
+                    "Pull from Refrigerator.",
+                    isWorkingAndEnabled,
+                    (block) =>
                     {
                         var system = GetSystem(block);
                         if (system != null)
@@ -1561,8 +1535,8 @@ namespace AILogisticsAutomation
                             return system.Settings.GetPullRefrigerator();
                         }
                         return false;
-                    };
-                    checkboxPullFromRefrigerator.Setter = (block, value) =>
+                    },
+                    (block, value) =>
                     {
                         var system = GetSystem(block);
                         if (system != null)
@@ -1571,24 +1545,23 @@ namespace AILogisticsAutomation
                             system.SendToServer("PullRefrigerator", "SET", value.ToString());
                             UpdateVisual(block);
                         }
-                    };
-                    checkboxPullFromRefrigerator.SupportsMultipleBlocks = true;
-                    CreateCheckBoxAction("PullFromRefrigerator", checkboxPullFromRefrigerator);
-                    CustomControls.Add(checkboxPullFromRefrigerator);
+                    },
+                    tooltip: "If enabled will pull not foods from Refrigerator.",
+                    supMultiple: true
+                );
+                CreateCheckBoxAction("PullFromRefrigerator", checkboxPullFromRefrigerator);
 
-                    var checkboxFillRefrigerator = MyAPIGateway.TerminalControls.CreateControl<IMyTerminalControlCheckbox, IMyOreDetector>("CheckboxFillRefrigerator");
-                    checkboxFillRefrigerator.Title = MyStringId.GetOrCompute("Fill Refrigerator with food.");
-                    checkboxFillRefrigerator.Tooltip = MyStringId.GetOrCompute("If enabled will fill Refrigerator with foods.");
-                    checkboxFillRefrigerator.OnText = MyStringId.GetOrCompute("Yes");
-                    checkboxFillRefrigerator.OffText = MyStringId.GetOrCompute("No");
-                    checkboxFillRefrigerator.Enabled = (block) =>
+                var checkboxFillRefrigerator = CreateCheckbox(
+                    "CheckboxFillRefrigerator",
+                    "Fill Refrigerator with food.",
+                    (block) =>
                     {
                         var system = GetSystem(block);
                         if (system != null)
                             return isWorkingAndEnabled.Invoke(block) && system.Settings.GetPullRefrigerator();
                         return false;
-                    };
-                    checkboxFillRefrigerator.Getter = (block) =>
+                    },
+                    (block) =>
                     {
                         var system = GetSystem(block);
                         if (system != null)
@@ -1596,8 +1569,8 @@ namespace AILogisticsAutomation
                             return system.Settings.GetFillRefrigerator();
                         }
                         return false;
-                    };
-                    checkboxFillRefrigerator.Setter = (block, value) =>
+                    },
+                    (block, value) =>
                     {
                         var system = GetSystem(block);
                         if (system != null)
@@ -1606,14 +1579,14 @@ namespace AILogisticsAutomation
                             system.SendToServer("FillRefrigerator", "SET", value.ToString());
                             UpdateVisual(block);
                         }
-                    };
-                    checkboxFillRefrigerator.SupportsMultipleBlocks = true;
-                    CreateCheckBoxAction("FillRefrigerator", checkboxFillRefrigerator);
-                    CustomControls.Add(checkboxFillRefrigerator);
-
-                }
+                    },
+                    tooltip: "If enabled will fill Refrigerator with foods.",
+                    supMultiple: true
+                );
+                CreateCheckBoxAction("FillRefrigerator", checkboxFillRefrigerator);
 
             }
+
         }
 
         protected override string GetActionPrefix()

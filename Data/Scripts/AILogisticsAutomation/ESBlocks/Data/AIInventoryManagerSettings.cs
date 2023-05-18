@@ -4,7 +4,8 @@ using System.Linq;
 
 namespace AILogisticsAutomation
 {
-    public class AIInventoryManagerSettings
+
+    public class AIInventoryManagerSettings : IBlockSettings<AIInventoryManagerSettingsData>
     {
 
         /* Interface Properties */
@@ -629,6 +630,7 @@ namespace AILogisticsAutomation
             largeGasGeneratorAmount = data.largeGasGeneratorAmount;
             pullFromGasTank = data.pullFromGasTank;
             stackIfPossible = data.stackIfPossible;
+            powerConsumption = data.powerConsumption;
         }
 
     }

@@ -8,8 +8,6 @@ namespace AILogisticsAutomation
     public class AIInventoryManagerCargoDefinition
     {
 
-        /* Data Flags */
-
         public long EntityId { get; set; }
         public HashSet<SerializableDefinitionId> ValidIds { get; set; } = new HashSet<SerializableDefinitionId>();
         public HashSet<MyObjectBuilderType> ValidTypes { get; set; } = new HashSet<MyObjectBuilderType>();
