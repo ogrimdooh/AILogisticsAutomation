@@ -21,6 +21,9 @@ namespace AILogisticsAutomation
         public float SortCost { get; set; } = 0.025f;
 
         [XmlElement]
+        public float StackCost { get; set; } = 0.025f;
+
+        [XmlElement]
         public float FillReactorCost { get; set; } = 0.015f;
 
         [XmlElement]

@@ -254,6 +254,17 @@ namespace AILogisticsAutomation
             fillFishTrap = value;
         }
 
+        private bool stackIfPossible;
+        public bool GetStackIfPossible()
+        {
+            return stackIfPossible;
+        }
+
+        public void SetStackIfPossible(bool value)
+        {
+            stackIfPossible = value;
+        }
+
         private bool pullRefrigerator;
         public bool GetPullRefrigerator()
         {
@@ -308,7 +319,8 @@ namespace AILogisticsAutomation
                 fillRefrigerator = fillRefrigerator,
                 pullFishTrap = pullFishTrap,
                 pullFromComposter = pullFromComposter,
-                pullRefrigerator = pullRefrigerator
+                pullRefrigerator = pullRefrigerator,
+                stackIfPossible = stackIfPossible
             };
             return data;
         }
@@ -551,6 +563,13 @@ namespace AILogisticsAutomation
                         return true;
                     }
                     break;
+                case "STACKIFPOSSIBLE":
+                    if (bool.TryParse(value, out valueAsFlag))
+                    {
+                        stackIfPossible = valueAsFlag;
+                        return true;
+                    }
+                    break;
             }
             return false;
         }
@@ -609,6 +628,7 @@ namespace AILogisticsAutomation
             smallGasGeneratorAmount = data.smallGasGeneratorAmount;
             largeGasGeneratorAmount = data.largeGasGeneratorAmount;
             pullFromGasTank = data.pullFromGasTank;
+            stackIfPossible = data.stackIfPossible;
         }
 
     }

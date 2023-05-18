@@ -244,6 +244,36 @@ namespace AILogisticsAutomation
                 CreateComboBoxAction("SortItensType", comboBoxSortItensType);
                 CustomControls.Add(comboBoxSortItensType);
 
+                /* stackIfPossible */
+
+                var checkboxStackIfPossible = MyAPIGateway.TerminalControls.CreateControl<IMyTerminalControlCheckbox, IMyOreDetector>("CheckboxStackIfPossible");
+                checkboxStackIfPossible.Title = MyStringId.GetOrCompute("Stack Items.");
+                checkboxStackIfPossible.Tooltip = MyStringId.GetOrCompute("If enabled will stack itens slots if possible.");
+                checkboxStackIfPossible.OnText = MyStringId.GetOrCompute("Yes");
+                checkboxStackIfPossible.OffText = MyStringId.GetOrCompute("No");
+                checkboxStackIfPossible.Enabled = isWorkingAndEnabled;
+                checkboxStackIfPossible.Getter = (block) =>
+                {
+                    var system = GetSystem(block);
+                    if (system != null)
+                    {
+                        return system.Settings.GetStackIfPossible();
+                    }
+                    return false;
+                };
+                checkboxStackIfPossible.Setter = (block, value) =>
+                {
+                    var system = GetSystem(block);
+                    if (system != null)
+                    {
+                        system.Settings.SetStackIfPossible(value);
+                        system.SendToServer("StackIfPossible", "SET", value.ToString());
+                    }
+                };
+                checkboxStackIfPossible.SupportsMultipleBlocks = true;
+                CreateCheckBoxAction("StackIfPossible", checkboxStackIfPossible);
+                CustomControls.Add(checkboxStackIfPossible);
+
                 /* Cargo Container List */
                 var listCargoContainers = MyAPIGateway.TerminalControls.CreateControl<IMyTerminalControlListbox, IMyOreDetector>("ListCargoContainers");
                 listCargoContainers.Title = MyStringId.GetOrCompute("Cargo Container List");

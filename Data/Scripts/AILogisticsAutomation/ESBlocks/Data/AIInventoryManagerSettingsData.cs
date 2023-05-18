@@ -87,6 +87,9 @@ namespace AILogisticsAutomation
         [ProtoMember(27)]
         public bool fillRefrigerator;
 
+        [ProtoMember(28)]
+        public bool stackIfPossible;
+
     }
 
 }

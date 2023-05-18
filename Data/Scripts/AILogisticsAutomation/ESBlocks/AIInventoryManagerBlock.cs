@@ -5,7 +5,6 @@ using VRage.ObjectBuilders;
 using VRage.Game;
 using System.Collections.Generic;
 using System;
-using VRage.Utils;
 using Sandbox.Game.Entities;
 using System.Linq;
 using Sandbox.Game.EntityComponents;
@@ -31,6 +30,8 @@ namespace AILogisticsAutomation
         private const float IDEAL_FISHTRAP_NOBLEBAIT = 2.5f;
 
         public AIInventoryManagerSettings Settings { get; set; } = new AIInventoryManagerSettings();
+
+        private readonly ConcurrentDictionary<long, MyInventoryMap> inventoryMap = new ConcurrentDictionary<long, MyInventoryMap>();
 
         public bool IsValidToWork
         {
@@ -119,14 +120,14 @@ namespace AILogisticsAutomation
             }
         }
 
-        protected void SendToClient(ulong clientId)
+        protected void SendToClient(params ulong[] clientIds)
         {
             try
             {
                 if (AILogisticsAutomationSettings.Instance.Debug)
-                    AILogisticsAutomationLogging.Instance.LogInfo(GetType(), $"SendToClient: clientId={clientId}");
+                    AILogisticsAutomationLogging.Instance.LogInfo(GetType(), $"SendToClient: clientId={string.Join(",", clientIds.Select(x => x.ToString()))}");
                 var encodeData = GetEncodedData();
-                SendCallServer(new ulong[] { clientId }, "UpdateSettings", new Dictionary<string, string>() { { "DATA", encodeData } });
+                SendCallServer(clientIds, "UpdateSettings", new Dictionary<string, string>() { { "DATA", encodeData } });
             }
             catch (Exception ex)
             {
@@ -134,13 +135,13 @@ namespace AILogisticsAutomation
             }
         }
 
-        protected void SendPowerToClient()
+        protected void SendPowerToClient(params ulong[] clientIds)
         {
             try
             {
                 if (AILogisticsAutomationSettings.Instance.Debug)
-                    AILogisticsAutomationLogging.Instance.LogInfo(GetType(), $"SendPowerToClient: caller={Settings.GetPowerConsumption()}");
-                SendCallServer(new ulong[] { }, "UpdatePower", new Dictionary<string, string>() { { "POWER", Settings.GetPowerConsumption().ToString() } });
+                    AILogisticsAutomationLogging.Instance.LogInfo(GetType(), $"SendPowerToClient: POWER={Settings.GetPowerConsumption()}");
+                SendCallServer(clientIds, "UpdatePower", new Dictionary<string, string>() { { "POWER", Settings.GetPowerConsumption().ToString() } });
             }
             catch (Exception ex)
             {
@@ -198,6 +199,18 @@ namespace AILogisticsAutomation
                     var data = MyAPIGateway.Utilities.SerializeFromXML<AIInventoryManagerSettingsData>(decodeData);
                     Settings.UpdateData(data);
                 }
+            }
+            catch (Exception ex)
+            {
+                AILogisticsAutomationLogging.Instance.LogError(GetType(), ex);
+            }
+        }
+
+        protected void RequestPower()
+        {
+            try
+            {
+                SendCallClient(MyAPIGateway.Session.Player.SteamUserId, "RequestPower", new Dictionary<string, string>() { });
             }
             catch (Exception ex)
             {
@@ -277,6 +290,7 @@ namespace AILogisticsAutomation
             deltaTime = GetGameTime();
         }
 
+        private int lientCicleCount = 0;
         private readonly long cicleType = 3000; /* default cycle time */
         protected override void OnUpdateAfterSimulation100()
         {
@@ -307,6 +321,19 @@ namespace AILogisticsAutomation
                 catch (Exception ex)
                 {
                     AILogisticsAutomationLogging.Instance.LogError(GetType(), ex);
+                }
+            }
+            else
+            {
+                if (HadWorkToDo && Settings.GetPowerConsumption() == 0)
+                {
+                    if (lientCicleCount <= 0 || lientCicleCount > 15)
+                    {
+                        lientCicleCount = 1;
+                        RequestPower();
+                    }
+                    else
+                        lientCicleCount++;
                 }
             }
             CurrentEntity.ResourceSink.SetRequiredInputByType(MyResourceDistributorComponent.ElectricityId, ComputeRequiredPower());
@@ -522,7 +549,8 @@ namespace AILogisticsAutomation
             // Get pull containers power
             power += (
                         AILogisticsAutomationSettings.Instance.EnergyCost.DefaultPullCost + 
-                        (Settings.GetSortItensType() > 0 ? AILogisticsAutomationSettings.Instance.EnergyCost.SortCost : 0) 
+                        (Settings.GetSortItensType() > 0 ? AILogisticsAutomationSettings.Instance.EnergyCost.SortCost : 0) +
+                        (Settings.GetStackIfPossible() ? AILogisticsAutomationSettings.Instance.EnergyCost.StackCost : 0)
                     ) * Settings.GetDefinitions().Count;
             
             // Get filter power
@@ -639,6 +667,8 @@ namespace AILogisticsAutomation
                             TryToFullFromInventory(inventoryProd, listaToCheck, assembler, null, null);
                         }
                     }
+                    if (inventoryBase.GetItemsCount() > 0)
+                        DoSort(inventoryBase);
                 }
 
             }
@@ -894,47 +924,44 @@ namespace AILogisticsAutomation
 
         private void DoCheckAnyCanGoInOtherInventory()
         {
-            if (Settings.GetSortItensType() != 0)
+            var keys = Settings.GetDefinitions().Keys.ToArray();
+            for (int i = 0; i < keys.Length; i++)
             {
-                var keys = Settings.GetDefinitions().Keys.ToArray();
-                for (int i = 0; i < keys.Length; i++)
+                var def = Settings.GetDefinitions()[keys[i]];
+                var targetBlock = ValidInventories.FirstOrDefault(x => x.EntityId == def.EntityId);
+                var targetInventory = targetBlock.GetInventory(0);
+                if (targetInventory.ItemCount > 0)
                 {
-                    var def = Settings.GetDefinitions()[keys[i]];
-                    var targetBlock = ValidInventories.FirstOrDefault(x => x.EntityId == def.EntityId);
-                    var targetInventory = targetBlock.GetInventory(0);
-                    if (targetInventory.ItemCount > 0)
+                    for (int p = targetInventory.ItemCount - 1; p >= 0; p--)
                     {
-                        for (int p = targetInventory.ItemCount - 1; p >= 0; p--)
+                        var item = targetInventory.GetItemAt(p);
+                        if (!item.HasValue)
+                            break;
+                        var itemid = new MyDefinitionId(MyObjectBuilderType.Parse(item.Value.Type.TypeId), item.Value.Type.SubtypeId);
+                        if (!(
+                                (def.ValidIds.Contains(itemid) || def.ValidTypes.Contains(itemid.TypeId)) &&
+                                !def.IgnoreIds.Contains(itemid) &&
+                                !def.IgnoreTypes.Contains(itemid.TypeId)
+                            ))
                         {
-                            var item = targetInventory.GetItemAt(p);
-                            if (!item.HasValue)
-                                break;
-                            var itemid = new MyDefinitionId(MyObjectBuilderType.Parse(item.Value.Type.TypeId), item.Value.Type.SubtypeId);
-                            if (!(
-                                    (def.ValidIds.Contains(itemid) || def.ValidTypes.Contains(itemid.TypeId)) &&
-                                    !def.IgnoreIds.Contains(itemid) && 
-                                    !def.IgnoreTypes.Contains(itemid.TypeId)
-                                ))
+                            var validTargets = Settings.GetDefinitions().Values.Where(x =>
+                                (x.ValidIds.Contains(itemid) || x.ValidTypes.Contains(itemid.TypeId)) &&
+                                (!x.IgnoreIds.Contains(itemid) && !x.IgnoreTypes.Contains(itemid.TypeId))
+                            );
+                            if (validTargets.Any())
                             {
-                                var validTargets = Settings.GetDefinitions().Values.Where(x =>
-                                    (x.ValidIds.Contains(itemid) || x.ValidTypes.Contains(itemid.TypeId)) &&
-                                    (!x.IgnoreIds.Contains(itemid) && !x.IgnoreTypes.Contains(itemid.TypeId))
-                                );
-                                if (validTargets.Any())
+                                foreach (var validTarget in validTargets)
                                 {
-                                    foreach (var validTarget in validTargets)
+                                    var targetBlockToSend = ValidInventories.FirstOrDefault(x => x.EntityId == validTarget.EntityId);
+                                    if (targetBlockToSend != null)
                                     {
-                                        var targetBlockToSend = ValidInventories.FirstOrDefault(x => x.EntityId == validTarget.EntityId);
-                                        if (targetBlockToSend != null)
+                                        var targetInventoryToSend = targetBlockToSend.GetInventory(0);
+                                        if ((targetInventory as IMyInventory).CanTransferItemTo(targetInventoryToSend, itemid))
                                         {
-                                            var targetInventoryToSend = targetBlockToSend.GetInventory(0);
-                                            if ((targetInventory as IMyInventory).CanTransferItemTo(targetInventoryToSend, itemid))
+                                            InvokeOnGameThread(() =>
                                             {
-                                                InvokeOnGameThread(() =>
-                                                {
-                                                    MyInventory.Transfer(targetInventory, targetInventoryToSend, item.Value.ItemId);
-                                                });
-                                            }
+                                                MyInventory.Transfer(targetInventory, targetInventoryToSend, item.Value.ItemId);
+                                            });
                                         }
                                     }
                                 }
@@ -945,67 +972,147 @@ namespace AILogisticsAutomation
             }
         }
 
-        private void DoSortPullInventories()
+        private void DoManageInventory(long ownerId, MyInventory targetInventory)
+        {
+            if (!inventoryMap.ContainsKey(ownerId))
+                inventoryMap[ownerId] = new MyInventoryMap(ownerId, targetInventory);
+            inventoryMap[ownerId].Update();
+        }
+
+        private void DoStacks(long ownerId)
+        {
+            if (Settings.GetStackIfPossible())
+            {
+                if (inventoryMap.ContainsKey(ownerId) && inventoryMap[ownerId].HadAnyStackable())
+                {
+                    var stackItens = inventoryMap[ownerId].GetStackableItems();
+                    foreach (var item in stackItens)
+                    {
+                        var map = inventoryMap[ownerId].GetItem(item);
+                        var targetSlot = map.Slots.FirstOrDefault();
+                        var removeSlots = map.Slots.Where(x => x != targetSlot).ToArray();
+                        InvokeOnGameThread(() =>
+                        {
+                            inventoryMap[ownerId].Inventory.UpdateItem(item, targetSlot, (float)map.TotalAmount);
+                            foreach (var slot in removeSlots)
+                            {
+                                inventoryMap[ownerId].Inventory.RemoveItems(slot);
+                            }
+                        });
+                        map.Slots.RemoveWhere(x => removeSlots.Contains(x));
+                    }
+                }
+            }
+        }
+
+        private void DoSort(MyInventory targetInventory)
         {
             if (Settings.GetSortItensType() != 0)
             {
-                var keys = Settings.GetDefinitions().Keys.ToArray();
-                for (int i = 0; i < keys.Length; i++)
+                if (targetInventory.ItemCount > 1)
                 {
-                    var def = Settings.GetDefinitions()[keys[i]];
-                    var targetBlock = ValidInventories.FirstOrDefault(x => x.EntityId == def.EntityId);
-                    var targetInventory = targetBlock.GetInventory(0);
-                    if (targetInventory.ItemCount > 1)
+                    int p = 1;
+                    while (p < targetInventory.ItemCount)
                     {
-                        int p = 1;
-                        while (p < targetInventory.ItemCount)
+                        var itemBefore = targetInventory.GetItemAt(p - 1);
+                        var item = targetInventory.GetItemAt(p);
+                        if (!item.HasValue || !itemBefore.HasValue)
+                            break;
+                        var itemBeforeDef = MyDefinitionManager.Static.GetPhysicalItemDefinition(itemBefore.Value.Type);
+                        var itemDef = MyDefinitionManager.Static.GetPhysicalItemDefinition(item.Value.Type);
+                        int dif = 0;
+                        MyFixedPoint itemTotalMass = 0;
+                        MyFixedPoint itemBeforeTotalMass = 0;
+                        switch (Settings.GetSortItensType())
                         {
-                            var itemBefore = targetInventory.GetItemAt(p - 1);
-                            var item = targetInventory.GetItemAt(p);
-                            if (!item.HasValue || !itemBefore.HasValue)
+                            case 1: /* NAME */
+                                dif = itemDef.DisplayNameText.CompareTo(itemBeforeDef.DisplayNameText) * -1; /* A -> Z */
                                 break;
-                            var itemBeforeDef = MyDefinitionManager.Static.GetPhysicalItemDefinition(itemBefore.Value.Type);
-                            var itemDef = MyDefinitionManager.Static.GetPhysicalItemDefinition(item.Value.Type);
-                            int dif = 0;
-                            MyFixedPoint itemTotalMass = 0;
-                            MyFixedPoint itemBeforeTotalMass = 0;
-                            switch (Settings.GetSortItensType())
-                            {
-                                case 1: /* NAME */
+                            case 2: /* MASS */
+                                itemTotalMass = itemDef.Mass * item.Value.Amount;
+                                itemBeforeTotalMass = itemBeforeDef.Mass * itemBefore.Value.Amount;
+                                dif = itemTotalMass < itemBeforeTotalMass ? -1 : (itemTotalMass > itemBeforeTotalMass ? 1 : 0); /* + -> - */
+                                break;
+                            case 3: /* TYPE NAME (ITEM NAME) */
+                                dif = itemDef.Id.TypeId.ToString().CompareTo(itemBeforeDef.Id.TypeId.ToString()) * -1; /* A -> Z */
+                                if (dif == 0)
                                     dif = itemDef.DisplayNameText.CompareTo(itemBeforeDef.DisplayNameText) * -1; /* A -> Z */
-                                    break;
-                                case 2: /* MASS */
+                                break;
+                            case 4: /* TYPE NAME (ITEM MASS) */
+                                dif = itemDef.Id.TypeId.ToString().CompareTo(itemBeforeDef.Id.TypeId.ToString()) * -1; /* A -> Z */
+                                if (dif == 0)
+                                {
                                     itemTotalMass = itemDef.Mass * item.Value.Amount;
                                     itemBeforeTotalMass = itemBeforeDef.Mass * itemBefore.Value.Amount;
                                     dif = itemTotalMass < itemBeforeTotalMass ? -1 : (itemTotalMass > itemBeforeTotalMass ? 1 : 0); /* + -> - */
-                                    break;
-                                case 3: /* TYPE NAME (ITEM NAME) */
-                                    dif = itemDef.Id.TypeId.ToString().CompareTo(itemBeforeDef.Id.TypeId.ToString()) * -1; /* A -> Z */
-                                    if (dif == 0)
-                                        dif = itemDef.DisplayNameText.CompareTo(itemBeforeDef.DisplayNameText) * -1; /* A -> Z */
-                                    break;
-                                case 4: /* TYPE NAME (ITEM MASS) */
-                                    dif = itemDef.Id.TypeId.ToString().CompareTo(itemBeforeDef.Id.TypeId.ToString()) * -1; /* A -> Z */
-                                    if (dif == 0)
-                                    {
-                                        itemTotalMass = itemDef.Mass * item.Value.Amount;
-                                        itemBeforeTotalMass = itemBeforeDef.Mass * itemBefore.Value.Amount;
-                                        dif = itemTotalMass < itemBeforeTotalMass ? -1 : (itemTotalMass > itemBeforeTotalMass ? 1 : 0); /* + -> - */
-                                    }
-                                    break;
-                            }
-                            if (dif > 0)
-                            {
-                                InvokeOnGameThread(() =>
-                                {
-                                    MyInventory.Transfer(targetInventory, targetInventory, item.Value.ItemId, p - 1);
-                                });
-                            }
-                            else
-                                p++;
+                                }
+                                break;
                         }
+                        if (dif > 0)
+                        {
+                            InvokeOnGameThread(() =>
+                            {
+                                MyInventory.Transfer(targetInventory, targetInventory, item.Value.ItemId, p - 1);
+                            });
+                        }
+                        else
+                            p++;
                     }
                 }
+            }
+        }
+
+        private void DoCheckPullInventories()
+        {
+            var keys = Settings.GetDefinitions().Keys.ToArray();
+            for (int i = 0; i < keys.Length; i++)
+            {
+                var def = Settings.GetDefinitions()[keys[i]];
+                var targetBlock = ValidInventories.FirstOrDefault(x => x.EntityId == def.EntityId);
+                var targetInventory = targetBlock.GetInventory(0);
+                DoSort(targetInventory);
+                DoManageInventory(keys[i], targetInventory);
+                DoStacks(keys[i]);
+            }
+        }
+
+        private void CheckEntitiesExist()
+        {
+            bool needComuniteChange = false;
+            var entityList = Settings.GetDefinitions().Keys.ToList();
+            entityList.RemoveAll(x => CubeGrid.Inventories.Any(y => y.EntityId == x));
+            foreach (var item in entityList)
+            {
+                Settings.GetDefinitions().Remove(item);
+                needComuniteChange = true;
+            }
+            entityList.Clear();
+            entityList.AddRange(Settings.GetIgnoreCargos());
+            entityList.RemoveAll(x => CubeGrid.Inventories.Any(y => y.EntityId == x));
+            foreach (var item in entityList)
+            {
+                Settings.GetDefinitions().Remove(item);
+                needComuniteChange = true;
+            }
+            entityList.Clear();
+            entityList.AddRange(Settings.GetIgnoreFunctionalBlocks());
+            entityList.RemoveAll(x => CubeGrid.Inventories.Any(y => y.EntityId == x));
+            foreach (var item in entityList)
+            {
+                Settings.GetDefinitions().Remove(item);
+                needComuniteChange = true;
+            }
+            entityList.Clear();
+            entityList.AddRange(Settings.GetIgnoreConnectors());
+            entityList.RemoveAll(x => CubeGrid.Inventories.Any(y => y.EntityId == x));
+            foreach (var item in entityList)
+            {
+                Settings.GetDefinitions().Remove(item);
+                needComuniteChange = true;
+            }
+            if (needComuniteChange)
+            {
+                SendToClient();
             }
         }
 
@@ -1022,6 +1129,9 @@ namespace AILogisticsAutomation
             }
             if (IsWorking)
             {
+                CheckEntitiesExist();
+                if (!IsWorking)
+                    return;
                 List<IMyReactor> reactors = new List<IMyReactor>();
                 List<IMyGasGenerator> gasGenerators = new List<IMyGasGenerator>();
                 List<IMyGasTank> gasTanks = new List<IMyGasTank>();
@@ -1053,7 +1163,7 @@ namespace AILogisticsAutomation
                 DoFillComposter(composters);
                 DoFillBottles(gasGenerators, gasTanks);
                 DoCheckAnyCanGoInOtherInventory();
-                DoSortPullInventories();
+                DoCheckPullInventories();
             }
         }
 
@@ -1191,6 +1301,9 @@ namespace AILogisticsAutomation
                     case "RequestSettings":
                         SendToClient(caller);
                         break;
+                    case "RequestPower":
+                        SendPowerToClient(caller);
+                        break;
                     case "SetSettings":
                         ReciveFromClient(
                             caller, 
@@ -1221,6 +1334,7 @@ namespace AILogisticsAutomation
                     case "UpdatePower":
                         var power = float.Parse(extraParams.extraParams.FirstOrDefault(x => x.id == "POWER")?.data);
                         Settings.SetPowerConsumption(power);
+                        lientCicleCount = 0;
                         break;
                     case "SetSettings":
                         Settings.UpdateData(
