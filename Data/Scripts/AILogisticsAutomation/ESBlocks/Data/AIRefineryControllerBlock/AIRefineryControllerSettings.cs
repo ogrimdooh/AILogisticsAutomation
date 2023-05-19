@@ -11,9 +11,11 @@ namespace AILogisticsAutomation
 
         /* Interface Properties */
 
-        public string selectedDefaultOre;
-        public string selectedRefineryOre;
-        public long selectedRefinery;
+        public string SelectedDefaultOre { get; set; } = "";
+        public string SelectedRefineryOre { get; set; } = "";
+        public long SelectedRefinery { get; set; } = 0;
+        public long SelectedIgnoreEntityId { get; set; } = 0;
+        public long SelectedAddedIgnoreEntityId { get; set; } = 0;
 
         /* Data Properties */
 

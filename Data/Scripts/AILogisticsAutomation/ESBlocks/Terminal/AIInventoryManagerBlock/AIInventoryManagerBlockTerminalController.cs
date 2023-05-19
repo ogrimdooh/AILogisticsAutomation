@@ -968,8 +968,7 @@ namespace AILogisticsAutomation
                             UpdateVisual(block);
                         }
                     }
-                },
-                tooltip: "Select one or more blocks to be ignored by the AI Block."
+                }
             );
 
             CreateTerminalButton(

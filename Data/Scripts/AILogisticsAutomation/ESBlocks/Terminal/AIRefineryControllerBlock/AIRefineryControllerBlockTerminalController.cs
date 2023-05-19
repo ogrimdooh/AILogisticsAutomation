@@ -80,7 +80,7 @@ namespace AILogisticsAutomation
             Func<IMyTerminalBlock, bool> isWorkingEnabledAndDefaultOreSelected = (block) =>
             {
                 var system = GetSystem(block);
-                return system != null && isWorkingAndEnabled.Invoke(block) && system.Settings.DefaultOres.Contains(system.Settings.selectedDefaultOre);
+                return system != null && isWorkingAndEnabled.Invoke(block) && system.Settings.DefaultOres.Contains(system.Settings.SelectedDefaultOre);
             };
 
             Func<IMyTerminalBlock, bool> isWorkingEnabledAndRefinerySelected = (block) =>
@@ -90,7 +90,7 @@ namespace AILogisticsAutomation
                 {
                     List<IMySlimBlock> blocks = new List<IMySlimBlock>();
                     system.CurrentEntity.CubeGrid.GetBlocks(blocks, x => refineries.Any(b => b.Id == x.BlockDefinition.Id));
-                    var exists = blocks.Any(x => x.FatBlock.EntityId == system.Settings.selectedRefinery);
+                    var exists = blocks.Any(x => x.FatBlock.EntityId == system.Settings.SelectedRefinery);
                     return isWorkingAndEnabled.Invoke(block) && exists;
                 }
                 return false;
@@ -103,8 +103,8 @@ namespace AILogisticsAutomation
                 {
                     List<IMySlimBlock> blocks = new List<IMySlimBlock>();
                     system.CurrentEntity.CubeGrid.GetBlocks(blocks, x => refineries.Any(b => b.Id == x.BlockDefinition.Id));
-                    var exists = blocks.Any(x => x.FatBlock.EntityId == system.Settings.selectedRefinery);
-                    var added = system.Settings.GetDefinitions().ContainsKey(system.Settings.selectedRefinery);
+                    var exists = blocks.Any(x => x.FatBlock.EntityId == system.Settings.SelectedRefinery);
+                    var added = system.Settings.GetDefinitions().ContainsKey(system.Settings.SelectedRefinery);
                     return isWorkingAndEnabled.Invoke(block) && exists && added;
                 }
                 return false;
@@ -117,9 +117,9 @@ namespace AILogisticsAutomation
                 {
                     List<IMySlimBlock> blocks = new List<IMySlimBlock>();
                     system.CurrentEntity.CubeGrid.GetBlocks(blocks, x => refineries.Any(b => b.Id == x.BlockDefinition.Id));
-                    var exists = blocks.Any(x => x.FatBlock.EntityId == system.Settings.selectedRefinery);
-                    var added = system.Settings.GetDefinitions().ContainsKey(system.Settings.selectedRefinery);
-                    return isWorkingAndEnabled.Invoke(block) && exists && added && system.Settings.GetDefinitions()[system.Settings.selectedRefinery].Ores.Contains(system.Settings.selectedRefineryOre);
+                    var exists = blocks.Any(x => x.FatBlock.EntityId == system.Settings.SelectedRefinery);
+                    var added = system.Settings.GetDefinitions().ContainsKey(system.Settings.SelectedRefinery);
+                    return isWorkingAndEnabled.Invoke(block) && exists && added && system.Settings.GetDefinitions()[system.Settings.SelectedRefinery].Ores.Contains(system.Settings.SelectedRefineryOre);
                 }
                 return false;
             };
@@ -238,7 +238,7 @@ namespace AILogisticsAutomation
                         {
                             var item = new MyTerminalControlListBoxItem(MyStringId.GetOrCompute(ore), MyStringId.GetOrCompute(ore), ore);
                             list.Add(item);
-                            if (ore == system.Settings.selectedDefaultOre)
+                            if (ore == system.Settings.SelectedDefaultOre)
                                 selectedList.Add(item);
                         }
                     }
@@ -251,7 +251,7 @@ namespace AILogisticsAutomation
                     var system = GetSystem(block);
                     if (system != null)
                     {
-                        system.Settings.selectedDefaultOre = selectedList[0].UserData.ToString();
+                        system.Settings.SelectedDefaultOre = selectedList[0].UserData.ToString();
                         UpdateVisual(block);
                     }
                 },
@@ -268,10 +268,10 @@ namespace AILogisticsAutomation
                     var system = GetSystem(block);
                     if (system != null)
                     {
-                        if (system.Settings.DefaultOres.Contains(system.Settings.selectedDefaultOre))
+                        if (system.Settings.DefaultOres.Contains(system.Settings.SelectedDefaultOre))
                         {
-                            system.Settings.DefaultOres.MoveUp(system.Settings.selectedDefaultOre);
-                            system.SendToServer("DefaultOres", "UP", system.Settings.selectedDefaultOre, null);
+                            system.Settings.DefaultOres.MoveUp(system.Settings.SelectedDefaultOre);
+                            system.SendToServer("DefaultOres", "UP", system.Settings.SelectedDefaultOre, null);
                             UpdateVisual(block);
                         }
                     }
@@ -288,10 +288,10 @@ namespace AILogisticsAutomation
                     var system = GetSystem(block);
                     if (system != null)
                     {
-                        if (system.Settings.DefaultOres.Contains(system.Settings.selectedDefaultOre))
+                        if (system.Settings.DefaultOres.Contains(system.Settings.SelectedDefaultOre))
                         {
-                            system.Settings.DefaultOres.MoveDown(system.Settings.selectedDefaultOre);
-                            system.SendToServer("DefaultOres", "DOWN", system.Settings.selectedDefaultOre, null);
+                            system.Settings.DefaultOres.MoveDown(system.Settings.SelectedDefaultOre);
+                            system.SendToServer("DefaultOres", "DOWN", system.Settings.SelectedDefaultOre, null);
                             UpdateVisual(block);
                         }
                     }
@@ -308,10 +308,10 @@ namespace AILogisticsAutomation
                     var system = GetSystem(block);
                     if (system != null)
                     {
-                        if (system.Settings.DefaultOres.Contains(system.Settings.selectedDefaultOre))
+                        if (system.Settings.DefaultOres.Contains(system.Settings.SelectedDefaultOre))
                         {
-                            system.Settings.DefaultOres.RemoveOrePriority(system.Settings.selectedDefaultOre);
-                            system.SendToServer("DefaultOres", "DEL", system.Settings.selectedDefaultOre, null);
+                            system.Settings.DefaultOres.RemoveOrePriority(system.Settings.SelectedDefaultOre);
+                            system.SendToServer("DefaultOres", "DEL", system.Settings.SelectedDefaultOre, null);
                             UpdateVisual(block);
                         }
                     }
@@ -341,7 +341,7 @@ namespace AILogisticsAutomation
 
                             var item = new MyTerminalControlListBoxItem(MyStringId.GetOrCompute(name), MyStringId.GetOrCompute(name), blk.FatBlock.EntityId);
                             list.Add(item);
-                            if (blk.FatBlock.EntityId == system.Settings.selectedRefinery)
+                            if (blk.FatBlock.EntityId == system.Settings.SelectedRefinery)
                                 selectedList.Add(item);
                         }
                     }
@@ -354,7 +354,7 @@ namespace AILogisticsAutomation
                     var system = GetSystem(block);
                     if (system != null)
                     {
-                        system.Settings.selectedRefinery = (long)selectedList[0].UserData;
+                        system.Settings.SelectedRefinery = (long)selectedList[0].UserData;
                         UpdateVisual(block);
                     }
                 },
@@ -372,10 +372,10 @@ namespace AILogisticsAutomation
                     {
                         List<IMySlimBlock> blocks = new List<IMySlimBlock>();
                         system.CurrentEntity.CubeGrid.GetBlocks(blocks, x => refineries.Any(b => b.Id == x.BlockDefinition.Id));
-                        var exists = blocks.Any(x => x.FatBlock.EntityId == system.Settings.selectedRefinery);
+                        var exists = blocks.Any(x => x.FatBlock.EntityId == system.Settings.SelectedRefinery);
                         if (exists)
                         {
-                            return system.Settings.GetDefinitions().ContainsKey(system.Settings.selectedRefinery);
+                            return system.Settings.GetDefinitions().ContainsKey(system.Settings.SelectedRefinery);
                         }
                     }
                     return false;
@@ -387,23 +387,23 @@ namespace AILogisticsAutomation
                     {
                         List<IMySlimBlock> blocks = new List<IMySlimBlock>();
                         system.CurrentEntity.CubeGrid.GetBlocks(blocks, x => refineries.Any(b => b.Id == x.BlockDefinition.Id));
-                        var exists = blocks.Any(x => x.FatBlock.EntityId == system.Settings.selectedRefinery);
+                        var exists = blocks.Any(x => x.FatBlock.EntityId == system.Settings.SelectedRefinery);
                         if (exists)
                         {
-                            var added = system.Settings.GetDefinitions().ContainsKey(system.Settings.selectedRefinery);
+                            var added = system.Settings.GetDefinitions().ContainsKey(system.Settings.SelectedRefinery);
                             if (value)
                             {
                                 if (!added)
                                 {
-                                    system.Settings.GetDefinitions()[system.Settings.selectedRefinery] = new AIRefineryControllerRefineryPrioritySettings()
+                                    system.Settings.GetDefinitions()[system.Settings.SelectedRefinery] = new AIRefineryControllerRefineryPrioritySettings()
                                     {
-                                        EntityId = system.Settings.selectedRefinery
+                                        EntityId = system.Settings.SelectedRefinery
                                     };
-                                    system.SendToServer("Definitions", "ADD", system.Settings.selectedRefinery.ToString());
-                                    if (system.Settings.GetIgnoreRefinery().Contains(system.Settings.selectedRefinery))
+                                    system.SendToServer("Definitions", "ADD", system.Settings.SelectedRefinery.ToString());
+                                    if (system.Settings.GetIgnoreRefinery().Contains(system.Settings.SelectedRefinery))
                                     {
-                                        system.Settings.GetIgnoreRefinery().Remove(system.Settings.selectedRefinery);
-                                        system.SendToServer("IgnoreCargos", "DEL", system.Settings.selectedRefinery.ToString());
+                                        system.Settings.GetIgnoreRefinery().Remove(system.Settings.SelectedRefinery);
+                                        system.SendToServer("IgnoreCargos", "DEL", system.Settings.SelectedRefinery.ToString());
                                     }
                                     UpdateVisual(block);
                                 }
@@ -412,11 +412,11 @@ namespace AILogisticsAutomation
                             {
                                 if (added)
                                 {
-                                    var dataToRemove = system.Settings.GetDefinitions().ContainsKey(system.Settings.selectedRefinery);
+                                    var dataToRemove = system.Settings.GetDefinitions().ContainsKey(system.Settings.SelectedRefinery);
                                     if (dataToRemove)
                                     {
-                                        system.Settings.GetDefinitions().Remove(system.Settings.selectedRefinery);
-                                        system.SendToServer("Definitions", "DEL", system.Settings.selectedRefinery.ToString());
+                                        system.Settings.GetDefinitions().Remove(system.Settings.SelectedRefinery);
+                                        system.SendToServer("Definitions", "DEL", system.Settings.SelectedRefinery.ToString());
                                     }
                                     UpdateVisual(block);
                                 }
@@ -467,13 +467,13 @@ namespace AILogisticsAutomation
                     if (system != null)
                     {
                         var idToUse = validIds[selectedRefineryFilterItemId];
-                        if (system.Settings.GetDefinitions().ContainsKey(system.Settings.selectedRefinery))
+                        if (system.Settings.GetDefinitions().ContainsKey(system.Settings.SelectedRefinery))
                         {
-                            var def = system.Settings.GetDefinitions()[system.Settings.selectedRefinery];
+                            var def = system.Settings.GetDefinitions()[system.Settings.SelectedRefinery];
                             if (!def.Ores.Contains(idToUse.SubtypeName))
                             {
                                 def.Ores.AddOrePriority(idToUse.SubtypeName);
-                                system.SendToServer("Ores", "ADD", idToUse.SubtypeName, system.Settings.selectedRefinery.ToString());
+                                system.SendToServer("Ores", "ADD", idToUse.SubtypeName, system.Settings.SelectedRefinery.ToString());
                                 UpdateVisual(block);
                             }
                         }
@@ -490,14 +490,14 @@ namespace AILogisticsAutomation
                     var system = GetSystem(block);
                     if (system != null)
                     {
-                        if (system.Settings.GetDefinitions().ContainsKey(system.Settings.selectedRefinery))
+                        if (system.Settings.GetDefinitions().ContainsKey(system.Settings.SelectedRefinery))
                         {
-                            var def = system.Settings.GetDefinitions()[system.Settings.selectedRefinery];
+                            var def = system.Settings.GetDefinitions()[system.Settings.SelectedRefinery];
                             foreach (var ore in def.Ores.GetOres())
                             {
                                 var item = new MyTerminalControlListBoxItem(MyStringId.GetOrCompute(ore), MyStringId.GetOrCompute(ore), ore);
                                 list.Add(item);
-                                if (ore == system.Settings.selectedRefineryOre)
+                                if (ore == system.Settings.SelectedRefineryOre)
                                     selectedList.Add(item);
                             }
                         }
@@ -511,7 +511,7 @@ namespace AILogisticsAutomation
                     var system = GetSystem(block);
                     if (system != null)
                     {
-                        system.Settings.selectedRefineryOre = selectedList[0].UserData.ToString();
+                        system.Settings.SelectedRefineryOre = selectedList[0].UserData.ToString();
                         UpdateVisual(block);
                     }
                 },
@@ -528,13 +528,13 @@ namespace AILogisticsAutomation
                     var system = GetSystem(block);
                     if (system != null)
                     {
-                        if (system.Settings.GetDefinitions().ContainsKey(system.Settings.selectedRefinery))
+                        if (system.Settings.GetDefinitions().ContainsKey(system.Settings.SelectedRefinery))
                         {
-                            var def = system.Settings.GetDefinitions()[system.Settings.selectedRefinery];
-                            if (def.Ores.Contains(system.Settings.selectedRefineryOre))
+                            var def = system.Settings.GetDefinitions()[system.Settings.SelectedRefinery];
+                            if (def.Ores.Contains(system.Settings.SelectedRefineryOre))
                             {
-                                def.Ores.MoveUp(system.Settings.selectedRefineryOre);
-                                system.SendToServer("Ores", "UP", system.Settings.selectedRefineryOre, system.Settings.selectedRefinery.ToString());
+                                def.Ores.MoveUp(system.Settings.SelectedRefineryOre);
+                                system.SendToServer("Ores", "UP", system.Settings.SelectedRefineryOre, system.Settings.SelectedRefinery.ToString());
                                 UpdateVisual(block);
                             }
                         }
@@ -552,13 +552,13 @@ namespace AILogisticsAutomation
                     var system = GetSystem(block);
                     if (system != null)
                     {
-                        if (system.Settings.GetDefinitions().ContainsKey(system.Settings.selectedRefinery))
+                        if (system.Settings.GetDefinitions().ContainsKey(system.Settings.SelectedRefinery))
                         {
-                            var def = system.Settings.GetDefinitions()[system.Settings.selectedRefinery];
-                            if (def.Ores.Contains(system.Settings.selectedRefineryOre))
+                            var def = system.Settings.GetDefinitions()[system.Settings.SelectedRefinery];
+                            if (def.Ores.Contains(system.Settings.SelectedRefineryOre))
                             {
-                                def.Ores.MoveDown(system.Settings.selectedRefineryOre);
-                                system.SendToServer("Ores", "DOWN", system.Settings.selectedRefineryOre, system.Settings.selectedRefinery.ToString());
+                                def.Ores.MoveDown(system.Settings.SelectedRefineryOre);
+                                system.SendToServer("Ores", "DOWN", system.Settings.SelectedRefineryOre, system.Settings.SelectedRefinery.ToString());
                                 UpdateVisual(block);
                             }
                         }
@@ -576,13 +576,13 @@ namespace AILogisticsAutomation
                     var system = GetSystem(block);
                     if (system != null)
                     {
-                        if (system.Settings.GetDefinitions().ContainsKey(system.Settings.selectedRefinery))
+                        if (system.Settings.GetDefinitions().ContainsKey(system.Settings.SelectedRefinery))
                         {
-                            var def = system.Settings.GetDefinitions()[system.Settings.selectedRefinery];
-                            if (def.Ores.Contains(system.Settings.selectedRefineryOre))
+                            var def = system.Settings.GetDefinitions()[system.Settings.SelectedRefinery];
+                            if (def.Ores.Contains(system.Settings.SelectedRefineryOre))
                             {
-                                def.Ores.RemoveOrePriority(system.Settings.selectedRefineryOre);
-                                system.SendToServer("Ores", "DEL", system.Settings.selectedRefineryOre, system.Settings.selectedRefinery.ToString());
+                                def.Ores.RemoveOrePriority(system.Settings.SelectedRefineryOre);
+                                system.SendToServer("Ores", "DEL", system.Settings.SelectedRefineryOre, system.Settings.SelectedRefinery.ToString());
                                 UpdateVisual(block);
                             }
                         }
@@ -590,6 +590,188 @@ namespace AILogisticsAutomation
                 }
             );
 
+            CreateTerminalSeparator("IgnoreBlocksSeparator");
+
+            CreateTerminalLabel("IgnoreBlocksSeparatorLable", "Selected the Ignored Blocks");
+
+            CreateListbox(
+                "ListBlocksType",
+                "Blocks of selected type",
+                isWorkingAndEnabled,
+                (block, list, selectedList) =>
+                {
+                    var system = GetSystem(block);
+                    if (system != null)
+                    {
+                        var targetGrid = system.CurrentEntity.CubeGrid as MyCubeGrid;
+
+                        MyObjectBuilderType[] targetFilter = new MyObjectBuilderType[] { typeof(MyObjectBuilder_Refinery) };
+                        IEnumerable<long> ignoreBlocks = system.Settings.GetIgnoreRefinery();
+
+                        foreach (var inventory in targetGrid.Inventories.Where(x => targetFilter.Contains(x.BlockDefinition.Id.TypeId)))
+                        {
+                            var added = system.Settings.GetDefinitions().ContainsKey(inventory.EntityId);
+                            if (!added)
+                            {
+                                if (!ignoreBlocks.Contains(inventory.EntityId))
+                                {
+
+                                    var name = string.Format("{1} - ({0})", inventory.BlockDefinition.DisplayNameText, inventory.DisplayNameText);
+                                    var item = new MyTerminalControlListBoxItem(MyStringId.GetOrCompute(name), MyStringId.GetOrCompute(name), inventory.EntityId);
+
+                                    list.Add(item);
+
+                                    if (system.Settings.SelectedIgnoreEntityId == inventory.EntityId)
+                                    {
+                                        selectedList.Add(item);
+                                        system.Settings.SelectedIgnoreEntityId = inventory.EntityId;
+                                    }
+
+                                }
+                            }
+                        }
+                    }
+                },
+                (block, selectedList) =>
+                {
+                    if (selectedList.Count == 0)
+                        return;
+
+                    var system = GetSystem(block);
+                    if (system != null)
+                    {
+                        var targetGrid = system.CurrentEntity.CubeGrid as MyCubeGrid;
+                        var query = targetGrid.Inventories.Where(x => x.EntityId == (long)selectedList[0].UserData);
+                        if (query.Any())
+                        {
+                            system.Settings.SelectedIgnoreEntityId = query.FirstOrDefault().EntityId;
+                            UpdateVisual(block);
+                        }
+                    }
+                },
+                tooltip: "Select one or more blocks to be ignored by the AI Block."
+            );
+
+            CreateTerminalButton(
+                "ButtonAddIgnored",
+                "Add Selected To Ignored",
+                (block) =>
+                {
+                    var system = GetSystem(block);
+                    if (system != null)
+                    {
+                        return isWorkingAndEnabled.Invoke(block) && system.Settings.SelectedIgnoreEntityId != 0;
+                    }
+                    return false;
+                },
+                (block) =>
+                {
+                    var system = GetSystem(block);
+                    if (system != null)
+                    {
+                        var targetGrid = system.CurrentEntity.CubeGrid as MyCubeGrid;
+                        var query = targetGrid.Inventories.Where(x => x.EntityId == system.Settings.SelectedIgnoreEntityId);
+                        if (query.Any())
+                        {
+
+                            var inventory = query.FirstOrDefault();
+
+                            var targetFunctionalFilter = new MyObjectBuilderType[] { typeof(MyObjectBuilder_Refinery) };
+                            
+                            if (targetFunctionalFilter.Contains(inventory.BlockDefinition.Id.TypeId))
+                            {
+                                if (!system.Settings.GetIgnoreRefinery().Contains(system.Settings.SelectedIgnoreEntityId))
+                                {
+                                    system.Settings.GetIgnoreRefinery().Add(system.Settings.SelectedIgnoreEntityId);
+                                    system.SendToServer("IgnoreRefinery", "ADD", system.Settings.SelectedIgnoreEntityId.ToString());
+                                    UpdateVisual(block);
+                                }
+                            }
+
+                        }
+                        system.Settings.SelectedIgnoreEntityId = 0;
+                    }
+                }
+            );
+
+            CreateListbox(
+                "ListBlocksIgnored",
+                "Ignored Blocks",
+                isWorkingAndEnabled,
+                (block, list, selectedList) =>
+                {
+                    var system = GetSystem(block);
+                    if (system != null)
+                    {
+                        var targetGrid = system.CurrentEntity.CubeGrid as MyCubeGrid;
+
+                        List<long> addedBlocks = new List<long>();
+                        addedBlocks.AddRange(system.Settings.GetIgnoreRefinery());
+
+                        var targetFunctionalFilter = new MyObjectBuilderType[] { typeof(MyObjectBuilder_Refinery) };
+                        
+                        foreach (var inventory in targetGrid.Inventories.Where(x => addedBlocks.Contains(x.EntityId)))
+                        {
+
+                            var name = string.Format("{1} - ({0})", inventory.BlockDefinition.DisplayNameText, inventory.DisplayNameText);
+                            var item = new MyTerminalControlListBoxItem(MyStringId.GetOrCompute(name), MyStringId.GetOrCompute(name), inventory.EntityId);
+
+                            list.Add(item);
+
+                            if (system.Settings.SelectedAddedIgnoreEntityId == inventory.EntityId)
+                            {
+                                selectedList.Add(item);
+                                system.Settings.SelectedAddedIgnoreEntityId = inventory.EntityId;
+                            }
+                        }
+                    }
+                },
+                (block, selectedList) =>
+                {
+                    if (selectedList.Count == 0)
+                        return;
+
+                    var system = GetSystem(block);
+                    if (system != null)
+                    {
+                        var targetGrid = system.CurrentEntity.CubeGrid as MyCubeGrid;
+                        var query = targetGrid.Inventories.Where(x => x.EntityId == (long)selectedList[0].UserData);
+                        if (query.Any())
+                        {
+                            system.Settings.SelectedAddedIgnoreEntityId = query.FirstOrDefault().EntityId;
+                            UpdateVisual(block);
+                        }
+                    }
+                }
+            );
+
+            CreateTerminalButton(
+                "ButtonRemoveIgnored",
+                "Remove Selected Ignored Block",
+                (block) =>
+                {
+                    var system = GetSystem(block);
+                    if (system != null)
+                    {
+                        return isWorkingAndEnabled.Invoke(block) && system.Settings.SelectedAddedIgnoreEntityId != 0;
+                    }
+                    return false;
+                },
+                (block) =>
+                {
+                    var system = GetSystem(block);
+                    if (system != null)
+                    {
+                        if (system.Settings.GetIgnoreRefinery().Contains(system.Settings.SelectedAddedIgnoreEntityId))
+                        {
+                            system.Settings.GetIgnoreRefinery().Remove(system.Settings.SelectedAddedIgnoreEntityId);
+                            system.SendToServer("IgnoreRefinery", "DEL", system.Settings.SelectedAddedIgnoreEntityId.ToString());
+                            UpdateVisual(block);
+                        }
+                        system.Settings.SelectedAddedIgnoreEntityId = 0;
+                    }
+                }
+            );
 
         }
 
