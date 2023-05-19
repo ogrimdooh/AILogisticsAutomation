@@ -77,9 +77,24 @@ namespace AILogisticsAutomation
                 return query.FirstOrDefault().Key;
             return null;
         }
+        public int GetIndex(string ore)
+        {
+            var query = OrePriority.Where(x => x.Key == ore);
+            if (query.Any())
+                return query.FirstOrDefault().Value;
+            return -1;
+        }
         public void Clear()
         {
             OrePriority.Clear();
+        }
+        public int Count()
+        {
+            return OrePriority.Count();
+        }
+        public bool Any()
+        {
+            return OrePriority.Any();
         }
         public bool Contains(string ore)
         {

@@ -6,6 +6,8 @@ using Sandbox.Game.EntityComponents;
 using System.Text;
 using Sandbox.Common.ObjectBuilders;
 using VRage.Game.ModAPI;
+using Sandbox.Game.Entities;
+using System.Linq;
 
 namespace AILogisticsAutomation
 {
@@ -53,12 +55,35 @@ namespace AILogisticsAutomation
             }
         }
 
+        protected MyCubeGrid CubeGrid
+        {
+            get
+            {
+                return Grid as MyCubeGrid;
+            }
+        }
+
         public const float StandbyPowerConsumption = 0.001f;
         public const float OperationalPowerConsumption = 0.5f;
 
         protected abstract bool GetHadWorkToDo();
         protected abstract bool GetIsValidToWork();
         protected abstract void DoExecuteCycle();
+
+        protected AIInventoryManagerBlock GetAIInventoryManager()
+        {
+            var block = GetAIInventoryManagerBlock();
+            if (block != null)
+            {
+                return block.FatBlock.GameLogic as AIInventoryManagerBlock;
+            }
+            return null;
+        }
+
+        protected IMySlimBlock GetAIInventoryManagerBlock()
+        {
+            return Grid.GetBlocks(new MyDefinitionId(typeof(MyObjectBuilder_OreDetector), "AIInventoryManager")).FirstOrDefault();
+        }
 
         protected int CountAIInventoryManager(IMyCubeGrid grid)
         {
@@ -157,7 +182,6 @@ namespace AILogisticsAutomation
                     {
                         try
                         {
-
                             DoExecuteCycle();
                         }
                         catch (Exception ex)

@@ -133,6 +133,8 @@ namespace AILogisticsAutomation
             );
             CreateOnOffSwitchAction("AIEnabled", checkboxEnabled);
 
+            CreateTerminalLabel("AIMIStartConfig", "NOT IMPLEMENTED YET");
+
         }
 
         protected override string GetActionPrefix()

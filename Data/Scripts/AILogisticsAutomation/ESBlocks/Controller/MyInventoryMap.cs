@@ -12,6 +12,7 @@ using Sandbox.Common.ObjectBuilders.Definitions;
 
 namespace AILogisticsAutomation
 {
+
     public class MyInventoryMap
     {
 

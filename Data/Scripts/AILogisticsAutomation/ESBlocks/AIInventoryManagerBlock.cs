@@ -28,6 +28,13 @@ namespace AILogisticsAutomation
         private const float IDEAL_FISHTRAP_NOBLEBAIT = 2.5f;
 
         private readonly ConcurrentDictionary<long, MyInventoryMap> inventoryMap = new ConcurrentDictionary<long, MyInventoryMap>();
+        
+        public MyInventoryMap GetMap(long entityId)
+        {
+            if (inventoryMap.ContainsKey(entityId))
+                return inventoryMap[entityId];
+            return null;
+        }
 
         protected override bool GetHadWorkToDo()
         {
@@ -44,15 +51,6 @@ namespace AILogisticsAutomation
             Settings = new AIInventoryManagerSettings();
             base.OnInit(objectBuilder);
             NeedsUpdate |= MyEntityUpdateEnum.EACH_100TH_FRAME;
-        }
-
-
-        private MyCubeGrid CubeGrid
-        {
-            get
-            {
-                return Grid as MyCubeGrid;
-            }
         }
 
         private List<MyCubeGrid> GetSubGrids()
@@ -108,11 +106,21 @@ namespace AILogisticsAutomation
             }
         }
 
-        private IEnumerable<MyCubeBlock> DoApplyBasicFilter(HashSet<MyCubeBlock> inventories)
+        public IEnumerable<MyCubeBlock> ValidInventoriesWithNoFunctional
+        {
+            get
+            {
+                return DoApplyBasicFilter(CubeGrid.Inventories, true);
+            }
+        }
+
+        private IEnumerable<MyCubeBlock> DoApplyBasicFilter(HashSet<MyCubeBlock> inventories, bool ignoreFunctional = false)
         {
             return inventories.Where(x =>
-                x.IsFunctional &&
-                ((x as IMyFunctionalBlock)?.Enabled ?? true) &&
+                (
+                    (x.IsFunctional && ((x as IMyFunctionalBlock)?.Enabled ?? true)) ||
+                    ignoreFunctional
+                ) &&
                 !Settings.GetIgnoreCargos().Contains(x.EntityId) &&
                 !Settings.GetIgnoreFunctionalBlocks().Contains(x.EntityId) &&
                 !Settings.GetIgnoreConnectors().Contains(x.EntityId) &&
@@ -329,6 +337,8 @@ namespace AILogisticsAutomation
                 {
                     var fishTrapDef = MyDefinitionManager.Static.GetCubeBlockDefinition(fishTrap.BlockDefinition) as MyOxygenGeneratorDefinition;
                     var fishTrapInventory = fishTrap.GetInventory(0) as MyInventory;
+                    if (fishTrapInventory.VolumeFillFactor >= 1)
+                        continue;
                     var size = fishTrapDef.Size.X * fishTrapDef.Size.Y * fishTrapDef.Size.Z;
                     var targetFuelsId = new Dictionary<MyDefinitionId, float> 
                     {
@@ -382,6 +392,8 @@ namespace AILogisticsAutomation
                     var composterDef = MyDefinitionManager.Static.GetCubeBlockDefinition(composter.BlockDefinition) as MyOxygenGeneratorDefinition;
                     var targetFuelId = ItensConstants.ORGANIC_ID.DefinitionId;
                     var composterInventory = composter.GetInventory(0) as MyInventory;
+                    if (composterInventory.VolumeFillFactor >= 1)
+                        continue;
                     var fuelInComposter = (float)composterInventory.GetItemAmount(targetFuelId);
                     var size = composterDef.Size.X * composterDef.Size.Y * composterDef.Size.Z;
                     var value = IDEAL_COMPOSTER_ORGANIC;
@@ -430,6 +442,8 @@ namespace AILogisticsAutomation
                     {
                         var targetBlock = ValidInventories.FirstOrDefault(x => x.EntityId == def.EntityId);
                         var targetInventory = targetBlock.GetInventory(0);
+                        if (targetInventory.VolumeFillFactor >= 1)
+                            continue;
                         if (targetInventory.ItemCount > 0)
                         {
                             /* start in the end */
@@ -478,6 +492,8 @@ namespace AILogisticsAutomation
                     var gasGeneratorDef = MyDefinitionManager.Static.GetCubeBlockDefinition(gasGenerator.BlockDefinition) as MyOxygenGeneratorDefinition;
                     var targetFuelId = ItensConstants.ICE_ID.DefinitionId;
                     var gasGeneratorInventory = gasGenerator.GetInventory(0) as MyInventory;
+                    if (gasGeneratorInventory.VolumeFillFactor >= 1)
+                        continue;
                     var fuelInGasGenerator = (float)gasGeneratorInventory.GetItemAmount(targetFuelId);
                     var size = gasGeneratorDef.Size.X * gasGeneratorDef.Size.Y * gasGeneratorDef.Size.Z;
                     var value = gasGeneratorDef.CubeSize == MyCubeSize.Large ? Settings.GetLargeGasGeneratorAmount() : Settings.GetSmallGasGeneratorAmount();
@@ -525,6 +541,8 @@ namespace AILogisticsAutomation
                         continue;
                     var targetFuelId = reactorDef.FuelInfos[0].FuelId;
                     var reactorInventory = reactor.GetInventory(0) as MyInventory;
+                    if (reactorInventory.VolumeFillFactor >= 1)
+                        continue;
                     var fuelInReactor = (float)reactorInventory.GetItemAmount(targetFuelId);
                     var size = reactorDef.Size.X * reactorDef.Size.Y * reactorDef.Size.Z;
                     var value = reactorDef.CubeSize == MyCubeSize.Large ? Settings.GetLargeReactorFuelAmount() : Settings.GetSmallReactorFuelAmount();
@@ -595,7 +613,7 @@ namespace AILogisticsAutomation
                                     if (targetBlockToSend != null)
                                     {
                                         var targetInventoryToSend = targetBlockToSend.GetInventory(0);
-                                        if ((targetInventory as IMyInventory).CanTransferItemTo(targetInventoryToSend, itemid))
+                                        if ((targetInventory as IMyInventory).CanTransferItemTo(targetInventoryToSend, itemid) && targetInventoryToSend.VolumeFillFactor < 1)
                                         {
                                             InvokeOnGameThread(() =>
                                             {
@@ -894,12 +912,13 @@ namespace AILogisticsAutomation
                         if (targetBlock != null)
                         {
                             var targetInventory = targetBlock.GetInventory(0);
-                            if ((inventoryBase as IMyInventory).CanTransferItemTo(targetInventory, itemid))
+                            if ((inventoryBase as IMyInventory).CanTransferItemTo(targetInventory, itemid) && targetInventory.VolumeFillFactor < 1)
                             {
                                 InvokeOnGameThread(() =>
                                 {
                                     MyInventory.Transfer(inventoryBase, targetInventory, itemsToCheck[j].ItemId);
                                 });
+                                break;
                             }
                         }
                     }
