@@ -388,7 +388,7 @@ namespace AILogisticsAutomation
                                     if (dataToRemove)
                                     {
                                         system.Settings.GetDefinitions().Remove(system.Settings.SelectedEntityId);
-                                        system.SendToServer("Definitions", "ADD", system.Settings.SelectedEntityId.ToString());
+                                        system.SendToServer("Definitions", "DEL", system.Settings.SelectedEntityId.ToString());
                                     }
                                     UpdateVisual(block);
                                 }
@@ -616,32 +616,44 @@ namespace AILogisticsAutomation
                                     var typeIndex = validTypes.IndexOf(validType);
                                     var typeName = validTypesUI[typeIndex].Value.String;
                                     var name = string.Format("[PULL] (TYPE) {0}", typeName);
-                                    var item = new MyTerminalControlListBoxItem(MyStringId.GetOrCompute(name), MyStringId.GetOrCompute(name), string.Format("VT_{0}", typeIndex));
+                                    var key = string.Format("VT_{0}", typeIndex);
+                                    var item = new MyTerminalControlListBoxItem(MyStringId.GetOrCompute(name), MyStringId.GetOrCompute(name), key);
                                     list.Add(item);
+                                    if (key == system.Settings.SelectedAddedFilterId)
+                                        selectedList.Add(item);
                                 }
                                 foreach (var validId in def.ValidIds)
                                 {
                                     var typeIndex = validIds.IndexOf(validId);
                                     var typeName = validIdsUI[typeIndex].Value.String;
                                     var name = string.Format("[PULL] (ID) {0}", typeName);
-                                    var item = new MyTerminalControlListBoxItem(MyStringId.GetOrCompute(name), MyStringId.GetOrCompute(name), string.Format("VI_{0}", typeIndex));
+                                    var key = string.Format("VI_{0}", typeIndex);
+                                    var item = new MyTerminalControlListBoxItem(MyStringId.GetOrCompute(name), MyStringId.GetOrCompute(name), key);
                                     list.Add(item);
+                                    if (key == system.Settings.SelectedAddedFilterId)
+                                        selectedList.Add(item);
                                 }
                                 foreach (var ignoreType in def.IgnoreTypes)
                                 {
                                     var typeIndex = validTypes.IndexOf(ignoreType);
                                     var typeName = validTypesUI[typeIndex].Value.String;
                                     var name = string.Format("[IGNORE] (TYPE) {0}", typeName);
-                                    var item = new MyTerminalControlListBoxItem(MyStringId.GetOrCompute(name), MyStringId.GetOrCompute(name), string.Format("IT_{0}", typeIndex));
+                                    var key = string.Format("IT_{0}", typeIndex);
+                                    var item = new MyTerminalControlListBoxItem(MyStringId.GetOrCompute(name), MyStringId.GetOrCompute(name), key);
                                     list.Add(item);
+                                    if (key == system.Settings.SelectedAddedFilterId)
+                                        selectedList.Add(item);
                                 }
                                 foreach (var ignoreId in def.IgnoreIds)
                                 {
                                     var typeIndex = validIds.IndexOf(ignoreId);
                                     var typeName = validIdsUI[typeIndex].Value.String;
                                     var name = string.Format("[IGNORE] (ID) {0}", typeName);
-                                    var item = new MyTerminalControlListBoxItem(MyStringId.GetOrCompute(name), MyStringId.GetOrCompute(name), string.Format("II_{0}", typeIndex));
+                                    var key = string.Format("II_{0}", typeIndex);
+                                    var item = new MyTerminalControlListBoxItem(MyStringId.GetOrCompute(name), MyStringId.GetOrCompute(name), key);
                                     list.Add(item);
+                                    if (key == system.Settings.SelectedAddedFilterId)
+                                        selectedList.Add(item);
                                 }
                             }
                         }

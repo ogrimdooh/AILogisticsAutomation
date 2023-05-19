@@ -1,6 +1,7 @@
 ﻿using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using VRage.ObjectBuilders;
 
 namespace AILogisticsAutomation
 {
@@ -10,8 +11,25 @@ namespace AILogisticsAutomation
 
         /* Interface Properties */
 
+        public string selectedDefaultOre;
+        public string selectedRefineryOre;
+        public long selectedRefinery;
 
         /* Data Properties */
+
+        public AIRefineryControllerPrioritySettings DefaultOres { get; set; } = new AIRefineryControllerPrioritySettings();
+
+        private ConcurrentDictionary<long, AIRefineryControllerRefineryPrioritySettings> definitions = new ConcurrentDictionary<long, AIRefineryControllerRefineryPrioritySettings>();
+        public ConcurrentDictionary<long, AIRefineryControllerRefineryPrioritySettings> GetDefinitions()
+        {
+            return definitions;
+        }
+
+        private HashSet<long> ignoreRefinery = new HashSet<long>();
+        public HashSet<long> GetIgnoreRefinery()
+        {
+            return ignoreRefinery;
+        }
 
         private float powerConsumption = 0;
         public float GetPowerConsumption()
@@ -40,7 +58,10 @@ namespace AILogisticsAutomation
             var data = new AIRefineryControllerSettingsData
             {
                 powerConsumption = powerConsumption,
-                enabled = enabled
+                enabled = enabled,
+                definitions = definitions.Select(x => x.Value.GetData()).ToArray(),
+                ores = DefaultOres.GetOres(),
+                ignoreRefinery = ignoreRefinery.ToArray()
             };
             return data;
         }
@@ -53,6 +74,61 @@ namespace AILogisticsAutomation
             float valueAsFloat = 0f;
             switch (key.ToUpper())
             {
+                case "ORES":
+                    if (long.TryParse(owner, out valueAsId))
+                    {
+                        var def = definitions.ContainsKey(valueAsId) ? definitions[valueAsId] : null;
+                        if (def != null)
+                        {
+                            return def.UpdateData(key, action, value);
+                        }
+                    }
+                    break;
+                case "DEFINITIONS":
+                    if (long.TryParse(value, out valueAsId))
+                    {
+                        switch (action)
+                        {
+                            case "ADD":
+                                definitions[valueAsId] = new AIRefineryControllerRefineryPrioritySettings() { EntityId = valueAsId };
+                                return true;
+                            case "DEL":
+                                definitions.Remove(valueAsId);
+                                return true;
+                        }
+                    }
+                    break;
+                case "IGNOREREFINERY":
+                    if (long.TryParse(value, out valueAsId))
+                    {
+                        switch (action)
+                        {
+                            case "ADD":
+                                ignoreRefinery.Add(valueAsId);
+                                return true;
+                            case "DEL":
+                                ignoreRefinery.Remove(valueAsId);
+                                return true;
+                        }
+                    }
+                    break;
+                case "DEFAULTORES":
+                    switch (action)
+                    {
+                        case "ADD":
+                            DefaultOres.AddOrePriority(value);
+                            return true;
+                        case "DEL":
+                            DefaultOres.RemoveOrePriority(value);
+                            return true;
+                        case "UP":
+                            DefaultOres.MoveUp(value);
+                            return true;
+                        case "DOWN":
+                            DefaultOres.MoveDown(value);
+                            return true;
+                    }
+                    break;
                 case "ENABLED":
                     if (bool.TryParse(value, out valueAsFlag))
                     {
@@ -66,6 +142,38 @@ namespace AILogisticsAutomation
 
         public void UpdateData(AIRefineryControllerSettingsData data)
         {
+            var dataToRemove = definitions.Keys.Where(x => !data.definitions.Any(y => y.entityId == x)).ToArray();
+            foreach (var item in dataToRemove)
+            {
+                definitions.Remove(item);
+            }
+            foreach (var item in data.definitions)
+            {
+                var def = definitions.ContainsKey(item.entityId) ? definitions[item.entityId] : null;
+                if (def != null)
+                {
+                    def.UpdateData(item);
+                }
+                else
+                {
+                    var newItem = new AIRefineryControllerRefineryPrioritySettings()
+                    {
+                        EntityId = item.entityId
+                    };
+                    newItem.UpdateData(item);
+                    definitions[item.entityId] = newItem;
+                }
+            }
+            DefaultOres.Clear();
+            foreach (var item in data.ores)
+            {
+                DefaultOres.AddOrePriority(item);
+            }
+            ignoreRefinery.Clear();
+            foreach (var item in data.ignoreRefinery)
+            {
+                ignoreRefinery.Add(item);
+            }            
             powerConsumption = data.powerConsumption;
             enabled = data.enabled;
         }

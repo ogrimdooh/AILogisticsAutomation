@@ -630,12 +630,12 @@ namespace AILogisticsAutomation
                         var map = inventoryMap[ownerId].GetItem(item);
                         var targetSlot = map.Slots.FirstOrDefault();
                         var removeSlots = map.Slots.Where(x => x != targetSlot).ToArray();
+                        var index = inventoryMap[ownerId].Inventory.GetItemIndexById(targetSlot);
                         InvokeOnGameThread(() =>
                         {
-                            inventoryMap[ownerId].Inventory.UpdateItem(item, targetSlot, (float)map.TotalAmount);
                             foreach (var slot in removeSlots)
                             {
-                                inventoryMap[ownerId].Inventory.RemoveItems(slot);
+                                MyInventory.Transfer(inventoryMap[ownerId].Inventory, inventoryMap[ownerId].Inventory, slot, index);
                             }
                         });
                         map.Slots.RemoveWhere(x => removeSlots.Contains(x));

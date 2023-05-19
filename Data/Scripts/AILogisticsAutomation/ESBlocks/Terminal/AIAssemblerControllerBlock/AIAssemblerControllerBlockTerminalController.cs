@@ -137,7 +137,7 @@ namespace AILogisticsAutomation
 
         protected override string GetActionPrefix()
         {
-            return "AIRefineryController";
+            return "AIAssemblerController";
         }
 
     }
