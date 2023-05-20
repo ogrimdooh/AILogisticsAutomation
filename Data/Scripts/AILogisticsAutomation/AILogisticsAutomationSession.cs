@@ -114,7 +114,10 @@ namespace AILogisticsAutomation
                             switch (mCommandData.content[0])
                             {
                                 case SETTINGS_COMMAND:
-                                    AILogisticsAutomationSettings.Instance.SetConfigValue(mCommandData.content[1], mCommandData.content[2]);
+                                    if (AILogisticsAutomationSettings.Instance.SetConfigValue(mCommandData.content[1], mCommandData.content[2]))
+                                    {
+                                        ShowMessage($"[AILogisticsAutomation] Config {mCommandData.content[1]} set to {mCommandData.content[2]}.", MyFontEnum.White);
+                                    }
                                     break;
                             }
                         }
@@ -125,6 +128,19 @@ namespace AILogisticsAutomation
             {
                 AILogisticsAutomationLogging.Instance.LogError(GetType(), ex);
             }
+        }
+
+        private IMyHudNotification hudMsg;
+        public void ShowMessage(string text, string font = MyFontEnum.Red, int timeToLive = 5000)
+        {
+            if (hudMsg == null)
+                hudMsg = MyAPIGateway.Utilities.CreateNotification(string.Empty);
+
+            hudMsg.Hide();
+            hudMsg.Font = font;
+            hudMsg.AliveTime = timeToLive;
+            hudMsg.Text = text;
+            hudMsg.Show();
         }
 
         private void OnMessageEntered(string messageText, ref bool sendToOthers)

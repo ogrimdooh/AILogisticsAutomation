@@ -219,7 +219,7 @@ namespace AILogisticsAutomation
                     if (system != null)
                     {
                         system.Settings.SetPullSubGrids(value);
-                        system.SendToServer("PullFromSubGrids", "SET", value.ToString());
+                        system.SendToServer("PullSubGrids", "SET", value.ToString());
                     }
                 },
                 tooltip: "If enabled will pull itens from attached sub-grids.",

@@ -91,6 +91,94 @@ namespace AILogisticsAutomation
                         return true;
                     }
                     break;
+                case "energycost.defaultblockcost":
+                    float energycostdefaultblockcost;
+                    if (float.TryParse(value, out energycostdefaultblockcost))
+                    {
+                        EnergyCost.DefaultBlockCost = energycostdefaultblockcost;
+                        return true;
+                    }
+                    break;
+                case "energycost.defaultpullcost":
+                    float energycostdefaultpullcost;
+                    if (float.TryParse(value, out energycostdefaultpullcost))
+                    {
+                        EnergyCost.DefaultPullCost = energycostdefaultpullcost;
+                        return true;
+                    }
+                    break;
+                case "energycost.filtercost":
+                    float energycostfiltercost;
+                    if (float.TryParse(value, out energycostfiltercost))
+                    {
+                        EnergyCost.FilterCost = energycostfiltercost;
+                        return true;
+                    }
+                    break;
+                case "energycost.sortcost":
+                    float energycostsortcost;
+                    if (float.TryParse(value, out energycostsortcost))
+                    {
+                        EnergyCost.SortCost = energycostsortcost;
+                        return true;
+                    }
+                    break;
+                case "energycost.stackcost":
+                    float energycoststackcost;
+                    if (float.TryParse(value, out energycoststackcost))
+                    {
+                        EnergyCost.StackCost = energycoststackcost;
+                        return true;
+                    }
+                    break;
+                case "energycost.fillreactorcost":
+                    float energycostfillreactorcost;
+                    if (float.TryParse(value, out energycostfillreactorcost))
+                    {
+                        EnergyCost.FillReactorCost = energycostfillreactorcost;
+                        return true;
+                    }
+                    break;
+                case "energycost.fillgasgeneratorcost":
+                    float energycostfillgasgeneratorcost;
+                    if (float.TryParse(value, out energycostfillgasgeneratorcost))
+                    {
+                        EnergyCost.FillGasGeneratorCost = energycostfillgasgeneratorcost;
+                        return true;
+                    }
+                    break;
+                case "energycost.fillbottlescost":
+                    float energycostfillbottlescost;
+                    if (float.TryParse(value, out energycostfillbottlescost))
+                    {
+                        EnergyCost.FillBottlesCost = energycostfillbottlescost;
+                        return true;
+                    }
+                    break;
+                case "energycost.extendedsurvival.fillrefrigeratorcost":
+                    float energycostfillrefrigeratorcost;
+                    if (float.TryParse(value, out energycostfillrefrigeratorcost))
+                    {
+                        EnergyCost.ExtendedSurvival.FillRefrigeratorCost = energycostfillrefrigeratorcost;
+                        return true;
+                    }
+                    break;
+                case "energycost.extendedsurvival.fillfishtrapcost":
+                    float energycostfillfishtrapcost;
+                    if (float.TryParse(value, out energycostfillfishtrapcost))
+                    {
+                        EnergyCost.ExtendedSurvival.FillFishTrapCost = energycostfillfishtrapcost;
+                        return true;
+                    }
+                    break;
+                case "energycost.extendedsurvival.fillcompostercost":
+                    float energycostfillcompostercost;
+                    if (float.TryParse(value, out energycostfillcompostercost))
+                    {
+                        EnergyCost.ExtendedSurvival.FillComposterCost = energycostfillcompostercost;
+                        return true;
+                    }
+                    break;
             }
             return false;
         }
