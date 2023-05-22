@@ -631,6 +631,12 @@ namespace AILogisticsAutomation
             pullFromGasTank = data.pullFromGasTank;
             stackIfPossible = data.stackIfPossible;
             powerConsumption = data.powerConsumption;
+            pullFromComposter = data.pullFromComposter;
+            fillComposter = data.fillComposter;
+            pullFishTrap = data.pullFishTrap;
+            fillFishTrap = data.fillFishTrap;
+            pullRefrigerator = data.pullRefrigerator;
+            fillRefrigerator = data.fillRefrigerator;
         }
 
     }

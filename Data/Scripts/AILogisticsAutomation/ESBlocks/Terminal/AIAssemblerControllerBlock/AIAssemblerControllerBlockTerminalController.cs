@@ -18,11 +18,131 @@ namespace AILogisticsAutomation
     public class AIAssemblerControllerBlockTerminalController : BaseTerminalController<AIAssemblerControllerBlock, IMyOreDetector>
     {
 
-        protected List<MyDefinitionId> validIds = new List<MyDefinitionId>();
-        protected List<MyObjectBuilderType> validTypes = new List<MyObjectBuilderType>();
-        protected List<MyTerminalControlComboBoxItem> validIdsUI = new List<MyTerminalControlComboBoxItem>();
-        protected List<MyTerminalControlComboBoxItem> validTypesUI = new List<MyTerminalControlComboBoxItem>();
-        protected ConcurrentDictionary<MyObjectBuilderType, List<MyTerminalControlComboBoxItem>> validIdsByTypeUI = new ConcurrentDictionary<MyObjectBuilderType, List<MyTerminalControlComboBoxItem>>();
+        public class AssemblerItemInfo
+        {
+
+            public MyDefinitionId Id { get; set; }
+            public string DisplayText { get; set; }
+            public int Index { get; set; }
+            public MyPhysicalItemDefinition ItemDefinition { get; set; }
+            public MyTerminalControlComboBoxItem ComboBoxItem { get; set; }
+
+        }
+
+        public class AssemblerTypeInfo
+        {
+
+            public MyObjectBuilderType Type { get; set; }
+            public string DisplayText { get; set; }
+            public int Index { get; set; }
+            public MyTerminalControlComboBoxItem ComboBoxItem { get; set; }
+
+        }
+
+        public class AssemblerDefinitionInfo
+        {
+
+            public MyAssemblerDefinition Definition { get; set; }
+            public ConcurrentDictionary<MyDefinitionId, AssemblerItemInfo> ValidIds { get; set; } = new ConcurrentDictionary<MyDefinitionId, AssemblerItemInfo>();            
+            public ConcurrentDictionary<MyObjectBuilderType, AssemblerTypeInfo> ValidTypes { get; set; } = new ConcurrentDictionary<MyObjectBuilderType, AssemblerTypeInfo>();
+            public ConcurrentDictionary<MyDefinitionId, List<MyBlueprintDefinitionBase>> ItemBlueprintToUse { get; set; } = new ConcurrentDictionary<MyDefinitionId, List<MyBlueprintDefinitionBase>>();
+            
+            public AssemblerDefinitionInfo(MyAssemblerDefinition definition)
+            {
+                Definition = definition;
+                DoLoadAll();
+            }
+
+            private void DoLoadAll()
+            {
+                if (Definition != null)
+                {
+                    foreach (var blueprintClass in Definition.BlueprintClasses)
+                    {
+                        foreach (var blueprint in blueprintClass)
+                        {
+                            foreach (var result in blueprint.Results)
+                            {
+                                DoLoadItem(result.Id, blueprint);
+                            }
+                        }
+                    }
+                    DoSortAndSetIndex();
+                    CreateComboBoxItens();
+                }
+            }
+
+            private void DoSortAndSetIndex()
+            {
+                // Sort Types
+                var ordenedTypesList = ValidTypes.OrderBy(x => x.Value.DisplayText).Select(x => x.Key).ToArray();
+                for (int i = 0; i < ordenedTypesList.Length; i++)
+                {
+                    ValidTypes[ordenedTypesList[i]].Index = i;
+                }
+                // Sort Items
+                var ordenedIdList = ValidIds.OrderBy(x => x.Value.DisplayText).Select(x => x.Key).ToArray();
+                for (int i = 0; i < ordenedIdList.Length; i++)
+                {
+                    ValidIds[ordenedIdList[i]].Index = i;
+                }
+            }
+
+            private void CreateComboBoxItens()
+            {
+                // Create Types Combo Box
+                foreach (var id in ValidTypes.Keys)
+                {
+                    ValidTypes[id].ComboBoxItem = new MyTerminalControlComboBoxItem()
+                    {
+                        Key = ValidTypes[id].Index,
+                        Value = MyStringId.GetOrCompute(ValidTypes[id].DisplayText)
+                    };
+                }
+                // Create Itens Combo Box
+                foreach (var id in ValidIds.Keys)
+                {
+                    ValidIds[id].ComboBoxItem = new MyTerminalControlComboBoxItem()
+                    {
+                        Key = ValidIds[id].Index,
+                        Value = MyStringId.GetOrCompute(ValidIds[id].DisplayText)
+                    };
+                }
+            }
+
+            private void DoLoadItem(MyDefinitionId itemId, MyBlueprintDefinitionBase blueprint)
+            {
+                if (!ValidIds.ContainsKey(itemId))
+                {
+                    var itemDef = MyDefinitionManager.Static.GetPhysicalItemDefinition(itemId);
+                    if (itemDef != null)
+                    {
+                        ValidIds[itemId] = new AssemblerItemInfo() 
+                        { 
+                            Id = itemId,
+                            DisplayText = itemDef.DisplayNameText,
+                            ItemDefinition = itemDef
+                        };
+                        ItemBlueprintToUse[itemId] = new List<MyBlueprintDefinitionBase>();
+                        if (!ValidTypes.ContainsKey(itemId.TypeId))
+                            ValidTypes[itemId.TypeId] = new AssemblerTypeInfo() 
+                            { 
+                                Type = itemId.TypeId,
+                                DisplayText = itemId.TypeId.ToString().Replace(MyObjectBuilderType.LEGACY_TYPE_PREFIX, "")
+                            };
+                    }
+                }
+                if (ItemBlueprintToUse.ContainsKey(itemId))
+                {
+                    ItemBlueprintToUse[itemId].Add(blueprint);
+                }
+            }
+
+        }
+
+        protected ConcurrentDictionary<MyDefinitionId, AssemblerDefinitionInfo> Assemblers { get; set; } = new ConcurrentDictionary<MyDefinitionId, AssemblerDefinitionInfo>();
+        protected ConcurrentDictionary<MyDefinitionId, AssemblerItemInfo> ValidIds { get; set; } = new ConcurrentDictionary<MyDefinitionId, AssemblerItemInfo>();
+        protected ConcurrentDictionary<MyObjectBuilderType, AssemblerTypeInfo> ValidTypes { get; set; } = new ConcurrentDictionary<MyObjectBuilderType, AssemblerTypeInfo>();
 
         protected long selectedFilterType = 0;
         protected long selectedFilterGroup = 0;
@@ -35,38 +155,84 @@ namespace AILogisticsAutomation
             return block.BlockDefinition.TypeId == typeof(MyObjectBuilder_OreDetector) && block.BlockDefinition.SubtypeId == "AIAssemblerController";
         }
 
-        protected void LoadItensIds()
+        private void DoSortAndSetIndex()
         {
-            var ignoredTypes = new MyObjectBuilderType[] { typeof(MyObjectBuilder_TreeObject), typeof(MyObjectBuilder_Package) };
-            validIds.Clear();
-            validTypes.Clear();
-            validIdsUI.Clear();
-            validTypesUI.Clear();
-            validIdsByTypeUI.Clear();
-            var list = MyDefinitionManager.Static.GetPhysicalItemDefinitions().Where(x => !ignoredTypes.Contains(x.Id.TypeId)).OrderBy(x => x.DisplayNameText).ToArray();
-            int c = 0;
-            for (int i = 0; i < list.Length; i++)
+            // Sort Types
+            var ordenedTypesList = ValidTypes.OrderBy(x => x.Value.DisplayText).Select(x => x.Key).ToArray();
+            for (int i = 0; i < ordenedTypesList.Length; i++)
             {
-                var item = list[i];
-                validIds.Add(item.Id);
-                var newItem = new MyTerminalControlComboBoxItem() { Value = MyStringId.GetOrCompute(item.DisplayNameText), Key = i };
-                validIdsUI.Add(newItem);
-                if (!validIdsByTypeUI.ContainsKey(item.Id.TypeId))
-                    validIdsByTypeUI[item.Id.TypeId] = new List<MyTerminalControlComboBoxItem>();
-                validIdsByTypeUI[item.Id.TypeId].Add(newItem);
-                if (!validTypes.Contains(item.Id.TypeId))
+                ValidTypes[ordenedTypesList[i]].Index = i;
+            }
+            // Sort Items
+            var ordenedIdList = ValidIds.OrderBy(x => x.Value.DisplayText).Select(x => x.Key).ToArray();
+            for (int i = 0; i < ordenedIdList.Length; i++)
+            {
+                ValidIds[ordenedIdList[i]].Index = i;
+            }
+        }
+
+        private void CreateComboBoxItens()
+        {
+            // Create Types Combo Box
+            foreach (var id in ValidTypes.Keys)
+            {
+                ValidTypes[id].ComboBoxItem = new MyTerminalControlComboBoxItem()
                 {
-                    validTypes.Add(item.Id.TypeId);
-                    validTypesUI.Add(new MyTerminalControlComboBoxItem() { Value = MyStringId.GetOrCompute(item.Id.TypeId.ToString().Replace(MyObjectBuilderType.LEGACY_TYPE_PREFIX, "")), Key = c });
-                    c++;
+                    Key = ValidTypes[id].Index,
+                    Value = MyStringId.GetOrCompute(ValidTypes[id].DisplayText)
+                };
+            }
+            // Create Itens Combo Box
+            foreach (var id in ValidIds.Keys)
+            {
+                ValidIds[id].ComboBoxItem = new MyTerminalControlComboBoxItem()
+                {
+                    Key = ValidIds[id].Index,
+                    Value = MyStringId.GetOrCompute(ValidIds[id].DisplayText)
+                };
+            }
+        }
+
+        public void DoLoadItensIds()
+        {
+            // Clear All
+            Assemblers.Clear();
+            ValidIds.Clear();
+            ValidTypes.Clear();
+            // Load all assemblers types
+            var assemblers = MyDefinitionManager.Static.GetAllDefinitions().Where(x => x.Id.TypeId == typeof(MyObjectBuilder_Assembler)).Cast<MyAssemblerDefinition>().ToList();
+            foreach (var assembler in assemblers)
+            {
+                Assemblers[assembler.Id] = new AssemblerDefinitionInfo(assembler);
+                foreach (var id in Assemblers[assembler.Id].ValidIds.Keys)
+                {
+                    if (!ValidIds.ContainsKey(id))
+                        ValidIds[id] = new AssemblerItemInfo() 
+                        { 
+                            Id = id,
+                            DisplayText = Assemblers[assembler.Id].ValidIds[id].DisplayText,
+                            ItemDefinition = Assemblers[assembler.Id].ValidIds[id].ItemDefinition
+                        };
+                }
+                foreach (var id in Assemblers[assembler.Id].ValidTypes.Keys)
+                {
+                    if (!ValidTypes.ContainsKey(id))
+                        ValidTypes[id] = new AssemblerTypeInfo()
+                        {
+                            Type = id,
+                            DisplayText = Assemblers[assembler.Id].ValidTypes[id].DisplayText
+                        };
                 }
             }
+            DoSortAndSetIndex();
+            CreateComboBoxItens();
         }
 
         protected override void DoInitializeControls()
         {
 
-            LoadItensIds();
+            if (!AILogisticsAutomationSession.IsUsingExtendedSurvival())
+                DoLoadItensIds();
 
             Func<IMyTerminalBlock, bool> isWorking = (block) =>
             {
@@ -133,13 +299,19 @@ namespace AILogisticsAutomation
             );
             CreateOnOffSwitchAction("AIEnabled", checkboxEnabled);
 
-            CreateTerminalLabel("AIMIStartConfig", "NOT IMPLEMENTED YET");
+
 
         }
 
         protected override string GetActionPrefix()
         {
             return "AIAssemblerController";
+        }
+
+        private readonly string[] idsToRemove = new string[] { "Range", "BroadcastUsingAntennas" };
+        protected override string[] GetIdsToRemove()
+        {
+            return idsToRemove;
         }
 
     }

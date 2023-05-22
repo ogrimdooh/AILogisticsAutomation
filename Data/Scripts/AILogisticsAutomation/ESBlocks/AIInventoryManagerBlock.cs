@@ -126,6 +126,8 @@ namespace AILogisticsAutomation
                 !Settings.GetIgnoreConnectors().Contains(x.EntityId) &&
                 !x.BlockDefinition.Id.IsHydrogenEngine() &&
                 !x.BlockDefinition.Id.IsParachute() &&
+                !x.BlockDefinition.Id.IsGun() &&
+                !x.BlockDefinition.Id.IsTurret() &&
                 (Settings.GetPullFromComposter() || !x.BlockDefinition.Id.IsComposter()) &&
                 (Settings.GetPullFishTrap() || !x.BlockDefinition.Id.IsFishTrap()) &&
                 (Settings.GetPullRefrigerator() || !x.BlockDefinition.Id.IsRefrigerator()) &&

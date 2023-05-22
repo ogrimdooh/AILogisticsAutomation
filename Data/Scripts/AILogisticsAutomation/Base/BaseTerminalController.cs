@@ -22,10 +22,12 @@ namespace AILogisticsAutomation
         public bool CustomControlsInit { get; private set; }
 
         protected List<IMyTerminalControl> CustomControls = new List<IMyTerminalControl>();
+        protected List<IMyTerminalAction> CustomActions = new List<IMyTerminalAction>();
 
         protected abstract bool CanAddControls(IMyTerminalBlock block);
         protected abstract void DoInitializeControls();
         protected abstract string GetActionPrefix();
+        protected abstract string[] GetIdsToRemove();
 
         public void InitializeControls()
         {
@@ -37,12 +39,24 @@ namespace AILogisticsAutomation
                 {
 
                     MyAPIGateway.TerminalControls.CustomControlGetter += CustomControlGetter;
+                    MyAPIGateway.TerminalControls.CustomActionGetter += CustomActionGetter;
 
                     DoInitializeControls();
                 }
                 catch (Exception ex)
                 {
                     AILogisticsAutomationLogging.Instance.LogError(GetType(), ex);
+                }
+            }
+        }
+
+        private void CustomActionGetter(IMyTerminalBlock block, List<IMyTerminalAction> actions)
+        {
+            if (CanAddControls(block))
+            {
+                foreach (var item in CustomActions)
+                {
+                    actions.Add(item);
                 }
             }
         }
@@ -77,7 +91,7 @@ namespace AILogisticsAutomation
                     result.Append(query.Any() ? query.FirstOrDefault().Value.String : "-");
                 };
                 action.ValidForGroups = combobox.SupportsMultipleBlocks;
-                MyAPIGateway.TerminalControls.AddAction<K>(action);
+                CustomActions.Add(action);
 
             }
         }
@@ -97,7 +111,7 @@ namespace AILogisticsAutomation
                 result.Append(checkbox.Getter(block) ? MyTexts.Get(checkbox.OnText) : MyTexts.Get(checkbox.OffText));
             };
             action.ValidForGroups = checkbox.SupportsMultipleBlocks;
-            MyAPIGateway.TerminalControls.AddAction<K>(action);
+            CustomActions.Add(action);
 
             action = MyAPIGateway.TerminalControls.CreateAction<K>(string.Format("{0}_On", name));
             action.Name = new StringBuilder(string.Format("{0} On", name));
@@ -112,7 +126,7 @@ namespace AILogisticsAutomation
                 result.Append(checkbox.Getter(block) ? MyTexts.Get(checkbox.OnText) : MyTexts.Get(checkbox.OffText));
             };
             action.ValidForGroups = checkbox.SupportsMultipleBlocks;
-            MyAPIGateway.TerminalControls.AddAction<K>(action);
+            CustomActions.Add(action);
 
             action = MyAPIGateway.TerminalControls.CreateAction<K>(string.Format("{0}_Off", name));
             action.Name = new StringBuilder(string.Format("{0} Off", name));
@@ -127,7 +141,7 @@ namespace AILogisticsAutomation
                 result.Append(checkbox.Getter(block) ? MyTexts.Get(checkbox.OnText) : MyTexts.Get(checkbox.OffText));
             };
             action.ValidForGroups = checkbox.SupportsMultipleBlocks;
-            MyAPIGateway.TerminalControls.AddAction<K>(action);
+            CustomActions.Add(action);
         }
 
         protected void CreateOnOffSwitchAction(string name, IMyTerminalControlOnOffSwitch onoffSwitch)
@@ -141,7 +155,7 @@ namespace AILogisticsAutomation
                 onoffSwitch.Setter(block, !onoffSwitch.Getter(block));
             };
             action.ValidForGroups = onoffSwitch.SupportsMultipleBlocks;
-            MyAPIGateway.TerminalControls.AddAction<K>(action);
+            CustomActions.Add(action);
 
             action = MyAPIGateway.TerminalControls.CreateAction<K>(string.Format("{0}_On", name));
             action.Name = new StringBuilder(string.Format("{0} {1}", name, onoffSwitch.OnText));
@@ -152,7 +166,7 @@ namespace AILogisticsAutomation
                 onoffSwitch.Setter(block, true);
             };
             action.ValidForGroups = onoffSwitch.SupportsMultipleBlocks;
-            MyAPIGateway.TerminalControls.AddAction<K>(action);
+            CustomActions.Add(action);
 
             action = MyAPIGateway.TerminalControls.CreateAction<K>(string.Format("{0}_Off", name));
             action.Name = new StringBuilder(string.Format("{0} {1}", name, onoffSwitch.OffText));
@@ -163,7 +177,7 @@ namespace AILogisticsAutomation
                 onoffSwitch.Setter(block, false);
             };
             action.ValidForGroups = onoffSwitch.SupportsMultipleBlocks;
-            MyAPIGateway.TerminalControls.AddAction<K>(action);
+            CustomActions.Add(action);
         }
 
         protected void CreateProperty(IMyTerminalValueControl<T> control, bool readOnly = false)
@@ -187,7 +201,7 @@ namespace AILogisticsAutomation
                 slider.Setter(block, val + 1);
             };
             action.ValidForGroups = slider.SupportsMultipleBlocks;
-            MyAPIGateway.TerminalControls.AddAction<K>(action);
+            CustomActions.Add(action);
 
             action = MyAPIGateway.TerminalControls.CreateAction<K>(string.Format("{0}_Decrease", sliderName));
             action.Name = new StringBuilder(string.Format("{0} Decrease", sliderName));
@@ -199,7 +213,7 @@ namespace AILogisticsAutomation
                 slider.Setter(block, val - 1);
             };
             action.ValidForGroups = slider.SupportsMultipleBlocks;
-            MyAPIGateway.TerminalControls.AddAction<K>(action);
+            CustomActions.Add(action);
         }
 
         protected Vector3 CheckConvertToHSVColor(Vector3 value)
@@ -379,6 +393,10 @@ namespace AILogisticsAutomation
         {
             if (CanAddControls(block))
             {
+                if (GetIdsToRemove().Any())
+                {
+                    controls.RemoveAll(x => GetIdsToRemove().Contains(x.Id));
+                }
                 foreach (var item in CustomControls)
                 {
                     controls.Add(item);

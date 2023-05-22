@@ -279,6 +279,8 @@ namespace AILogisticsAutomation
         private static Func<string, bool> _AddItemToShop;
         private static Func<MyDefinitionId, int, bool> _ChangeItemRarity;
         private static Action<ulong> _MarkAsAllItensLoaded;
+        private static Func<bool> _IsMarkAsAllItensLoaded;
+        private static Action<Action> _AddCallBackWhenMarkAsAllItensLoaded;
 
         /// <summary>
         /// Returns true if the version is compatibile with the API Backend, this is automatically called
@@ -513,6 +515,22 @@ namespace AILogisticsAutomation
         public static void MarkAsAllItensLoaded(ulong modId)
         {
             _MarkAsAllItensLoaded?.Invoke(modId);
+        }
+
+        /// <summary>
+        /// Is mark as all itens loaded executed
+        /// </summary>
+        public static bool IsMarkAsAllItensLoaded()
+        {
+            return _IsMarkAsAllItensLoaded?.Invoke() ?? false;
+        }
+
+        /// <summary>
+        /// Add callback to when mark as all itens loaded executed
+        /// </summary>
+        public static void AddCallBackWhenMarkAsAllItensLoaded(Action callback)
+        {
+            _AddCallBackWhenMarkAsAllItensLoaded?.Invoke(callback);
         }
 
         /// <summary>
@@ -751,6 +769,8 @@ namespace AILogisticsAutomation
                         _AddItemToShop = (Func<string, bool>)ModAPIMethods["AddItemToShop"];
                         _ChangeItemRarity = (Func<MyDefinitionId, int, bool>)ModAPIMethods["ChangeItemRarity"];
                         _MarkAsAllItensLoaded = (Action<ulong>)ModAPIMethods["MarkAsAllItensLoaded"];
+                        _IsMarkAsAllItensLoaded = (Func<bool>)ModAPIMethods["IsMarkAsAllItensLoaded"];
+                        _AddCallBackWhenMarkAsAllItensLoaded = (Action<Action>)ModAPIMethods["AddCallBackWhenMarkAsAllItensLoaded"];
 
                         if (m_onRegisteredAction != null)
                             m_onRegisteredAction();

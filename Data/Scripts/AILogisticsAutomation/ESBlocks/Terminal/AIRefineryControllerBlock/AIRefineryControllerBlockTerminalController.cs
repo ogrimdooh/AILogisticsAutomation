@@ -41,7 +41,7 @@ namespace AILogisticsAutomation
             );
         }
 
-        protected void LoadItensIds()
+        public void LoadItensIds()
         {
             var targetTypes = new MyObjectBuilderType[] { typeof(MyObjectBuilder_Ore) };
             validIds.Clear();
@@ -63,7 +63,8 @@ namespace AILogisticsAutomation
         protected override void DoInitializeControls()
         {
 
-            LoadItensIds();
+            if (!AILogisticsAutomationSession.IsUsingExtendedSurvival())
+                LoadItensIds();
 
             Func<IMyTerminalBlock, bool> isWorking = (block) =>
             {
@@ -778,6 +779,12 @@ namespace AILogisticsAutomation
         protected override string GetActionPrefix()
         {
             return "AIRefineryController";
+        }
+
+        private readonly string[] idsToRemove = new string[] { "Range", "BroadcastUsingAntennas" };
+        protected override string[] GetIdsToRemove()
+        {
+            return idsToRemove;
         }
 
     }

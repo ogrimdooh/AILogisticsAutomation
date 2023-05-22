@@ -144,7 +144,7 @@ namespace AILogisticsAutomation
             CreateTerminalLabel("AIMIStartConfig", "AI Configuration");
 
             var checkboxEnabled = CreateOnOffSwitch(
-                "CheckboxEnabled",
+                "CheckboxAIEnabled",
                 "Enabled",
                 isWorking,
                 (block) =>
@@ -1603,6 +1603,12 @@ namespace AILogisticsAutomation
         protected override string GetActionPrefix()
         {
             return "AIInventoryManager";
+        }
+
+        private readonly string[] idsToRemove = new string[] { "Range", "BroadcastUsingAntennas" };
+        protected override string[] GetIdsToRemove()
+        {
+            return idsToRemove;
         }
 
     }

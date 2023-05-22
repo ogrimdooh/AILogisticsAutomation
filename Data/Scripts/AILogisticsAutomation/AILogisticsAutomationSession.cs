@@ -28,6 +28,7 @@ namespace AILogisticsAutomation
 
         public const ulong ES_TECHNOLOGY_MODID = 2842844421;
         public const ulong ES_STATS_EFFECTS_MODID = 2840924715;
+        public const ulong WC_MODID = 1918681825;
 
         private static bool? isUsingTechnology = null;
         public static bool IsUsingTechnology()
@@ -45,7 +46,21 @@ namespace AILogisticsAutomation
             return isUsingStatsAndEffects.Value;
         }
 
+        public static bool IsUsingExtendedSurvival()
+        {
+            return IsUsingTechnology() || IsUsingStatsAndEffects();
+        }
+
+        private static bool? isUsingWeaponCore = null;
+        public static bool IsUsingWeaponCore()
+        {
+            if (!isUsingWeaponCore.HasValue)
+                isUsingWeaponCore = MyAPIGateway.Session.Mods.Any(x => x.PublishedFileId == WC_MODID);
+            return isUsingWeaponCore.Value;
+        }
+
         public ExtendedSurvivalCoreAPI ESCoreAPI;
+        public WcApi WeaponCore;
 
         protected override void DoInit(MyObjectBuilder_SessionComponent sessionComponent)
         {
@@ -76,10 +91,10 @@ namespace AILogisticsAutomation
                 );
 
             }
-
+            
             if (!AIInventoryManagerBlockTerminal.Controller.CustomControlsInit)
                 AIInventoryManagerBlockTerminal.InitializeControls();
-
+                        
             if (!AIRefineryControllerBlockTerminal.Controller.CustomControlsInit)
                 AIRefineryControllerBlockTerminal.InitializeControls();
 
@@ -88,7 +103,7 @@ namespace AILogisticsAutomation
 
             if (!AIDisplayMonitorBlockTerminal.Controller.CustomControlsInit)
                 AIDisplayMonitorBlockTerminal.InitializeControls();
-
+            
         }
 
         private const string SETTINGS_COMMAND = "settings";
@@ -243,6 +258,23 @@ namespace AILogisticsAutomation
                 InvokeAfterCoreApiLoaded.Add(action);
         }
 
+        public override void BeforeStart()
+        {
+            if (IsUsingWeaponCore())
+            {
+                WeaponCore = new WcApi();
+                WeaponCore.Load(() =>
+                {
+                    var guns = new List<MyDefinitionId>();
+                    var turrets = new List<MyDefinitionId>();
+                    WeaponCore.GetAllCoreWeapons(guns);
+                    WeaponCore.GetAllCoreTurrets(turrets);
+                    MyDefinitionIdUtils.DoLoadWC(guns, turrets);
+                }, true);
+            }
+            base.BeforeStart();
+        }
+
         public override void LoadData()
         {
             ESCoreAPI = new ExtendedSurvivalCoreAPI(() =>
@@ -252,10 +284,20 @@ namespace AILogisticsAutomation
                     if (ExtendedSurvivalCoreAPI.Registered)
                     {
                         if (InvokeAfterCoreApiLoaded.Any())
+                        {
                             foreach (var action in InvokeAfterCoreApiLoaded)
                             {
                                 action.Invoke();
                             }
+                        }
+                        DoLoadDefs();
+                    }
+                }
+                else
+                {
+                    if (ExtendedSurvivalCoreAPI.Registered)
+                    {
+                        DoLoadDefs();
                     }
                 }
             });
@@ -268,6 +310,21 @@ namespace AILogisticsAutomation
             }
 
             base.LoadData();
+        }
+
+        private void DoLoadDefs()
+        {
+            if (ExtendedSurvivalCoreAPI.IsMarkAsAllItensLoaded())
+            {
+                AIAssemblerControllerBlockTerminal.Controller.DoLoadItensIds();
+                AIRefineryControllerBlockTerminal.Controller.LoadItensIds();
+            }
+            else
+                ExtendedSurvivalCoreAPI.AddCallBackWhenMarkAsAllItensLoaded(() =>
+                {
+                    AIAssemblerControllerBlockTerminal.Controller.DoLoadItensIds();
+                    AIRefineryControllerBlockTerminal.Controller.LoadItensIds();
+                });
         }
 
         private bool definitionsChecked = false;

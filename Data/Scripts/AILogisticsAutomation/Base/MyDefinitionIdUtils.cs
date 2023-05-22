@@ -1,5 +1,7 @@
 ﻿using Sandbox.Common.ObjectBuilders;
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using VRage.Game;
 using VRage.ObjectBuilders;
 
@@ -15,12 +17,48 @@ namespace AILogisticsAutomation
         public static readonly MyObjectBuilderType[] targetConnectorFilter = new MyObjectBuilderType[] { typeof(MyObjectBuilder_ShipConnector) };
         public static readonly MyObjectBuilderType[] targetRefineryFilter = new MyObjectBuilderType[] { typeof(MyObjectBuilder_Refinery) };
         public static readonly MyObjectBuilderType[] targetParachuteFilter = new MyObjectBuilderType[] { typeof(MyObjectBuilder_Parachute) };
+        public static readonly MyObjectBuilderType[] targetGunFilter = new MyObjectBuilderType[] { typeof(MyObjectBuilder_SmallGatlingGun), typeof(MyObjectBuilder_SmallMissileLauncher), typeof(MyObjectBuilder_SmallMissileLauncherReload) };
+        public static readonly MyObjectBuilderType[] targetTurretFilter = new MyObjectBuilderType[] { typeof(MyObjectBuilder_InteriorTurret), typeof(MyObjectBuilder_LargeGatlingTurret), typeof(MyObjectBuilder_LargeMissileTurret) };
         public static readonly MyObjectBuilderType[] targetAssemblerFilter = new MyObjectBuilderType[] { typeof(MyObjectBuilder_Assembler), typeof(MyObjectBuilder_SurvivalKit) };
 
         public static readonly string[] isWaterSolidificator = new string[] { "LargeWaterSolidificator", "WaterSolidificator" };
         public static readonly string[] isRefrigerator = new string[] { "LargeBlockRefrigerator", "SmallBlockRefrigerator" };
         public static readonly string[] isComposter = new string[] { "LargeBlockComposter" };
         public static readonly string[] isFishTrap = new string[] { "FishTrap" };
+
+        private static MyDefinitionId[] weaponCoreGuns = new MyDefinitionId[] { };
+        public static MyDefinitionId[] WeaponCoreGuns
+        {
+            get
+            {
+                return weaponCoreGuns;
+            }
+        }
+
+        private static MyDefinitionId[] weaponCoreTurrets = new MyDefinitionId[] { };
+        public static MyDefinitionId[] WeaponCoreTurrets
+        {
+            get
+            {
+                return weaponCoreTurrets;
+            }
+        }
+
+        public static void DoLoadWC(ICollection<MyDefinitionId> guns, ICollection<MyDefinitionId> turrets)
+        {
+            weaponCoreGuns = guns.ToArray();
+            weaponCoreTurrets = turrets.ToArray();
+        }
+
+        public static bool IsGun(this MyDefinitionId id)
+        {
+            return targetGunFilter.Contains(id.TypeId) || weaponCoreGuns.Contains(id);
+        }
+
+        public static bool IsTurret(this MyDefinitionId id)
+        {
+            return targetTurretFilter.Contains(id.TypeId) || weaponCoreTurrets.Contains(id);
+        }
 
         public static bool IsParachute(this MyDefinitionId id)
         {
