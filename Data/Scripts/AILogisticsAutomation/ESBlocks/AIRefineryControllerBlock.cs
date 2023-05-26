@@ -156,8 +156,6 @@ namespace AILogisticsAutomation
 
         }
 
-        private const float IDEAL_ORE_IN_REFINERY = 1500;
-
         private bool DoPushOre(MyDefinitionId oreId, ConcurrentDictionary<MyDefinitionId, MyInventoryOreMap> oreMap, MyInventory inventory, 
             float targetVolume, AIInventoryManagerBlock inventoryManager)
         {
@@ -265,11 +263,11 @@ namespace AILogisticsAutomation
 
                     var oreFilter = Settings.GetDefinitions().ContainsKey(listaToCheck[i].EntityId) ? Settings.GetDefinitions()[listaToCheck[i].EntityId].Ores : Settings.DefaultOres;
 
+                    bool useConveyorSystem = true;
                     if (oreFilter.Any())
                     {
                         // Add ore to refinery
-                        bool useConveyorSystem = true;
-                        var sourceOres = oreFilter.GetOres().Where(x => inventory.GetItemAmount(new MyDefinitionId(oreType, x)) > 0 || oreMap.ContainsKey(new MyDefinitionId(oreType, x))).ToArray();
+                        var sourceOres = oreFilter.GetAll().Where(x => inventory.GetItemAmount(new MyDefinitionId(oreType, x)) > 0 || oreMap.ContainsKey(new MyDefinitionId(oreType, x))).ToArray();
                         if (sourceOres.Any() && oreMap.Any())
                         {
                             var maxVolume = (float)inventory.MaxVolume * 0.8f;
@@ -303,11 +301,11 @@ namespace AILogisticsAutomation
                                     useConveyorSystem = useConveyorSystem && push;
                                 }
                             }
-                            (listaToCheck[i] as IMyRefinery).UseConveyorSystem = useConveyorSystem;
                         }
                         // Sort
                         DoSort(inventory, oreFilter);
                     }
+                    (listaToCheck[i] as IMyRefinery).UseConveyorSystem = useConveyorSystem;
 
                 }
             }

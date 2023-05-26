@@ -62,7 +62,7 @@ namespace AILogisticsAutomation
                 powerConsumption = powerConsumption,
                 enabled = enabled,
                 definitions = definitions.Select(x => x.Value.GetData()).ToArray(),
-                ores = DefaultOres.GetOres(),
+                ores = DefaultOres.GetAll(),
                 ignoreRefinery = ignoreRefinery.ToArray()
             };
             return data;
@@ -118,10 +118,10 @@ namespace AILogisticsAutomation
                     switch (action)
                     {
                         case "ADD":
-                            DefaultOres.AddOrePriority(value);
+                            DefaultOres.AddPriority(value);
                             return true;
                         case "DEL":
-                            DefaultOres.RemoveOrePriority(value);
+                            DefaultOres.RemovePriority(value);
                             return true;
                         case "UP":
                             DefaultOres.MoveUp(value);
@@ -169,7 +169,7 @@ namespace AILogisticsAutomation
             DefaultOres.Clear();
             foreach (var item in data.ores)
             {
-                DefaultOres.AddOrePriority(item);
+                DefaultOres.AddPriority(item);
             }
             ignoreRefinery.Clear();
             foreach (var item in data.ignoreRefinery)

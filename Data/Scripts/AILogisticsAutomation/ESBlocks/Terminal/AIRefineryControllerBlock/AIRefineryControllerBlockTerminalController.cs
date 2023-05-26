@@ -218,7 +218,7 @@ namespace AILogisticsAutomation
                         var idToUse = validIds[selectedFilterItemId];
                         if (!system.Settings.DefaultOres.Contains(idToUse.SubtypeName))
                         {
-                            system.Settings.DefaultOres.AddOrePriority(idToUse.SubtypeName);
+                            system.Settings.DefaultOres.AddPriority(idToUse.SubtypeName);
                             system.SendToServer("DefaultOres", "ADD", idToUse.SubtypeName, null);
                             UpdateVisual(block);
                         }
@@ -235,7 +235,7 @@ namespace AILogisticsAutomation
                     var system = GetSystem(block);
                     if (system != null)
                     {
-                        foreach (var ore in system.Settings.DefaultOres.GetOres())
+                        foreach (var ore in system.Settings.DefaultOres.GetAll())
                         {
                             var item = new MyTerminalControlListBoxItem(MyStringId.GetOrCompute(ore), MyStringId.GetOrCompute(ore), ore);
                             list.Add(item);
@@ -311,7 +311,7 @@ namespace AILogisticsAutomation
                     {
                         if (system.Settings.DefaultOres.Contains(system.Settings.SelectedDefaultOre))
                         {
-                            system.Settings.DefaultOres.RemoveOrePriority(system.Settings.SelectedDefaultOre);
+                            system.Settings.DefaultOres.RemovePriority(system.Settings.SelectedDefaultOre);
                             system.SendToServer("DefaultOres", "DEL", system.Settings.SelectedDefaultOre, null);
                             UpdateVisual(block);
                         }
@@ -473,7 +473,7 @@ namespace AILogisticsAutomation
                             var def = system.Settings.GetDefinitions()[system.Settings.SelectedRefinery];
                             if (!def.Ores.Contains(idToUse.SubtypeName))
                             {
-                                def.Ores.AddOrePriority(idToUse.SubtypeName);
+                                def.Ores.AddPriority(idToUse.SubtypeName);
                                 system.SendToServer("Ores", "ADD", idToUse.SubtypeName, system.Settings.SelectedRefinery.ToString());
                                 UpdateVisual(block);
                             }
@@ -494,7 +494,7 @@ namespace AILogisticsAutomation
                         if (system.Settings.GetDefinitions().ContainsKey(system.Settings.SelectedRefinery))
                         {
                             var def = system.Settings.GetDefinitions()[system.Settings.SelectedRefinery];
-                            foreach (var ore in def.Ores.GetOres())
+                            foreach (var ore in def.Ores.GetAll())
                             {
                                 var item = new MyTerminalControlListBoxItem(MyStringId.GetOrCompute(ore), MyStringId.GetOrCompute(ore), ore);
                                 list.Add(item);
@@ -582,7 +582,7 @@ namespace AILogisticsAutomation
                             var def = system.Settings.GetDefinitions()[system.Settings.SelectedRefinery];
                             if (def.Ores.Contains(system.Settings.SelectedRefineryOre))
                             {
-                                def.Ores.RemoveOrePriority(system.Settings.SelectedRefineryOre);
+                                def.Ores.RemovePriority(system.Settings.SelectedRefineryOre);
                                 system.SendToServer("Ores", "DEL", system.Settings.SelectedRefineryOre, system.Settings.SelectedRefinery.ToString());
                                 UpdateVisual(block);
                             }

@@ -53,9 +53,29 @@ namespace AILogisticsAutomation
             NeedsUpdate |= MyEntityUpdateEnum.EACH_100TH_FRAME;
         }
 
-        private List<MyCubeGrid> GetSubGrids()
+        private void PopulateSubGrids(MyCubeGrid target, ConcurrentDictionary<long, MyCubeGrid> store)
         {
-            return CubeGrid.GetConnectedGrids(GridLinkTypeEnum.Mechanical).Where(x => x.EntityId != Grid.EntityId && CountAIInventoryManager(x) == 0).ToList();
+            var lista = target.GetConnectedGrids(GridLinkTypeEnum.Mechanical).Where(x => x.EntityId != Grid.EntityId && CountAIInventoryManager(x) == 0).ToList();
+            foreach (var item in lista)
+            {
+                if (!store.ContainsKey(item.EntityId))
+                {
+                    store[item.EntityId] = item;
+                    PopulateSubGrids(item, store);
+                }
+            }
+        }
+
+        private ConcurrentDictionary<long, MyCubeGrid> GetSubGrids(MyCubeGrid target)
+        {
+            var grids = new ConcurrentDictionary<long, MyCubeGrid>();
+            PopulateSubGrids(target, grids);
+            return grids;
+        }
+
+        private ConcurrentDictionary<long, MyCubeGrid> GetSubGrids()
+        {
+            return GetSubGrids(CubeGrid);
         }
 
         public struct ShipConnected
@@ -74,22 +94,27 @@ namespace AILogisticsAutomation
 
         private Dictionary<IMyShipConnector, ShipConnected> GetConnectedGrids()
         {
+            return GetConnectedGrids(Grid);
+        }
+
+        private Dictionary<IMyShipConnector, ShipConnected> GetConnectedGrids(IMyCubeGrid target)
+        {
             var data = new Dictionary<IMyShipConnector, ShipConnected>();
             List<IMySlimBlock> connectors = new List<IMySlimBlock>();
             if (ExtendedSurvivalCoreAPI.Registered)
             {
-                connectors = ExtendedSurvivalCoreAPI.GetGridBlocks(Grid.EntityId, typeof(MyObjectBuilder_ShipConnector), null);
+                connectors = ExtendedSurvivalCoreAPI.GetGridBlocks(target.EntityId, typeof(MyObjectBuilder_ShipConnector), null);
             }
             else
             {
-                Grid.GetBlocks(connectors, x => x.BlockDefinition.Id.TypeId == typeof(MyObjectBuilder_ShipConnector));
+                target.GetBlocks(connectors, x => x.BlockDefinition.Id.TypeId == typeof(MyObjectBuilder_ShipConnector));
             }
             if (connectors != null && connectors.Any())
             {
                 foreach (var connector in connectors)
                 {
                     var c = (connector.FatBlock as IMyShipConnector);
-                    if (c.IsConnected && c.OtherConnector.CubeGrid.EntityId != Grid.EntityId && CountAIInventoryManager(c.OtherConnector.CubeGrid) == 0)
+                    if (!data.ContainsKey(c) && c.IsConnected && c.OtherConnector.CubeGrid.EntityId != target.EntityId && CountAIInventoryManager(c.OtherConnector.CubeGrid) == 0)
                     {
                         data.Add(c, new ShipConnected(c.OtherConnector));
                     }
@@ -209,7 +234,7 @@ namespace AILogisticsAutomation
             // Get subgrids
             if (Settings.GetPullSubGrids())
             {
-                subgrids = GetSubGrids();
+                subgrids = GetSubGrids().Values.ToList();
                 foreach (var grid in subgrids)
                 {
                     var query = DoApplyBasicFilter(grid.Inventories);
@@ -775,6 +800,51 @@ namespace AILogisticsAutomation
             }
         }
 
+        private List<long> scanedGrids = new List<long>();
+
+        private void DoPullFromSubGridList(List<MyCubeGrid> subgrids, ref List<IMyReactor> reactors, ref List<IMyGasGenerator> gasGenerators,
+            ref List<IMyGasTank> gasTanks, ref List<IMyGasGenerator> composters, ref List<IMyGasGenerator> fishTraps, ref List<IMyGasGenerator> refrigerators)
+        {
+            if (Settings.GetPullSubGrids() && subgrids != null && subgrids.Any())
+            {
+                foreach (var grid in subgrids)
+                {
+                    if (scanedGrids.Contains(grid.EntityId))
+                        continue;
+                    scanedGrids.Add(grid.EntityId);
+                    DoCheckInventoryList(DoApplyBasicFilter(grid.Inventories).ToArray(), ref reactors, ref gasGenerators, ref gasTanks, ref composters, ref fishTraps, ref refrigerators);
+                    if (Settings.GetPullFromConnectedGrids())
+                    {
+                        var connectedGrids = GetConnectedGrids(grid);
+                        DoPullFromConnectedGridList(connectedGrids, ref reactors, ref gasGenerators, ref gasTanks, ref composters, ref fishTraps, ref refrigerators);
+                    }
+                }
+            }
+        }
+
+        private void DoPullFromConnectedGridList(Dictionary<IMyShipConnector, ShipConnected> connectedGrids, ref List<IMyReactor> reactors, ref List<IMyGasGenerator> gasGenerators,
+            ref List<IMyGasTank> gasTanks, ref List<IMyGasGenerator> composters, ref List<IMyGasGenerator> fishTraps, ref List<IMyGasGenerator> refrigerators)
+        {
+            if (Settings.GetPullFromConnectedGrids() && connectedGrids != null && connectedGrids.Any())
+            {
+                foreach (var connector in connectedGrids.Keys)
+                {
+                    if (scanedGrids.Contains(connectedGrids[connector].Grid.EntityId))
+                        continue;
+                    scanedGrids.Add(connectedGrids[connector].Grid.EntityId);
+                    if (!Settings.GetIgnoreConnectors().Contains(connector.EntityId))
+                    {
+                        DoCheckInventoryList(DoApplyBasicFilter(connectedGrids[connector].Grid.Inventories).ToArray(), ref reactors, ref gasGenerators, ref gasTanks, ref composters, ref fishTraps, ref refrigerators);
+                        if (Settings.GetPullSubGrids())
+                        {
+                            var subGridsFromConnectedGrid = GetSubGrids(connectedGrids[connector].Grid).Values.ToList();
+                            DoPullFromSubGridList(subGridsFromConnectedGrid, ref reactors, ref gasGenerators, ref gasTanks, ref composters, ref fishTraps, ref refrigerators);
+                        }
+                    }
+                }
+            }
+        }
+
         protected override void DoExecuteCycle()
         {
             List<MyCubeGrid> subgrids;
@@ -791,6 +861,7 @@ namespace AILogisticsAutomation
                 CheckEntitiesExist();
                 if (!IsWorking)
                     return;
+                scanedGrids.Clear();
                 List<IMyReactor> reactors = new List<IMyReactor>();
                 List<IMyGasGenerator> gasGenerators = new List<IMyGasGenerator>();
                 List<IMyGasTank> gasTanks = new List<IMyGasTank>();
@@ -798,23 +869,8 @@ namespace AILogisticsAutomation
                 List<IMyGasGenerator> fishTraps = new List<IMyGasGenerator>();
                 List<IMyGasGenerator> refrigerators = new List<IMyGasGenerator>();
                 DoCheckInventoryList(ValidInventories.ToArray(), ref reactors, ref gasGenerators, ref gasTanks, ref composters, ref fishTraps, ref refrigerators);
-                if (Settings.GetPullSubGrids() && subgrids != null && subgrids.Any())
-                {
-                    foreach (var grid in subgrids)
-                    {
-                        DoCheckInventoryList(DoApplyBasicFilter(grid.Inventories).ToArray(), ref reactors, ref gasGenerators, ref gasTanks, ref composters, ref fishTraps, ref refrigerators);
-                    }
-                }
-                if (Settings.GetPullFromConnectedGrids() && connectedGrids != null && connectedGrids.Any())
-                {
-                    foreach (var connector in connectedGrids.Keys)
-                    {
-                        if (!Settings.GetIgnoreConnectors().Contains(connector.EntityId))
-                        {
-                            DoCheckInventoryList(DoApplyBasicFilter(connectedGrids[connector].Grid.Inventories).ToArray(), ref reactors, ref gasGenerators, ref gasTanks, ref composters, ref fishTraps, ref refrigerators);
-                        }
-                    }
-                }
+                DoPullFromSubGridList(subgrids, ref reactors, ref gasGenerators, ref gasTanks, ref composters, ref fishTraps, ref refrigerators);
+                DoPullFromConnectedGridList(connectedGrids, ref reactors, ref gasGenerators, ref gasTanks, ref composters, ref fishTraps, ref refrigerators);
                 DoFillReactors(reactors);
                 DoFillGasGenerator(gasGenerators);
                 DoFillFishTrap(fishTraps);

@@ -789,7 +789,7 @@ namespace AILogisticsAutomation
                         switch (selectedFilterBlockType)
                         {
                             case 0:
-                                targetFilter = new MyObjectBuilderType[] { typeof(MyObjectBuilder_CargoContainer) };
+                                targetFilter = new MyObjectBuilderType[] { typeof(MyObjectBuilder_CargoContainer), typeof(MyObjectBuilder_Cockpit), typeof(MyObjectBuilder_CryoChamber) };
                                 ignoreBlocks = system.Settings.GetIgnoreCargos();
                                 break;
                             case 1:
@@ -870,7 +870,7 @@ namespace AILogisticsAutomation
 
                             var inventory = query.FirstOrDefault();
 
-                            var targetCargoContainerFilter = new MyObjectBuilderType[] { typeof(MyObjectBuilder_CargoContainer) };
+                            var targetCargoContainerFilter = new MyObjectBuilderType[] { typeof(MyObjectBuilder_CargoContainer), typeof(MyObjectBuilder_Cockpit), typeof(MyObjectBuilder_CryoChamber) };
                             var targetFunctionalFilter = new MyObjectBuilderType[] { typeof(MyObjectBuilder_Assembler), typeof(MyObjectBuilder_Refinery), typeof(MyObjectBuilder_Reactor), typeof(MyObjectBuilder_HydrogenEngine), typeof(MyObjectBuilder_OxygenGenerator), typeof(MyObjectBuilder_OxygenTank), typeof(MyObjectBuilder_GasTank) };
                             var targetConnectorFilter = new MyObjectBuilderType[] { typeof(MyObjectBuilder_ShipConnector) };
 

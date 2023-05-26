@@ -11,7 +11,7 @@
             var data = new AIRefineryControllerRefinerySettingsData
             {
                 entityId = EntityId,
-                ores = Ores.GetOres()
+                ores = Ores.GetAll()
             };
             return data;
         }
@@ -24,10 +24,10 @@
                     switch (action)
                     {
                         case "ADD":
-                            Ores.AddOrePriority(value);
+                            Ores.AddPriority(value);
                             return true;
                         case "DEL":
-                            Ores.RemoveOrePriority(value);
+                            Ores.RemovePriority(value);
                             return true;
                         case "UP":
                             Ores.MoveUp(value);
@@ -46,7 +46,7 @@
             Ores.Clear();
             foreach (var item in data.ores)
             {
-                Ores.AddOrePriority(item);
+                Ores.AddPriority(item);
             }
         }
 
