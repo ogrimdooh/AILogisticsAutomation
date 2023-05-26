@@ -103,7 +103,10 @@ namespace AILogisticsAutomation
 
             if (!AIDisplayMonitorBlockTerminal.Controller.CustomControlsInit)
                 AIDisplayMonitorBlockTerminal.InitializeControls();
-            
+
+            if (!AIIgnoreMapBlockTerminal.Controller.CustomControlsInit)
+                AIIgnoreMapBlockTerminal.InitializeControls();
+
         }
 
         private const string SETTINGS_COMMAND = "settings";

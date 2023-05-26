@@ -8,7 +8,7 @@ using VRage.Game.ModAPI;
 
 namespace AILogisticsAutomation
 {
-    [MyEntityComponentDescriptor(typeof(MyObjectBuilder_OreDetector), false, "AIAssemblerController")]
+    [MyEntityComponentDescriptor(typeof(MyObjectBuilder_OreDetector), false, "AIAssemblerController", "AIAssemblerControllerReskin")]
     public class AIAssemblerControllerBlock : BaseAIBlock<IMyOreDetector, AIAssemblerControllerSettings, AIAssemblerControllerSettingsData>
     {
 
@@ -31,7 +31,13 @@ namespace AILogisticsAutomation
 
         protected int CountAIAssemblerController(IMyCubeGrid grid)
         {
-            return grid?.CountBlocks(new MyDefinitionId(typeof(MyObjectBuilder_OreDetector), "AIAssemblerController")) ?? 0;
+            var count = 0;
+            var validSubTypes = new string[] { "AIAssemblerController", "AIAssemblerControllerReskin" };
+            foreach (var item in validSubTypes)
+            {
+                count += grid?.CountBlocks(new MyDefinitionId(typeof(MyObjectBuilder_OreDetector), item)) ?? 0;
+            }
+            return count;
         }
 
         protected override void DoExecuteCycle()

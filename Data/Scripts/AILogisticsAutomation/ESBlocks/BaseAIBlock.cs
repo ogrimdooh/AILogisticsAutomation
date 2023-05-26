@@ -27,7 +27,7 @@ namespace AILogisticsAutomation
         {
             get
             {
-                return CurrentEntity.IsFunctional && IsPowered && IsEnabled && CountAIInventoryManager(Grid) == 1 && GetIsValidToWork();
+                return CurrentEntity.IsFunctional && IsPowered && IsEnabled && (!NeedInventoryManager() || CountAIInventoryManager(Grid) == 1) && GetIsValidToWork();
             }
         }
 
@@ -64,11 +64,16 @@ namespace AILogisticsAutomation
         }
 
         public const float StandbyPowerConsumption = 0.001f;
-        public const float OperationalPowerConsumption = 0.5f;
+        public const float OperationalPowerConsumption = 0.025f;
 
         protected abstract bool GetHadWorkToDo();
         protected abstract bool GetIsValidToWork();
         protected abstract void DoExecuteCycle();
+
+        protected virtual bool NeedInventoryManager()
+        {
+            return true;
+        }
 
         protected AIInventoryManagerBlock GetAIInventoryManager()
         {
@@ -82,12 +87,25 @@ namespace AILogisticsAutomation
 
         protected IMySlimBlock GetAIInventoryManagerBlock()
         {
-            return Grid.GetBlocks(new MyDefinitionId(typeof(MyObjectBuilder_OreDetector), "AIInventoryManager")).FirstOrDefault();
+            var validSubTypes = new string[] { "AIInventoryManager", "AIInventoryManagerReskin" };
+            foreach (var item in validSubTypes)
+            {
+                var block = Grid.GetBlocks(new MyDefinitionId(typeof(MyObjectBuilder_OreDetector), item)).FirstOrDefault();
+                if (block != null)
+                    return block;
+            }
+            return null;
         }
 
         protected int CountAIInventoryManager(IMyCubeGrid grid)
         {
-            return grid?.CountBlocks(new MyDefinitionId(typeof(MyObjectBuilder_OreDetector), "AIInventoryManager")) ?? 0;
+            var count = 0;
+            var validSubTypes = new string[] { "AIInventoryManager", "AIInventoryManagerReskin" };
+            foreach (var item in validSubTypes)
+            {
+                count += grid?.CountBlocks(new MyDefinitionId(typeof(MyObjectBuilder_OreDetector), item)) ?? 0;
+            }
+            return count;
         }
 
         protected override void CurrentEntity_OnClose(IMyEntity obj)

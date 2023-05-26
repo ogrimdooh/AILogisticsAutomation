@@ -16,7 +16,7 @@ using Sandbox.Definitions;
 namespace AILogisticsAutomation
 {
 
-    [MyEntityComponentDescriptor(typeof(MyObjectBuilder_OreDetector), false, "AIRefineryController")]
+    [MyEntityComponentDescriptor(typeof(MyObjectBuilder_OreDetector), false, "AIRefineryController", "AIRefineryControllerReskin")]
     public class AIRefineryControllerBlock : BaseAIBlock<IMyOreDetector, AIRefineryControllerSettings, AIRefineryControllerSettingsData>
     {
 
@@ -39,7 +39,13 @@ namespace AILogisticsAutomation
 
         protected int CountAIRefineryController(IMyCubeGrid grid)
         {
-            return grid?.CountBlocks(new MyDefinitionId(typeof(MyObjectBuilder_OreDetector), "AIRefineryController")) ?? 0;
+            var count = 0;
+            var validSubTypes = new string[] { "AIRefineryController", "AIRefineryControllerReskin" };
+            foreach (var item in validSubTypes)
+            {
+                count += grid?.CountBlocks(new MyDefinitionId(typeof(MyObjectBuilder_OreDetector), item)) ?? 0;
+            }
+            return count;
         }
 
         private IEnumerable<MyCubeBlock> DoApplyBasicFilter(HashSet<MyCubeBlock> inventories, bool ignoreFunctional = false)

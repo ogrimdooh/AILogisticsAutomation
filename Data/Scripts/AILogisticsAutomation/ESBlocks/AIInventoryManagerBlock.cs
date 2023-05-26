@@ -19,7 +19,7 @@ using Sandbox.Game.Gui;
 namespace AILogisticsAutomation
 {
 
-    [MyEntityComponentDescriptor(typeof(MyObjectBuilder_OreDetector), false, "AIInventoryManager")]
+    [MyEntityComponentDescriptor(typeof(MyObjectBuilder_OreDetector), false, "AIInventoryManager", "AIInventoryManagerReskin")]
     public class AIInventoryManagerBlock : BaseAIBlock<IMyOreDetector, AIInventoryManagerSettings, AIInventoryManagerSettingsData>
     {
 
@@ -127,7 +127,7 @@ namespace AILogisticsAutomation
         {
             get
             {
-                return DoApplyBasicFilter(CubeGrid.Inventories);
+                return DoApplyBasicFilter(CubeGrid.Inventories, new long[] { });
             }
         }
 
@@ -135,17 +135,18 @@ namespace AILogisticsAutomation
         {
             get
             {
-                return DoApplyBasicFilter(CubeGrid.Inventories, true);
+                return DoApplyBasicFilter(CubeGrid.Inventories, new long[] { }, true);
             }
         }
 
-        private IEnumerable<MyCubeBlock> DoApplyBasicFilter(HashSet<MyCubeBlock> inventories, bool ignoreFunctional = false)
+        private IEnumerable<MyCubeBlock> DoApplyBasicFilter(HashSet<MyCubeBlock> inventories, IEnumerable<long> customIgnoreList, bool ignoreFunctional = false)
         {
             return inventories.Where(x =>
                 (
                     (x.IsFunctional && ((x as IMyFunctionalBlock)?.Enabled ?? true)) ||
                     ignoreFunctional
                 ) &&
+                !customIgnoreList.Contains(x.EntityId) &&
                 !Settings.GetIgnoreCargos().Contains(x.EntityId) &&
                 !Settings.GetIgnoreFunctionalBlocks().Contains(x.EntityId) &&
                 !Settings.GetIgnoreConnectors().Contains(x.EntityId) &&
@@ -237,7 +238,7 @@ namespace AILogisticsAutomation
                 subgrids = GetSubGrids().Values.ToList();
                 foreach (var grid in subgrids)
                 {
-                    var query = DoApplyBasicFilter(grid.Inventories);
+                    var query = DoApplyBasicFilter(grid.Inventories, new long[] { });
                     power = CalcPowerFromBlocks(power, query);
                 }
             }
@@ -250,7 +251,7 @@ namespace AILogisticsAutomation
                 {
                     if (!Settings.GetIgnoreConnectors().Contains(connector.EntityId))
                     {
-                        var query = DoApplyBasicFilter(connectedGrids[connector].Grid.Inventories);
+                        var query = DoApplyBasicFilter(connectedGrids[connector].Grid.Inventories, new long[] { });
                         power = CalcPowerFromBlocks(power, query);
                     }
                 }
@@ -775,7 +776,7 @@ namespace AILogisticsAutomation
             entityList.RemoveAll(x => CubeGrid.Inventories.Any(y => y.EntityId == x));
             foreach (var item in entityList)
             {
-                Settings.GetDefinitions().Remove(item);
+                Settings.GetIgnoreCargos().Remove(item);
                 needComuniteChange = true;
             }
             entityList.Clear();
@@ -783,7 +784,7 @@ namespace AILogisticsAutomation
             entityList.RemoveAll(x => CubeGrid.Inventories.Any(y => y.EntityId == x));
             foreach (var item in entityList)
             {
-                Settings.GetDefinitions().Remove(item);
+                Settings.GetIgnoreFunctionalBlocks().Remove(item);
                 needComuniteChange = true;
             }
             entityList.Clear();
@@ -791,7 +792,7 @@ namespace AILogisticsAutomation
             entityList.RemoveAll(x => CubeGrid.Inventories.Any(y => y.EntityId == x));
             foreach (var item in entityList)
             {
-                Settings.GetDefinitions().Remove(item);
+                Settings.GetIgnoreConnectors().Remove(item);
                 needComuniteChange = true;
             }
             if (needComuniteChange)
@@ -801,6 +802,18 @@ namespace AILogisticsAutomation
         }
 
         private List<long> scanedGrids = new List<long>();
+
+        protected IMySlimBlock GetAIIgnoreMapBlock(IMyCubeGrid target)
+        {
+            var validSubTypes = new string[] { "AIIgnoreMap", "AIIgnoreMapSmall", "AIIgnoreMapReskin", "AIIgnoreMapReskinSmall" };
+            foreach (var item in validSubTypes)
+            {
+                var block = target.GetBlocks(new MyDefinitionId(typeof(MyObjectBuilder_OreDetector), item)).FirstOrDefault();
+                if (block != null)
+                    return block;
+            }
+            return null;
+        }
 
         private void DoPullFromSubGridList(List<MyCubeGrid> subgrids, ref List<IMyReactor> reactors, ref List<IMyGasGenerator> gasGenerators,
             ref List<IMyGasTank> gasTanks, ref List<IMyGasGenerator> composters, ref List<IMyGasGenerator> fishTraps, ref List<IMyGasGenerator> refrigerators)
@@ -812,7 +825,11 @@ namespace AILogisticsAutomation
                     if (scanedGrids.Contains(grid.EntityId))
                         continue;
                     scanedGrids.Add(grid.EntityId);
-                    DoCheckInventoryList(DoApplyBasicFilter(grid.Inventories).ToArray(), ref reactors, ref gasGenerators, ref gasTanks, ref composters, ref fishTraps, ref refrigerators);
+
+                    var ignoreMap = GetAIIgnoreMapBlock(grid);
+                    var ignoreList = (ignoreMap?.FatBlock?.GameLogic as AIIgnoreMapBlock)?.Settings?.GetIgnoreBlocks() ?? new List<long>();
+
+                    DoCheckInventoryList(DoApplyBasicFilter(grid.Inventories, ignoreList).ToArray(), ref reactors, ref gasGenerators, ref gasTanks, ref composters, ref fishTraps, ref refrigerators);
                     if (Settings.GetPullFromConnectedGrids())
                     {
                         var connectedGrids = GetConnectedGrids(grid);
@@ -832,9 +849,13 @@ namespace AILogisticsAutomation
                     if (scanedGrids.Contains(connectedGrids[connector].Grid.EntityId))
                         continue;
                     scanedGrids.Add(connectedGrids[connector].Grid.EntityId);
-                    if (!Settings.GetIgnoreConnectors().Contains(connector.EntityId))
+
+                    var ignoreMap = GetAIIgnoreMapBlock(connectedGrids[connector].Grid);
+                    var ignoreList = (ignoreMap?.FatBlock?.GameLogic as AIIgnoreMapBlock)?.Settings?.GetIgnoreBlocks() ?? new List<long>();
+
+                    if (!Settings.GetIgnoreConnectors().Contains(connector.EntityId) && !ignoreList.Contains(connector.EntityId))
                     {
-                        DoCheckInventoryList(DoApplyBasicFilter(connectedGrids[connector].Grid.Inventories).ToArray(), ref reactors, ref gasGenerators, ref gasTanks, ref composters, ref fishTraps, ref refrigerators);
+                        DoCheckInventoryList(DoApplyBasicFilter(connectedGrids[connector].Grid.Inventories, ignoreList).ToArray(), ref reactors, ref gasGenerators, ref gasTanks, ref composters, ref fishTraps, ref refrigerators);
                         if (Settings.GetPullSubGrids())
                         {
                             var subGridsFromConnectedGrid = GetSubGrids(connectedGrids[connector].Grid).Values.ToList();

@@ -32,7 +32,8 @@ namespace AILogisticsAutomation
 
         protected override bool CanAddControls(IMyTerminalBlock block)
         {
-            return block.BlockDefinition.TypeId == typeof(MyObjectBuilder_OreDetector) && block.BlockDefinition.SubtypeId == "AIInventoryManager";
+            var validSubTypes = new string[] { "AIInventoryManager", "AIInventoryManagerReskin" };
+            return block.BlockDefinition.TypeId == typeof(MyObjectBuilder_OreDetector) && validSubTypes.Contains(block.BlockDefinition.SubtypeId);
         }
 
         protected void LoadItensIds()

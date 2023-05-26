@@ -6,6 +6,7 @@
       <Id Type="MyObjectBuilder_ResearchGroupDefinition" Subtype="12201" />
       <Members>
         <BlockId Type="MyObjectBuilder_OreDetector" Subtype="AIInventoryManager" />
+        <BlockId Type="MyObjectBuilder_OreDetector" Subtype="AIInventoryManagerReskin" />
       </Members>
     </ResearchGroup>
 
@@ -13,6 +14,7 @@
       <Id Type="MyObjectBuilder_ResearchGroupDefinition" Subtype="12202" />
       <Members>
         <BlockId Type="MyObjectBuilder_OreDetector" Subtype="AIRefineryController" />
+        <BlockId Type="MyObjectBuilder_OreDetector" Subtype="AIRefineryControllerReskin" />
       </Members>
     </ResearchGroup>
 
@@ -20,6 +22,7 @@
       <Id Type="MyObjectBuilder_ResearchGroupDefinition" Subtype="12203" />
       <Members>
         <BlockId Type="MyObjectBuilder_OreDetector" Subtype="AIAssemblerController" />
+        <BlockId Type="MyObjectBuilder_OreDetector" Subtype="AIAssemblerControllerReskin" />
       </Members>
     </ResearchGroup>
     
@@ -27,6 +30,17 @@
       <Id Type="MyObjectBuilder_ResearchGroupDefinition" Subtype="12204" />
       <Members>
         <BlockId Type="MyObjectBuilder_OreDetector" Subtype="AIDisplayMonitor" />
+        <BlockId Type="MyObjectBuilder_OreDetector" Subtype="AIDisplayMonitorReskin" />
+      </Members>
+    </ResearchGroup>
+
+    <ResearchGroup xsi:type="ResearchGroup">
+      <Id Type="MyObjectBuilder_ResearchGroupDefinition" Subtype="12205" />
+      <Members>
+        <BlockId Type="MyObjectBuilder_OreDetector" Subtype="AIIgnoreMap" />
+        <BlockId Type="MyObjectBuilder_OreDetector" Subtype="AIIgnoreMapSmall" />
+        <BlockId Type="MyObjectBuilder_OreDetector" Subtype="AIIgnoreMapReskin" />
+        <BlockId Type="MyObjectBuilder_OreDetector" Subtype="AIIgnoreMapReskinSmall" />
       </Members>
     </ResearchGroup>
     

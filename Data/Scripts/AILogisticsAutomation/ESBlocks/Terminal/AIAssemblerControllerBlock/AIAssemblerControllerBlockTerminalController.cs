@@ -152,7 +152,8 @@ namespace AILogisticsAutomation
 
         protected override bool CanAddControls(IMyTerminalBlock block)
         {
-            return block.BlockDefinition.TypeId == typeof(MyObjectBuilder_OreDetector) && block.BlockDefinition.SubtypeId == "AIAssemblerController";
+            var validSubTypes = new string[] { "AIAssemblerController", "AIAssemblerControllerReskin" };
+            return block.BlockDefinition.TypeId == typeof(MyObjectBuilder_OreDetector) && validSubTypes.Contains(block.BlockDefinition.SubtypeId);
         }
 
         private void DoSortAndSetIndex()

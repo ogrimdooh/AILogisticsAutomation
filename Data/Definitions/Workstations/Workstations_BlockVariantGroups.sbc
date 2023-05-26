@@ -4,14 +4,22 @@
 
     <BlockVariantGroup>
       <Id Type="MyObjectBuilder_BlockVariantGroup" Subtype="AIInventoryManagerGroup" />
-      <Icon>Textures\GUI\Icons\Cubes\AIInventoryManager.dds</Icon>
-      <DisplayName>AI Inventory Manager</DisplayName>
+      <Icon>Textures\GUI\Icons\Cubes\AIIgnoreMap.dds</Icon>
+      <DisplayName>AI Ignore Map</DisplayName>
       <Description></Description>
       <Blocks>
+        <Block Type="MyObjectBuilder_OreDetector" Subtype="AIIgnoreMap" />
+        <Block Type="MyObjectBuilder_OreDetector" Subtype="AIIgnoreMapReskin" />
+        <Block Type="MyObjectBuilder_OreDetector" Subtype="AIIgnoreMapSmall" />
+        <Block Type="MyObjectBuilder_OreDetector" Subtype="AIIgnoreMapReskinSmall" />
         <Block Type="MyObjectBuilder_OreDetector" Subtype="AIInventoryManager" />
+        <Block Type="MyObjectBuilder_OreDetector" Subtype="AIInventoryManagerReskin" />
         <Block Type="MyObjectBuilder_OreDetector" Subtype="AIRefineryController" />
+        <Block Type="MyObjectBuilder_OreDetector" Subtype="AIRefineryControllerReskin" />
         <Block Type="MyObjectBuilder_OreDetector" Subtype="AIAssemblerController" />
+        <Block Type="MyObjectBuilder_OreDetector" Subtype="AIAssemblerControllerReskin" />
         <Block Type="MyObjectBuilder_OreDetector" Subtype="AIDisplayMonitor" />
+        <Block Type="MyObjectBuilder_OreDetector" Subtype="AIDisplayMonitorReskin" />
       </Blocks>
     </BlockVariantGroup>
  
