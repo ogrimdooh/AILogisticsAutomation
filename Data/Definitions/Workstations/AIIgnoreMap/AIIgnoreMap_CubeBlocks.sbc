@@ -102,9 +102,6 @@
       <IsAirTight>true</IsAirTight>
     </Definition>
 
-
-
-
     <Definition xsi:type="MyObjectBuilder_OreDetectorDefinition">
       <Id>
         <TypeId>OreDetector</TypeId>
@@ -149,6 +146,7 @@
       <DestroySound>WepSmallWarheadExpl</DestroySound>
       <PCU>10</PCU>
       <IsAirTight>true</IsAirTight>
+      <DLC>Automatons</DLC>
     </Definition>
 
     <Definition xsi:type="MyObjectBuilder_OreDetectorDefinition">
@@ -202,6 +200,7 @@
       <DestroySound>WepSmallWarheadExpl</DestroySound>
       <PCU>10</PCU>
       <IsAirTight>true</IsAirTight>
+      <DLC>Automatons</DLC>
     </Definition>
 
   </CubeBlocks>

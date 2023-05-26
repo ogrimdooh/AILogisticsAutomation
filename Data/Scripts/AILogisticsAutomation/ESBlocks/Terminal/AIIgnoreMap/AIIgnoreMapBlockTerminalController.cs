@@ -272,7 +272,7 @@ namespace AILogisticsAutomation
                         addedBlocks.AddRange(system.Settings.GetIgnoreFunctionalBlocks());
                         addedBlocks.AddRange(system.Settings.GetIgnoreConnectors());
 
-                        var targetCargoContainerFilter = new MyObjectBuilderType[] { typeof(MyObjectBuilder_CargoContainer) };
+                        var targetCargoContainerFilter = new MyObjectBuilderType[] { typeof(MyObjectBuilder_CargoContainer), typeof(MyObjectBuilder_Cockpit), typeof(MyObjectBuilder_CryoChamber) };
                         var targetFunctionalFilter = new MyObjectBuilderType[] { typeof(MyObjectBuilder_Assembler), typeof(MyObjectBuilder_Refinery), typeof(MyObjectBuilder_Reactor), typeof(MyObjectBuilder_HydrogenEngine), typeof(MyObjectBuilder_OxygenGenerator), typeof(MyObjectBuilder_OxygenTank), typeof(MyObjectBuilder_GasTank) };
                         var targetConnectorFilter = new MyObjectBuilderType[] { typeof(MyObjectBuilder_ShipConnector) };
 

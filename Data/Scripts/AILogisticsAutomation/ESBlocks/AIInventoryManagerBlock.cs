@@ -850,7 +850,7 @@ namespace AILogisticsAutomation
                         continue;
                     scanedGrids.Add(connectedGrids[connector].Grid.EntityId);
 
-                    var ignoreMap = GetAIIgnoreMapBlock(connectedGrids[connector].Grid);
+                    var ignoreMap = GetAIIgnoreMapBlock(connector.CubeGrid);
                     var ignoreList = (ignoreMap?.FatBlock?.GameLogic as AIIgnoreMapBlock)?.Settings?.GetIgnoreBlocks() ?? new List<long>();
 
                     if (!Settings.GetIgnoreConnectors().Contains(connector.EntityId) && !ignoreList.Contains(connector.EntityId))

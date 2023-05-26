@@ -92,6 +92,7 @@
       <DestroySound>WepSmallWarheadExpl</DestroySound>
       <PCU>100</PCU>
       <IsAirTight>true</IsAirTight>
+      <DLC>Automatons</DLC>
     </Definition>
 
   </CubeBlocks>
