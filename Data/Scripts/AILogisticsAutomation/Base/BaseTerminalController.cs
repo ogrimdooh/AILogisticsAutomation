@@ -9,11 +9,124 @@ using VRage.Game.ModAPI;
 using VRageMath;
 using System.Linq;
 using VRage.Utils;
+using VRage.Game;
+using Sandbox.Definitions;
+using VRage.ObjectBuilders;
+using System.Collections.Concurrent;
+using Sandbox.Common.ObjectBuilders.Definitions;
 
 namespace AILogisticsAutomation
 {
     public abstract class BaseTerminalController<T, K> where T : BaseLogicComponent<K> where K : IMyCubeBlock
     {
+
+        public class PhysicalItemInfo
+        {
+
+            public MyDefinitionId Id { get; set; }
+            public string DisplayText { get; set; }
+            public int Index { get; set; }
+            public MyPhysicalItemDefinition ItemDefinition { get; set; }
+            public MyTerminalControlComboBoxItem ComboBoxItem { get; set; }
+
+        }
+
+        public class PhysicalItemTypeInfo
+        {
+
+            public MyObjectBuilderType Type { get; set; }
+            public string DisplayText { get; set; }
+            public int Index { get; set; }
+            public MyTerminalControlComboBoxItem ComboBoxItem { get; set; }
+            public ConcurrentDictionary<MyDefinitionId, PhysicalItemInfo> Items { get; set; } = new ConcurrentDictionary<MyDefinitionId, PhysicalItemInfo>();
+
+        }
+
+        protected ConcurrentDictionary<MyDefinitionId, PhysicalItemInfo> PhysicalItemIds { get; set; } = new ConcurrentDictionary<MyDefinitionId, PhysicalItemInfo>();
+        protected ConcurrentDictionary<MyObjectBuilderType, PhysicalItemTypeInfo> PhysicalItemTypes { get; set; } = new ConcurrentDictionary<MyObjectBuilderType, PhysicalItemTypeInfo>();
+
+        protected virtual MyObjectBuilderType[] GetPhysicalItemFilter()
+        {
+            return new MyObjectBuilderType[] { typeof(MyObjectBuilder_TreeObject), typeof(MyObjectBuilder_Package) };
+        }
+
+        protected void DoLoadPhysicalItemIds()
+        {
+            var ignoredTypes = GetPhysicalItemFilter();
+            PhysicalItemIds.Clear();
+            PhysicalItemTypes.Clear();
+            var list = MyDefinitionManager.Static.GetPhysicalItemDefinitions().Where(x => !ignoredTypes.Contains(x.Id.TypeId)).OrderBy(x => x.DisplayNameText).ToArray();
+            for (int i = 0; i < list.Length; i++)
+            {
+                var item = list[i];
+                if (!PhysicalItemIds.ContainsKey(item.Id))
+                {
+                    PhysicalItemIds[item.Id] = new PhysicalItemInfo()
+                    {
+                        Id = item.Id,
+                        ItemDefinition = item,
+                        DisplayText = item.DisplayNameText
+                    };
+                    if (!PhysicalItemTypes.ContainsKey(item.Id.TypeId))
+                    {
+                        PhysicalItemTypes[item.Id.TypeId] = new PhysicalItemTypeInfo()
+                        {
+                            Type = item.Id.TypeId,
+                            DisplayText = item.Id.TypeId.ToString().Replace(MyObjectBuilderType.LEGACY_TYPE_PREFIX, "")
+                        };
+                    }
+                }
+            }
+            // Sort Items
+            var ordenedIdList = PhysicalItemIds.OrderBy(x => x.Value.DisplayText).Select(x => x.Key).ToArray();
+            for (int i = 0; i < ordenedIdList.Length; i++)
+            {
+                PhysicalItemIds[ordenedIdList[i]].Index = i;
+            }
+            // Create Itens Combo Box
+            foreach (var id in PhysicalItemIds.Keys)
+            {
+                PhysicalItemIds[id].ComboBoxItem = new MyTerminalControlComboBoxItem()
+                {
+                    Key = PhysicalItemIds[id].Index,
+                    Value = MyStringId.GetOrCompute(PhysicalItemIds[id].DisplayText)
+                };
+            }
+            // Sort Types
+            var ordenedTypesList = PhysicalItemTypes.OrderBy(x => x.Value.DisplayText).Select(x => x.Key).ToArray();
+            for (int i = 0; i < ordenedTypesList.Length; i++)
+            {
+                PhysicalItemTypes[ordenedTypesList[i]].Index = i;
+            }
+            // Create Types Combo Box
+            foreach (var id in PhysicalItemTypes.Keys)
+            {
+                PhysicalItemTypes[id].ComboBoxItem = new MyTerminalControlComboBoxItem()
+                {
+                    Key = PhysicalItemTypes[id].Index,
+                    Value = MyStringId.GetOrCompute(PhysicalItemTypes[id].DisplayText)
+                };
+                // Create type item list
+                PhysicalItemTypes[id].Items.Clear();
+                var listaItens = PhysicalItemIds.Values.Where(x => x.Id.TypeId == id).OrderBy(x => x.Index).ToArray();
+                for (int i = 0; i < listaItens.Length; i++)
+                {
+                    var item = listaItens[i];
+                    PhysicalItemTypes[id].Items[item.Id] = new PhysicalItemInfo()
+                    {
+                        Id = item.Id,
+                        Index = i,
+                        DisplayText = item.DisplayText,
+                        ItemDefinition = item.ItemDefinition,
+                        ComboBoxItem = new MyTerminalControlComboBoxItem()
+                        {
+                            Key = i,
+                            Value = MyStringId.GetOrCompute(item.DisplayText)
+                        }
+                    };
+                }
+            }
+        }
 
         public const float SATURATION_DELTA = 0.8f;
         public const float VALUE_DELTA = 0.55f;

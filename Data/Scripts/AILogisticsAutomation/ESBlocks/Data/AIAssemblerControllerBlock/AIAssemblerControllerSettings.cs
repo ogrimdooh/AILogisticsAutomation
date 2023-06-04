@@ -12,6 +12,9 @@ namespace AILogisticsAutomation
 
         /* Interface Properties */
 
+        public string SelectedAddedMetaId { get; set; }
+        public long SelectedIgnoreEntityId { get; set; }
+        public long SelectedAddedIgnoreEntityId { get; set; }
 
         /* Data Properties */
 

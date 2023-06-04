@@ -5,6 +5,9 @@ using VRage.ObjectBuilders;
 using VRage.Game;
 using Sandbox.Common.ObjectBuilders;
 using VRage.Game.ModAPI;
+using System.Linq;
+using System.Collections.Generic;
+using Sandbox.Game.Entities;
 
 namespace AILogisticsAutomation
 {
@@ -14,7 +17,7 @@ namespace AILogisticsAutomation
 
         protected override bool GetHadWorkToDo()
         {
-            return false; // TODO
+            return Settings.DefaultStock.ValidIds.Any() || Settings.DefaultStock.ValidTypes.Any();
         }
 
         protected override bool GetIsValidToWork()
@@ -38,6 +41,27 @@ namespace AILogisticsAutomation
                 count += grid?.CountBlocks(new MyDefinitionId(typeof(MyObjectBuilder_OreDetector), item)) ?? 0;
             }
             return count;
+        }
+
+        public IEnumerable<MyCubeBlock> ValidInventories
+        {
+            get
+            {
+                return DoApplyBasicFilter(CubeGrid.Inventories, new long[] { });
+            }
+        }
+
+        private IEnumerable<MyCubeBlock> DoApplyBasicFilter(HashSet<MyCubeBlock> inventories, IEnumerable<long> customIgnoreList, bool ignoreFunctional = false)
+        {
+            return inventories.Where(x =>
+                (
+                    (x.IsFunctional && ((x as IMyFunctionalBlock)?.Enabled ?? true)) ||
+                    ignoreFunctional
+                ) &&
+                !x.BlockDefinition.Id.IsAssembler() &&
+                !customIgnoreList.Contains(x.EntityId) &&
+                !Settings.GetIgnoreAssembler().Contains(x.EntityId)
+            );
         }
 
         protected override void DoExecuteCycle()

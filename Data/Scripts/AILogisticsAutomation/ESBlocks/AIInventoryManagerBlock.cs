@@ -827,7 +827,12 @@ namespace AILogisticsAutomation
                     scanedGrids.Add(grid.EntityId);
 
                     var ignoreMap = GetAIIgnoreMapBlock(grid);
-                    var ignoreList = (ignoreMap?.FatBlock?.GameLogic as AIIgnoreMapBlock)?.Settings?.GetIgnoreBlocks() ?? new List<long>();
+                    var aiIgnoreBlock = (ignoreMap?.FatBlock?.GameLogic as AIIgnoreMapBlock);
+                    IEnumerable<long> ignoreList = new List<long>(); 
+                    if (aiIgnoreBlock != null && aiIgnoreBlock.IsWorking)
+                    {
+                        ignoreList = aiIgnoreBlock?.Settings.GetIgnoreBlocks();
+                    }
 
                     DoCheckInventoryList(DoApplyBasicFilter(grid.Inventories, ignoreList).ToArray(), ref reactors, ref gasGenerators, ref gasTanks, ref composters, ref fishTraps, ref refrigerators);
                     if (Settings.GetPullFromConnectedGrids())
@@ -851,7 +856,12 @@ namespace AILogisticsAutomation
                     scanedGrids.Add(connectedGrids[connector].Grid.EntityId);
 
                     var ignoreMap = GetAIIgnoreMapBlock(connector.CubeGrid);
-                    var ignoreList = (ignoreMap?.FatBlock?.GameLogic as AIIgnoreMapBlock)?.Settings?.GetIgnoreBlocks() ?? new List<long>();
+                    var aiIgnoreBlock = (ignoreMap?.FatBlock?.GameLogic as AIIgnoreMapBlock);
+                    IEnumerable<long> ignoreList = new List<long>();
+                    if (aiIgnoreBlock != null && aiIgnoreBlock.IsWorking)
+                    {
+                        ignoreList = aiIgnoreBlock?.Settings.GetIgnoreBlocks();
+                    }
 
                     if (!Settings.GetIgnoreConnectors().Contains(connector.EntityId) && !ignoreList.Contains(connector.EntityId))
                     {
