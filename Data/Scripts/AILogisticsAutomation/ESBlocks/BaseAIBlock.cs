@@ -90,7 +90,7 @@ namespace AILogisticsAutomation
             var validSubTypes = new string[] { "AIInventoryManager", "AIInventoryManagerReskin" };
             foreach (var item in validSubTypes)
             {
-                var block = Grid.GetBlocks(new MyDefinitionId(typeof(MyObjectBuilder_OreDetector), item)).FirstOrDefault();
+                var block = Grid.GetBlocks(new MyDefinitionId(typeof(MyObjectBuilder_OreDetector), item))?.FirstOrDefault();
                 if (block != null)
                     return block;
             }

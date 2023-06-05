@@ -21,7 +21,7 @@ namespace AILogisticsAutomation
             {
                 validIds = ValidIds.Select(x => new AIAssemblerControllerStockIdSettingsData() { id = x.Key, amount = x.Value }).ToArray(),
                 validTypes = ValidTypes.Select(x => new AIAssemblerControllerStockTypeSettingsData() { type = x.Key.ToString(), amount = x.Value }).ToArray(),
-                ignoreIds = IgnoreIds.Cast<SerializableDefinitionId>().ToArray(),
+                ignoreIds = IgnoreIds.Select(x => (SerializableDefinitionId)x).ToArray(),
                 ignoreTypes = IgnoreTypes.Select(x => x.ToString()).ToArray()
             };
             return data;

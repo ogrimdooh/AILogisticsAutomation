@@ -42,8 +42,8 @@ namespace AILogisticsAutomation
 
         }
 
-        protected ConcurrentDictionary<MyDefinitionId, PhysicalItemInfo> PhysicalItemIds { get; set; } = new ConcurrentDictionary<MyDefinitionId, PhysicalItemInfo>();
-        protected ConcurrentDictionary<MyObjectBuilderType, PhysicalItemTypeInfo> PhysicalItemTypes { get; set; } = new ConcurrentDictionary<MyObjectBuilderType, PhysicalItemTypeInfo>();
+        public ConcurrentDictionary<MyDefinitionId, PhysicalItemInfo> PhysicalItemIds { get; set; } = new ConcurrentDictionary<MyDefinitionId, PhysicalItemInfo>();
+        public ConcurrentDictionary<MyObjectBuilderType, PhysicalItemTypeInfo> PhysicalItemTypes { get; set; } = new ConcurrentDictionary<MyObjectBuilderType, PhysicalItemTypeInfo>();
 
         protected virtual MyObjectBuilderType[] GetPhysicalItemFilter()
         {
@@ -382,6 +382,23 @@ namespace AILogisticsAutomation
             onOffSwitch.SupportsMultipleBlocks = supMultiple;
             CustomControls.Add(onOffSwitch);
             return onOffSwitch;
+        }
+
+        protected IMyTerminalControlTextbox CreateTextbox(string name, string title, Func<IMyTerminalBlock, bool> enabled,
+            Func<IMyTerminalBlock, StringBuilder> getter, Action<IMyTerminalBlock, StringBuilder> setter, bool supMultiple = false,
+            string tooltip = null, Func<IMyTerminalBlock, bool> visible = null)
+        {
+            var textbox = MyAPIGateway.TerminalControls.CreateControl<IMyTerminalControlTextbox, K>(name);
+            textbox.Title = MyStringId.GetOrCompute(title);
+            textbox.Tooltip = MyStringId.GetOrCompute(tooltip);
+            textbox.Enabled = enabled;
+            if (visible != null)
+                textbox.Visible = visible;
+            textbox.Getter = getter;
+            textbox.Setter = setter;
+            textbox.SupportsMultipleBlocks = supMultiple;
+            CustomControls.Add(textbox);
+            return textbox;
         }
 
         protected IMyTerminalControlOnOffSwitch CreateOnOffSwitch(string name, string title, Func<IMyTerminalBlock, bool> enabled,

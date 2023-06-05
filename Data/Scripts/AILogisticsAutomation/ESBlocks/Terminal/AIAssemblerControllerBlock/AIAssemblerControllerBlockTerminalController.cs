@@ -12,6 +12,7 @@ using System.Collections.Concurrent;
 using Sandbox.Definitions;
 using Sandbox.Common.ObjectBuilders;
 using Sandbox.Common.ObjectBuilders.Definitions;
+using System.Text;
 
 namespace AILogisticsAutomation
 {
@@ -130,20 +131,32 @@ namespace AILogisticsAutomation
         }
 
         public const float MIN_META = 10;
-        public const float MAX_META = 100000;
+        public const float MAX_META = 10000;
         public const float DEFAULT_META = 1000;
 
-        protected ConcurrentDictionary<MyDefinitionId, AssemblerDefinitionInfo> Assemblers { get; set; } = new ConcurrentDictionary<MyDefinitionId, AssemblerDefinitionInfo>();
-        protected HashSet<MyDefinitionId> ValidIds { get; set; } = new HashSet<MyDefinitionId>();
-        protected HashSet<MyObjectBuilderType> ValidTypes { get; set; } = new HashSet<MyObjectBuilderType>();
+        public const float MIN_CONDITION_VALUE = 10;
+        public const float MAX_CONDITION_VALUE = 10000;
+        public const float DEFAULT_CONDITION_VALUE = 1000;
+
+        public ConcurrentDictionary<MyDefinitionId, AssemblerDefinitionInfo> Assemblers { get; set; } = new ConcurrentDictionary<MyDefinitionId, AssemblerDefinitionInfo>();
+        public HashSet<MyDefinitionId> ValidIds { get; set; } = new HashSet<MyDefinitionId>();
+        public HashSet<MyObjectBuilderType> ValidTypes { get; set; } = new HashSet<MyObjectBuilderType>();
                 
         protected int selectedMetaType = 0;
         protected int selectedMetaGroup = 0;
         protected int selectedMetaItemType = 0;
         protected int selectedMetaItemId = 0;
         protected float metaValue = DEFAULT_META;
-
-        protected int selectedMetaBlockType = 0;
+        protected int selectedPriorityItemType = 0;
+        protected int selectedPriorityItemId = 0;
+        protected int selectedTriggerConditionQueryType = 0;
+        protected int selectedTriggerConditionItemType = 0;
+        protected int selectedTriggerConditionItemId = 0;
+        protected int selectedTriggerConditionOperationType = 0;
+        protected float selectedTriggerConditionValue = DEFAULT_CONDITION_VALUE;
+        protected int selectedTriggerActionItemType = 0;
+        protected int selectedTriggerActionItemId = 0;
+        protected float selectedTriggerActionValue = DEFAULT_META;
 
         protected override bool CanAddControls(IMyTerminalBlock block)
         {
@@ -195,6 +208,18 @@ namespace AILogisticsAutomation
                 return system != null && isWorking.Invoke(block) && system.Settings.GetEnabled();
             };
 
+            Func<IMyTerminalBlock, bool> isWorkingEnabledAndDefaultOreSelected = (block) =>
+            {
+                var system = GetSystem(block);
+                return system != null && isWorkingAndEnabled.Invoke(block) && system.Settings.DefaultPriority.Contains(system.Settings.SelectedDefaultPriority);
+            };
+
+            Func<IMyTerminalBlock, bool> isWorkingEnabledAndTriggerSelected = (block) =>
+            {
+                var system = GetSystem(block);
+                return system != null && isWorkingAndEnabled.Invoke(block) && system.Settings.GetTriggers().ContainsKey(system.Settings.SelectedTriggerId);
+            };
+            
             if (!MyAPIGateway.Session.IsServer)
             {
 
@@ -616,24 +641,20 @@ namespace AILogisticsAutomation
 
                         foreach (var inventory in targetGrid.Inventories.Where(x => targetFilter.Contains(x.BlockDefinition.Id.TypeId)))
                         {
-                            var added = system.Settings.GetDefinitions().ContainsKey(inventory.EntityId);
-                            if (!added)
+                            if (!ignoreBlocks.Contains(inventory.EntityId))
                             {
-                                if (!ignoreBlocks.Contains(inventory.EntityId))
+
+                                var name = string.Format("{1} - ({0})", inventory.BlockDefinition.DisplayNameText, inventory.DisplayNameText);
+                                var item = new MyTerminalControlListBoxItem(MyStringId.GetOrCompute(name), MyStringId.GetOrCompute(name), inventory.EntityId);
+
+                                list.Add(item);
+
+                                if (system.Settings.SelectedIgnoreEntityId == inventory.EntityId)
                                 {
-
-                                    var name = string.Format("{1} - ({0})", inventory.BlockDefinition.DisplayNameText, inventory.DisplayNameText);
-                                    var item = new MyTerminalControlListBoxItem(MyStringId.GetOrCompute(name), MyStringId.GetOrCompute(name), inventory.EntityId);
-
-                                    list.Add(item);
-
-                                    if (system.Settings.SelectedIgnoreEntityId == inventory.EntityId)
-                                    {
-                                        selectedList.Add(item);
-                                        system.Settings.SelectedIgnoreEntityId = inventory.EntityId;
-                                    }
-
+                                    selectedList.Add(item);
+                                    system.Settings.SelectedIgnoreEntityId = inventory.EntityId;
                                 }
+
                             }
                         }
                     }
@@ -763,6 +784,803 @@ namespace AILogisticsAutomation
                             UpdateVisual(block);
                         }
                         system.Settings.SelectedAddedIgnoreEntityId = 0;
+                    }
+                }
+            );
+
+            CreateTerminalLabel("DefaultCompsLabel", "Default Produce Priority");
+
+            CreateCombobox(
+                "ProducePriorityType",
+                "Priority Item Type",
+                isWorking,
+                (block) =>
+                {
+                    var system = GetSystem(block);
+                    if (system == null) return 0;
+                    else return selectedPriorityItemType;
+                },
+                (block, value) =>
+                {
+                    var system = GetSystem(block);
+                    if (system != null)
+                    {
+                        selectedPriorityItemType = (int)value;
+                        if (PhysicalItemTypes.Values.Any(x => x.Index == selectedPriorityItemType))
+                        {
+                            var typeToUse = PhysicalItemTypes.Values.FirstOrDefault(x => x.Index == selectedPriorityItemType);
+                            selectedPriorityItemId = typeToUse.Items.Min(x => x.Value.Index);
+                        }
+                        else
+                            selectedPriorityItemId = 0;
+                        UpdateVisual(block);
+                    }
+                },
+                (list) =>
+                {
+                    list.AddRange(PhysicalItemTypes.Values.Where(x => ValidTypes.Contains(x.Type)).OrderBy(x => x.Index).Select(x => x.ComboBoxItem));
+                },
+                tooltip: "Select a priority item Type."
+            );
+
+            CreateCombobox(
+                "ProducePriorityItemId",
+                "Priority Item Id",
+                (block) =>
+                {
+                    var system = GetSystem(block);
+                    if (system != null)
+                        return isWorking.Invoke(block) && selectedPriorityItemType >= 0;
+                    return false;
+                },
+                (block) =>
+                {
+                    var system = GetSystem(block);
+                    if (system == null) return 0;
+                    else return selectedPriorityItemId;
+                },
+                (block, value) =>
+                {
+                    var system = GetSystem(block);
+                    if (system != null)
+                    {
+                        selectedPriorityItemId = (int)value;
+                    }
+                },
+                (list) =>
+                {
+                    if (PhysicalItemTypes.Values.Any(x => x.Index == selectedPriorityItemType))
+                    {
+                        var typeToUse = PhysicalItemTypes.Values.FirstOrDefault(x => x.Index == selectedPriorityItemType);
+                        list.AddRange(typeToUse.Items.Values.Where(x => ValidIds.Contains(x.Id)).OrderBy(x => x.Index).Select(x => x.ComboBoxItem));
+                    }
+                },
+                tooltip: "Select a priority item Id."
+            );
+
+            /* Button Add Filter */
+            CreateTerminalButton(
+                "AddedSelectedDefaultPriority",
+                "Added Selected Item",
+                isWorkingAndEnabled,
+                (block) =>
+                {
+                    var system = GetSystem(block);
+                    if (system != null)
+                    {
+                        var typeToUse = PhysicalItemTypes.Values.FirstOrDefault(x => x.Index == selectedPriorityItemType);
+                        if (typeToUse.Items.Values.Any(x => x.Index == selectedPriorityItemId))
+                        {
+                            var itemToUse = typeToUse.Items.Values.FirstOrDefault(x => x.Index == selectedPriorityItemId);
+                            if (!system.Settings.DefaultPriority.Contains(itemToUse.Id))
+                            {
+                                system.Settings.DefaultPriority.AddPriority(itemToUse.Id);
+                                system.SendToServer("DefaultPriority", "ADD", itemToUse.Id.ToString(), null);
+                                UpdateVisual(block);
+                            }
+                        }
+                    }
+                }
+            );
+
+            CreateListbox(
+                "DefaultPriorityList",
+                "Produce Priority",
+                isWorkingAndEnabled,
+                (block, list, selectedList) =>
+                {
+                    var system = GetSystem(block);
+                    if (system != null)
+                    {
+                        foreach (var itemId in system.Settings.DefaultPriority.GetAll())
+                        {
+                            if (PhysicalItemTypes.ContainsKey(itemId.TypeId))
+                            {
+                                var typeToUse = PhysicalItemTypes[itemId.TypeId];
+                                if (typeToUse.Items.ContainsKey(itemId))
+                                {
+                                    var itemToUse = typeToUse.Items[itemId];
+                                    var desc = $"{itemToUse.DisplayText} [{typeToUse.DisplayText}]";
+                                    var item = new MyTerminalControlListBoxItem(MyStringId.GetOrCompute(desc), MyStringId.GetOrCompute(desc), (object)itemId);
+                                    list.Add(item);
+                                    if (itemId == system.Settings.SelectedDefaultPriority)
+                                        selectedList.Add(item);
+                                }
+                            }
+                        }
+                    }
+                },
+                (block, selectedList) =>
+                {
+                    if (selectedList.Count == 0)
+                        return;
+
+                    var system = GetSystem(block);
+                    if (system != null)
+                    {
+                        system.Settings.SelectedDefaultPriority = (MyDefinitionId)selectedList[0].UserData;
+                        UpdateVisual(block);
+                    }
+                },
+                tooltip: "List of the produce priority to all assemblers."
+            );
+
+            /* Button Move Up */
+            CreateTerminalButton(
+                "MoveUpSelectedDefaultPriority",
+                "Move Up Selected Item",
+                isWorkingEnabledAndDefaultOreSelected,
+                (block) =>
+                {
+                    var system = GetSystem(block);
+                    if (system != null)
+                    {
+                        if (system.Settings.DefaultPriority.Contains(system.Settings.SelectedDefaultPriority))
+                        {
+                            system.Settings.DefaultPriority.MoveUp(system.Settings.SelectedDefaultPriority);
+                            system.SendToServer("DefaultPriority", "UP", system.Settings.SelectedDefaultPriority.ToString(), null);
+                            UpdateVisual(block);
+                        }
+                    }
+                }
+            );
+
+            /* Button Move Down */
+            CreateTerminalButton(
+                "MoveDownSelectedDefaultPriority",
+                "Move Down Selected Ore",
+                isWorkingEnabledAndDefaultOreSelected,
+                (block) =>
+                {
+                    var system = GetSystem(block);
+                    if (system != null)
+                    {
+                        if (system.Settings.DefaultPriority.Contains(system.Settings.SelectedDefaultPriority))
+                        {
+                            system.Settings.DefaultPriority.MoveDown(system.Settings.SelectedDefaultPriority);
+                            system.SendToServer("DefaultPriority", "DOWN", system.Settings.SelectedDefaultPriority.ToString(), null);
+                            UpdateVisual(block);
+                        }
+                    }
+                }
+            );
+
+            /* Button Remove */
+            CreateTerminalButton(
+                "RemoveSelectedDefaultPriority",
+                "Remove Selected Ore",
+                isWorkingEnabledAndDefaultOreSelected,
+                (block) =>
+                {
+                    var system = GetSystem(block);
+                    if (system != null)
+                    {
+                        if (system.Settings.DefaultPriority.Contains(system.Settings.SelectedDefaultPriority))
+                        {
+                            system.Settings.DefaultPriority.RemovePriority(system.Settings.SelectedDefaultPriority);
+                            system.SendToServer("DefaultPriority", "DEL", system.Settings.SelectedDefaultPriority.ToString(), null);
+                            UpdateVisual(block);
+                        }
+                    }
+                }
+            );
+
+            CreateTerminalLabel("DefaultCompsLabel", "Produce Triggers");
+
+            /* Button Add Trigger */
+            CreateTerminalButton(
+                "AddProduceTrigger",
+                "Add Produce Trigger",
+                isWorkingAndEnabled,
+                (block) =>
+                {
+                    var system = GetSystem(block);
+                    if (system != null)
+                    {
+                        var triggerId = MyUtils.GetRandomLong();
+                        system.Settings.GetTriggers()[triggerId] = new AIAssemblerControllerTriggerSettings()
+                        {
+                            TriggerId = triggerId
+                        };
+                        system.SendToServer("triggers", "ADD", triggerId.ToString(), null);
+                        UpdateVisual(block);
+                    }
+                }
+            );
+
+            CreateListbox(
+                "ProduceTriggerList",
+                "Produce Triggers",
+                isWorkingAndEnabled,
+                (block, list, selectedList) =>
+                {
+                    var system = GetSystem(block);
+                    if (system != null)
+                    {
+                        int i = 1;
+                        foreach (var trigger in system.Settings.GetTriggers().Values)
+                        {
+                            var desc = $"Trigger {i} [{trigger.Name}]";
+                            var item = new MyTerminalControlListBoxItem(MyStringId.GetOrCompute(desc), MyStringId.GetOrCompute(desc), (object)trigger.TriggerId);
+                            list.Add(item);
+                            if (trigger.TriggerId == system.Settings.SelectedTriggerId)
+                                selectedList.Add(item);
+                            i++;
+                        }
+                    }
+                },
+                (block, selectedList) =>
+                {
+                    if (selectedList.Count == 0)
+                        return;
+
+                    var system = GetSystem(block);
+                    if (system != null)
+                    {
+                        system.Settings.SelectedTriggerId = (long)selectedList[0].UserData;
+                        UpdateVisual(block);
+                    }
+                },
+                tooltip: "List of the produce triggers to all assemblers."
+            );
+
+            /* Button Add Trigger */
+            CreateTerminalButton(
+                "DelProduceTrigger",
+                "Remove Selected Trigger",
+                isWorkingEnabledAndTriggerSelected,
+                (block) =>
+                {
+                    var system = GetSystem(block);
+                    if (system != null)
+                    {
+                        if (system.Settings.GetTriggers().ContainsKey(system.Settings.SelectedTriggerId))
+                        {
+                            system.Settings.GetTriggers().Remove(system.Settings.SelectedTriggerId);
+                            system.SendToServer("triggers", "DEL", system.Settings.SelectedTriggerId.ToString(), null);
+                            UpdateVisual(block);
+                        }
+                    }
+                }
+            );
+
+            CreateTextbox(
+                "TriggerNameTextBox",
+                "Trigger Name",
+                isWorkingEnabledAndTriggerSelected,
+                (block) =>
+                {
+                    var value = new StringBuilder();
+                    var system = GetSystem(block);
+                    if (system != null)
+                    {
+                        if (system.Settings.GetTriggers().ContainsKey(system.Settings.SelectedTriggerId))
+                        {
+                            var targetTrigger = system.Settings.GetTriggers()[system.Settings.SelectedTriggerId];
+                            value.Append(targetTrigger.Name);
+                        }
+                    }
+                    return value;
+                },
+                (block, value) =>
+                {
+                    var system = GetSystem(block);
+                    if (system != null)
+                    {
+                        if (system.Settings.GetTriggers().ContainsKey(system.Settings.SelectedTriggerId))
+                        {
+                            var targetTrigger = system.Settings.GetTriggers()[system.Settings.SelectedTriggerId];
+                            targetTrigger.Name = value.ToString();
+                            system.SendToServer("Name", "SET", targetTrigger.Name, system.Settings.SelectedTriggerId.ToString());
+                            UpdateVisual(block);
+                        }
+                    }
+                },
+                tooltip: "The name of the selected trigger."
+            );
+
+            CreateTerminalLabel("SelectedTriggerConditionLabel", "Selected Trigger Condition");
+
+            CreateCombobox(
+                "TriggerConditionQueryType",
+                "Query Type",
+                isWorkingEnabledAndTriggerSelected,
+                (block) =>
+                {
+                    var system = GetSystem(block);
+                    if (system == null) return 0;
+                    else return selectedTriggerConditionQueryType;
+                },
+                (block, value) =>
+                {
+                    var system = GetSystem(block);
+                    if (system != null)
+                    {
+                        selectedTriggerConditionQueryType = (int)value;
+                        UpdateVisual(block);
+                    }
+                },
+                (list) =>
+                {
+                    list.Add(new MyTerminalControlComboBoxItem() { Key = 0, Value = MyStringId.GetOrCompute("AND") });
+                    list.Add(new MyTerminalControlComboBoxItem() { Key = 1, Value = MyStringId.GetOrCompute("OR") });
+                },
+                tooltip: "Select a trigger condition query type."
+            );
+
+            CreateCombobox(
+                "TriggerConditionItemType",
+                "Condition Item Type",
+                isWorkingEnabledAndTriggerSelected,
+                (block) =>
+                {
+                    var system = GetSystem(block);
+                    if (system == null) return 0;
+                    else return selectedTriggerConditionItemType;
+                },
+                (block, value) =>
+                {
+                    var system = GetSystem(block);
+                    if (system != null)
+                    {
+                        selectedTriggerConditionItemType = (int)value;
+                        if (PhysicalItemTypes.Values.Any(x => x.Index == selectedTriggerConditionItemType))
+                        {
+                            var typeToUse = PhysicalItemTypes.Values.FirstOrDefault(x => x.Index == selectedTriggerConditionItemType);
+                            selectedTriggerConditionItemId = typeToUse.Items.Min(x => x.Value.Index);
+                        }
+                        else
+                            selectedTriggerConditionItemId = 0;
+                        UpdateVisual(block);
+                    }
+                },
+                (list) =>
+                {
+                    list.AddRange(PhysicalItemTypes.Values.Select(x => x.ComboBoxItem));
+                },
+                tooltip: "Select a trigger condition item Type."
+            );
+
+            CreateCombobox(
+                "TriggerConditionItemId",
+                "Condition Item Id",
+                (block) =>
+                {
+                    var system = GetSystem(block);
+                    if (system != null)
+                        return isWorkingEnabledAndTriggerSelected.Invoke(block) && selectedTriggerConditionItemType >= 0;
+                    return false;
+                },
+                (block) =>
+                {
+                    var system = GetSystem(block);
+                    if (system == null) return 0;
+                    else return selectedTriggerConditionItemId;
+                },
+                (block, value) =>
+                {
+                    var system = GetSystem(block);
+                    if (system != null)
+                    {
+                        selectedTriggerConditionItemId = (int)value;
+                    }
+                },
+                (list) =>
+                {
+                    if (PhysicalItemTypes.Values.Any(x => x.Index == selectedTriggerConditionItemType))
+                    {
+                        var typeToUse = PhysicalItemTypes.Values.FirstOrDefault(x => x.Index == selectedTriggerConditionItemType);
+                        list.AddRange(typeToUse.Items.Values.Select(x => x.ComboBoxItem));
+                    }
+                },
+                tooltip: "Select a trigger condition item Id."
+            );
+
+            CreateCombobox(
+                "TriggerConditionOperationType",
+                "Operation Type",
+                isWorkingEnabledAndTriggerSelected,
+                (block) =>
+                {
+                    var system = GetSystem(block);
+                    if (system == null) return 0;
+                    else return selectedTriggerConditionOperationType;
+                },
+                (block, value) =>
+                {
+                    var system = GetSystem(block);
+                    if (system != null)
+                    {
+                        selectedTriggerConditionOperationType = (int)value;
+                        UpdateVisual(block);
+                    }
+                },
+                (list) =>
+                {
+                    list.Add(new MyTerminalControlComboBoxItem() { Key = 0, Value = MyStringId.GetOrCompute("Greater") });
+                    list.Add(new MyTerminalControlComboBoxItem() { Key = 1, Value = MyStringId.GetOrCompute("Less") });
+                },
+                tooltip: "Select a trigger condition operation type."
+            );
+
+            CreateSlider(
+                "SliderTriggerConditionValue",
+                "Condition Amount",
+                isWorkingEnabledAndTriggerSelected,
+                (block) =>
+                {
+                    var system = GetSystem(block);
+                    return system != null ? selectedTriggerConditionValue : MIN_CONDITION_VALUE;
+                },
+                (block, value) =>
+                {
+                    var system = GetSystem(block);
+                    if (system != null)
+                    {
+                        selectedTriggerConditionValue = value;
+                    }
+                },
+                (block, val) =>
+                {
+                    var system = GetSystem(block);
+                    if (system != null)
+                    {
+                        val.Append((int)selectedTriggerConditionValue);
+                    }
+                },
+                new VRageMath.Vector2(MIN_CONDITION_VALUE, MAX_CONDITION_VALUE),
+                tooltip: "Set a trigger condition amount value."
+            );
+
+            /* Button Add Trigger */
+            CreateTerminalButton(
+                "AddTriggerCondition",
+                "Add Condition",
+                isWorkingEnabledAndTriggerSelected,
+                (block) =>
+                {
+                    var system = GetSystem(block);
+                    if (system != null)
+                    {
+                        if (system.Settings.GetTriggers().ContainsKey(system.Settings.SelectedTriggerId))
+                        {
+                            var typeToUse = PhysicalItemTypes.Values.FirstOrDefault(x => x.Index == selectedTriggerConditionItemType);
+                            if (typeToUse != null)
+                            {
+                                var itemToUse = typeToUse.Items.Values.FirstOrDefault(x => x.Index == selectedTriggerConditionItemId);
+                                if (itemToUse != null)
+                                {
+                                    var targetTrigger = system.Settings.GetTriggers()[system.Settings.SelectedTriggerId];
+                                    var cond = new AIAssemblerControllerTriggerConditionSettings()
+                                    {
+                                        QueryType = selectedTriggerConditionQueryType,
+                                        Id = itemToUse.Id,
+                                        OperationType = selectedTriggerConditionOperationType,
+                                        Value = (int)selectedTriggerConditionValue,
+                                        Index = targetTrigger.Conditions.Any() ? targetTrigger.Conditions.Max(x => x.Index) + 1 : 1
+                                    };
+                                    targetTrigger.Conditions.Add(cond);
+                                    var data = $"{cond.QueryType};{cond.Id};{cond.OperationType};{cond.Value};{cond.Index}";
+                                    system.SendToServer("Conditions", "ADD", data, system.Settings.SelectedTriggerId.ToString());
+                                    UpdateVisual(block);
+                                }
+                            }
+                        }
+                    }
+                }
+            );
+
+            CreateListbox(
+                "TriggerConditionList",
+                "Selected Trigger Conditions",
+                isWorkingEnabledAndTriggerSelected,
+                (block, list, selectedList) =>
+                {
+                    var system = GetSystem(block);
+                    if (system != null)
+                    {
+                        if (system.Settings.GetTriggers().ContainsKey(system.Settings.SelectedTriggerId))
+                        {
+                            var targetTrigger = system.Settings.GetTriggers()[system.Settings.SelectedTriggerId];
+                            foreach (var condition in targetTrigger.Conditions)
+                            {
+                                if (PhysicalItemIds.ContainsKey(condition.Id))
+                                {
+                                    var itemToUse = PhysicalItemIds[condition.Id];
+                                    var query = condition.QueryType == 0 ? "AND" : "OR";
+                                    var operation = condition.OperationType == 0 ? ">" : "<";
+                                    var desc = $"{query} [{itemToUse.DisplayText}] {operation} [{condition.Value}]";
+                                    var item = new MyTerminalControlListBoxItem(MyStringId.GetOrCompute(desc), MyStringId.GetOrCompute(desc), (object)condition.Index);
+                                    list.Add(item);
+                                    if (condition.Index == system.Settings.SelectedTriggerConditionIndex)
+                                        selectedList.Add(item);
+                                }
+                            }
+                        }
+                    }
+                },
+                (block, selectedList) =>
+                {
+                    if (selectedList.Count == 0)
+                        return;
+
+                    var system = GetSystem(block);
+                    if (system != null)
+                    {
+                        system.Settings.SelectedTriggerConditionIndex = (int)selectedList[0].UserData;
+                        UpdateVisual(block);
+                    }
+                },
+                tooltip: "List of the conditions of selected trigger."
+            );
+
+            /* Button Add Trigger */
+            CreateTerminalButton(
+                "DelConditionTrigger",
+                "Remove Selected Condition",
+                (block) =>
+                {
+                    var system = GetSystem(block);
+                    if (system != null)
+                    {
+                        if (isWorkingEnabledAndTriggerSelected.Invoke(block))
+                        {
+                            var targetTrigger = system.Settings.GetTriggers()[system.Settings.SelectedTriggerId];
+                            return targetTrigger.Conditions.Any(x => x.Index == system.Settings.SelectedTriggerConditionIndex);
+                        }
+                    }
+                    return false;
+                },
+                (block) =>
+                {
+                    var system = GetSystem(block);
+                    if (system != null)
+                    {
+                        if (system.Settings.GetTriggers().ContainsKey(system.Settings.SelectedTriggerId))
+                        {
+                            var targetTrigger = system.Settings.GetTriggers()[system.Settings.SelectedTriggerId];
+                            var condition = targetTrigger.Conditions.FirstOrDefault(x => x.Index == system.Settings.SelectedTriggerConditionIndex);
+                            if (condition != null)
+                            {
+                                targetTrigger.Conditions.Remove(condition);
+                                system.SendToServer("Conditions", "DEL", system.Settings.SelectedTriggerConditionIndex.ToString(), system.Settings.SelectedTriggerId.ToString());
+                                UpdateVisual(block);
+                            }
+                        }
+                    }
+                }
+            );
+
+            CreateTerminalLabel("SelectedTriggerActionsLabel", "Selected Trigger Actions");
+
+            CreateCombobox(
+                "TriggerActionItemType",
+                "Action Item Type",
+                isWorkingEnabledAndTriggerSelected,
+                (block) =>
+                {
+                    var system = GetSystem(block);
+                    if (system == null) return 0;
+                    else return selectedTriggerActionItemType;
+                },
+                (block, value) =>
+                {
+                    var system = GetSystem(block);
+                    if (system != null)
+                    {
+                        selectedTriggerActionItemType = (int)value;
+                        if (PhysicalItemTypes.Values.Any(x => x.Index == selectedTriggerActionItemType))
+                        {
+                            var typeToUse = PhysicalItemTypes.Values.FirstOrDefault(x => x.Index == selectedTriggerActionItemType);
+                            selectedTriggerActionItemId = typeToUse.Items.Min(x => x.Value.Index);
+                        }
+                        else
+                            selectedTriggerActionItemId = 0;
+                        UpdateVisual(block);
+                    }
+                },
+                (list) =>
+                {
+                    list.AddRange(PhysicalItemTypes.Values.Where(x => ValidTypes.Contains(x.Type)).OrderBy(x => x.Index).Select(x => x.ComboBoxItem));
+                },
+                tooltip: "Select a trigger action item Type."
+            );
+
+            CreateCombobox(
+                "TriggerActionItemId",
+                "Action Item Id",
+                (block) =>
+                {
+                    var system = GetSystem(block);
+                    if (system != null)
+                        return isWorkingEnabledAndTriggerSelected.Invoke(block) && selectedTriggerActionItemType >= 0;
+                    return false;
+                },
+                (block) =>
+                {
+                    var system = GetSystem(block);
+                    if (system == null) return 0;
+                    else return selectedTriggerActionItemId;
+                },
+                (block, value) =>
+                {
+                    var system = GetSystem(block);
+                    if (system != null)
+                    {
+                        selectedTriggerActionItemId = (int)value;
+                    }
+                },
+                (list) =>
+                {
+                    if (PhysicalItemTypes.Values.Any(x => x.Index == selectedTriggerActionItemType))
+                    {
+                        var typeToUse = PhysicalItemTypes.Values.FirstOrDefault(x => x.Index == selectedTriggerActionItemType);
+                        list.AddRange(typeToUse.Items.Values.Where(x => ValidIds.Contains(x.Id)).OrderBy(x => x.Index).Select(x => x.ComboBoxItem));
+                    }
+                },
+                tooltip: "Select a trigger action item Id."
+            );
+
+            CreateSlider(
+                "SliderTriggerActionValue",
+                "Action Amount",
+                isWorkingEnabledAndTriggerSelected,
+                (block) =>
+                {
+                    var system = GetSystem(block);
+                    return system != null ? selectedTriggerActionValue : MIN_META;
+                },
+                (block, value) =>
+                {
+                    var system = GetSystem(block);
+                    if (system != null)
+                    {
+                        selectedTriggerActionValue = value;
+                    }
+                },
+                (block, val) =>
+                {
+                    var system = GetSystem(block);
+                    if (system != null)
+                    {
+                        val.Append((int)selectedTriggerActionValue);
+                    }
+                },
+                new VRageMath.Vector2(MIN_META, MAX_META),
+                tooltip: "Set a trigger action amount value."
+            );
+
+            /* Button Add Trigger */
+            CreateTerminalButton(
+                "AddTriggerAction",
+                "Add Action",
+                isWorkingEnabledAndTriggerSelected,
+                (block) =>
+                {
+                    var system = GetSystem(block);
+                    if (system != null)
+                    {
+                        if (system.Settings.GetTriggers().ContainsKey(system.Settings.SelectedTriggerId))
+                        {
+                            var typeToUse = PhysicalItemTypes.Values.FirstOrDefault(x => x.Index == selectedTriggerActionItemType);
+                            if (typeToUse != null)
+                            {
+                                var itemToUse = typeToUse.Items.Values.FirstOrDefault(x => x.Index == selectedTriggerActionItemId);
+                                if (itemToUse != null)
+                                {
+                                    var targetTrigger = system.Settings.GetTriggers()[system.Settings.SelectedTriggerId];
+                                    var cond = new AIAssemblerControllerTriggerActionSettings()
+                                    {
+                                        Id = itemToUse.Id,
+                                        Value = (int)selectedTriggerActionValue,
+                                        Index = targetTrigger.Actions.Any() ? targetTrigger.Actions.Max(x => x.Index) + 1 : 1
+                                    };
+                                    targetTrigger.Actions.Add(cond);
+                                    var data = $"{cond.Id};{cond.Value};{cond.Index}";
+                                    system.SendToServer("Actions", "ADD", data, system.Settings.SelectedTriggerId.ToString());
+                                    UpdateVisual(block);
+                                }
+                            }
+                        }
+                    }
+                }
+            );
+
+            CreateListbox(
+                "TriggerActionList",
+                "Selected Trigger Actions",
+                isWorkingEnabledAndTriggerSelected,
+                (block, list, selectedList) =>
+                {
+                    var system = GetSystem(block);
+                    if (system != null)
+                    {
+                        if (system.Settings.GetTriggers().ContainsKey(system.Settings.SelectedTriggerId))
+                        {
+                            var targetTrigger = system.Settings.GetTriggers()[system.Settings.SelectedTriggerId];
+                            foreach (var action in targetTrigger.Actions)
+                            {
+                                if (PhysicalItemIds.ContainsKey(action.Id))
+                                {
+                                    var itemToUse = PhysicalItemIds[action.Id];
+                                    var desc = $"[{action.Value}] {itemToUse.DisplayText}";
+                                    var item = new MyTerminalControlListBoxItem(MyStringId.GetOrCompute(desc), MyStringId.GetOrCompute(desc), (object)action.Index);
+                                    list.Add(item);
+                                    if (action.Index == system.Settings.SelectedTriggerActionIndex)
+                                        selectedList.Add(item);
+                                }
+                            }
+                        }
+                    }
+                },
+                (block, selectedList) =>
+                {
+                    if (selectedList.Count == 0)
+                        return;
+
+                    var system = GetSystem(block);
+                    if (system != null)
+                    {
+                        system.Settings.SelectedTriggerActionIndex = (int)selectedList[0].UserData;
+                        UpdateVisual(block);
+                    }
+                },
+                tooltip: "List of the actions of selected trigger."
+            );
+
+            /* Button Add Trigger */
+            CreateTerminalButton(
+                "DelActionTrigger",
+                "Remove Selected Action",
+                (block) =>
+                {
+                    var system = GetSystem(block);
+                    if (system != null)
+                    {
+                        if (isWorkingEnabledAndTriggerSelected.Invoke(block))
+                        {
+                            var targetTrigger = system.Settings.GetTriggers()[system.Settings.SelectedTriggerId];
+                            return targetTrigger.Actions.Any(x => x.Index == system.Settings.SelectedTriggerActionIndex);
+                        }
+                    }
+                    return false;
+                },
+                (block) =>
+                {
+                    var system = GetSystem(block);
+                    if (system != null)
+                    {
+                        if (system.Settings.GetTriggers().ContainsKey(system.Settings.SelectedTriggerId))
+                        {
+                            var targetTrigger = system.Settings.GetTriggers()[system.Settings.SelectedTriggerId];
+                            var action = targetTrigger.Actions.FirstOrDefault(x => x.Index == system.Settings.SelectedTriggerActionIndex);
+                            if (action != null)
+                            {
+                                targetTrigger.Actions.Remove(action);
+                                system.SendToServer("Actions", "DEL", system.Settings.SelectedTriggerActionIndex.ToString(), system.Settings.SelectedTriggerId.ToString());
+                                UpdateVisual(block);
+                            }
+                        }
                     }
                 }
             );

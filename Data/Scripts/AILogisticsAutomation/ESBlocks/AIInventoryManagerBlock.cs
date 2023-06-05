@@ -36,6 +36,18 @@ namespace AILogisticsAutomation
             return null;
         }
 
+        public MyFixedPoint GetItemAmount(MyDefinitionId id)
+        {
+            MyFixedPoint c = 0;
+            foreach (var key in inventoryMap.Keys)
+            {
+                var mapItem = inventoryMap[key].GetItem(id);
+                if (mapItem != null)
+                    c += mapItem.TotalAmount;
+            }
+            return c;
+        }
+
         protected override bool GetHadWorkToDo()
         {
             return Settings?.GetDefinitions().Any() ?? false;

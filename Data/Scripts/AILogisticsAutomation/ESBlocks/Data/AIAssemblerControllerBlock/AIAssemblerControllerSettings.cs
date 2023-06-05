@@ -15,17 +15,15 @@ namespace AILogisticsAutomation
         public string SelectedAddedMetaId { get; set; }
         public long SelectedIgnoreEntityId { get; set; }
         public long SelectedAddedIgnoreEntityId { get; set; }
+        public MyDefinitionId SelectedDefaultPriority { get; set; }
+        public long SelectedTriggerId { get; set; }
+        public int SelectedTriggerConditionIndex { get; set; }
+        public int SelectedTriggerActionIndex { get; set; }
 
         /* Data Properties */
 
         public AIAssemblerControllerStockSettings DefaultStock { get; set; } = new AIAssemblerControllerStockSettings();
         public AIAssemblerControllerPrioritySettings DefaultPriority { get; set; } = new AIAssemblerControllerPrioritySettings();
-
-        private ConcurrentDictionary<long, AIAssemblerControllerAssemblerSettings> definitions = new ConcurrentDictionary<long, AIAssemblerControllerAssemblerSettings>();
-        public ConcurrentDictionary<long, AIAssemblerControllerAssemblerSettings> GetDefinitions()
-        {
-            return definitions;
-        }
 
         private ConcurrentDictionary<long, AIAssemblerControllerTriggerSettings> triggers = new ConcurrentDictionary<long, AIAssemblerControllerTriggerSettings>();
         public ConcurrentDictionary<long, AIAssemblerControllerTriggerSettings> GetTriggers()
@@ -67,11 +65,10 @@ namespace AILogisticsAutomation
             {
                 powerConsumption = powerConsumption,
                 enabled = enabled,
-                definitions = definitions.Select(x => x.Value.GetData()).ToArray(),
                 triggers = triggers.Select(x => x.Value.GetData()).ToArray(),
-                defaultPriority = DefaultPriority.GetAll().Cast<SerializableDefinitionId>().ToArray(),
+                defaultPriority = DefaultPriority.GetAll().Select(x => (SerializableDefinitionId)x).ToArray(),
                 ignoreAssembler = ignoreAssembler.ToArray(),
-                stock = DefaultStock.GetData(),
+                stock = DefaultStock.GetData()
             };
             return data;
         }
@@ -103,30 +100,6 @@ namespace AILogisticsAutomation
                         if (def != null)
                         {
                             return def.UpdateData(key, action, value);
-                        }
-                    }
-                    break;
-                case "PRIORITY":
-                    if (long.TryParse(owner, out valueAsId))
-                    {
-                        var def = definitions.ContainsKey(valueAsId) ? definitions[valueAsId] : null;
-                        if (def != null)
-                        {
-                            return def.UpdateData(key, action, value);
-                        }
-                    }
-                    break;
-                case "DEFINITIONS":
-                    if (long.TryParse(value, out valueAsId))
-                    {
-                        switch (action)
-                        {
-                            case "ADD":
-                                definitions[valueAsId] = new AIAssemblerControllerAssemblerSettings() { EntityId = valueAsId };
-                                return true;
-                            case "DEL":
-                                definitions.Remove(valueAsId);
-                                return true;
                         }
                     }
                     break;
@@ -191,28 +164,6 @@ namespace AILogisticsAutomation
 
         public void UpdateData(AIAssemblerControllerSettingsData data)
         {
-            var dataToRemove = definitions.Keys.Where(x => !data.definitions.Any(y => y.entityId == x)).ToArray();
-            foreach (var item in dataToRemove)
-            {
-                definitions.Remove(item);
-            }
-            foreach (var item in data.definitions)
-            {
-                var def = definitions.ContainsKey(item.entityId) ? definitions[item.entityId] : null;
-                if (def != null)
-                {
-                    def.UpdateData(item);
-                }
-                else
-                {
-                    var newItem = new AIAssemblerControllerAssemblerSettings()
-                    {
-                        EntityId = item.entityId
-                    };
-                    newItem.UpdateData(item);
-                    definitions[item.entityId] = newItem;
-                }
-            }
             DefaultPriority.Clear();
             foreach (var item in data.defaultPriority)
             {
