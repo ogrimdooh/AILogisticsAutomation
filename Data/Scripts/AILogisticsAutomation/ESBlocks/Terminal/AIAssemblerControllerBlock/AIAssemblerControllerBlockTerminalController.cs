@@ -19,6 +19,8 @@ namespace AILogisticsAutomation
     public class AIAssemblerControllerBlockTerminalController : BaseTerminalController<AIAssemblerControllerBlock, IMyOreDetector>
     {
 
+        private static readonly string[] IGNORE_BLUEPRINT_CLASS = new string[] { "SmallBasicGrinder_Disassembly_Blueprints", "BasicGrinder_Disassembly_Blueprints", "Grinder_Disassembly_Blueprints" };
+
         public class AssemblerItemInfo : PhysicalItemInfo
         {
 
@@ -49,6 +51,8 @@ namespace AILogisticsAutomation
                 {
                     foreach (var blueprintClass in Definition.BlueprintClasses)
                     {
+                        if (IGNORE_BLUEPRINT_CLASS.Contains(blueprintClass.Id.SubtypeName))
+                            continue;
                         foreach (var blueprint in blueprintClass)
                         {
                             foreach (var result in blueprint.Results)
@@ -1156,7 +1160,7 @@ namespace AILogisticsAutomation
                 },
                 (list) =>
                 {
-                    list.AddRange(PhysicalItemTypes.Values.Select(x => x.ComboBoxItem));
+                    list.AddRange(PhysicalItemTypes.Values.OrderBy(x => x.Index).Select(x => x.ComboBoxItem));
                 },
                 tooltip: "Select a trigger condition item Type."
             );
@@ -1190,7 +1194,7 @@ namespace AILogisticsAutomation
                     if (PhysicalItemTypes.Values.Any(x => x.Index == selectedTriggerConditionItemType))
                     {
                         var typeToUse = PhysicalItemTypes.Values.FirstOrDefault(x => x.Index == selectedTriggerConditionItemType);
-                        list.AddRange(typeToUse.Items.Values.Select(x => x.ComboBoxItem));
+                        list.AddRange(typeToUse.Items.Values.OrderBy(x => x.Index).Select(x => x.ComboBoxItem));
                     }
                 },
                 tooltip: "Select a trigger condition item Id."
