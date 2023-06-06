@@ -19,7 +19,13 @@ namespace AILogisticsAutomation
     public class AIAssemblerControllerBlockTerminalController : BaseTerminalController<AIAssemblerControllerBlock, IMyOreDetector>
     {
 
-        private static readonly string[] IGNORE_BLUEPRINT_CLASS = new string[] { "SmallBasicGrinder_Disassembly_Blueprints", "BasicGrinder_Disassembly_Blueprints", "Grinder_Disassembly_Blueprints" };
+        private static readonly string[] IGNORE_BLUEPRINT_CLASS = new string[] {
+            "LargeBlocks",
+            "SmallBlocks",
+            "SmallBasicGrinder_Disassembly_Blueprints", 
+            "BasicGrinder_Disassembly_Blueprints", 
+            "Grinder_Disassembly_Blueprints" 
+        };
 
         public class AssemblerItemInfo : PhysicalItemInfo
         {
@@ -465,7 +471,7 @@ namespace AILogisticsAutomation
                                     else
                                     {
                                         system.Settings.DefaultStock.ValidIds[itemToUse.Id] = (int)metaValue;
-                                        system.SendToServer("ValidIds", "ADD", itemToUse.Id.ToString(), null);
+                                        system.SendToServer("ValidIds", "ADD", itemToUse.Id.ToString(), ((int)metaValue).ToString());
                                         UpdateVisual(block);
                                     }
                                 }
@@ -481,7 +487,7 @@ namespace AILogisticsAutomation
                                 else
                                 {
                                     system.Settings.DefaultStock.ValidTypes[typeToUse.Type] = (int)metaValue;
-                                    system.SendToServer("ValidTypes", "ADD", typeToUse.Type.ToString(), null);
+                                    system.SendToServer("ValidTypes", "ADD", typeToUse.Type.ToString(), ((int)metaValue).ToString());
                                     UpdateVisual(block);
                                 }
                             }

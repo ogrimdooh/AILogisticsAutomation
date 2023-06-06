@@ -820,7 +820,7 @@ namespace AILogisticsAutomation
             var validSubTypes = new string[] { "AIIgnoreMap", "AIIgnoreMapSmall", "AIIgnoreMapReskin", "AIIgnoreMapReskinSmall" };
             foreach (var item in validSubTypes)
             {
-                var block = target.GetBlocks(new MyDefinitionId(typeof(MyObjectBuilder_OreDetector), item)).FirstOrDefault();
+                var block = target.GetBlocks(new MyDefinitionId(typeof(MyObjectBuilder_OreDetector), item))?.FirstOrDefault();
                 if (block != null)
                     return block;
             }
@@ -839,7 +839,7 @@ namespace AILogisticsAutomation
                     scanedGrids.Add(grid.EntityId);
 
                     var ignoreMap = GetAIIgnoreMapBlock(grid);
-                    var aiIgnoreBlock = (ignoreMap?.FatBlock?.GameLogic as AIIgnoreMapBlock);
+                    var aiIgnoreBlock = ignoreMap?.FatBlock?.GameLogic?.GetAs<AIIgnoreMapBlock>();
                     IEnumerable<long> ignoreList = new List<long>(); 
                     if (aiIgnoreBlock != null && aiIgnoreBlock.IsWorking)
                     {
@@ -868,7 +868,7 @@ namespace AILogisticsAutomation
                     scanedGrids.Add(connectedGrids[connector].Grid.EntityId);
 
                     var ignoreMap = GetAIIgnoreMapBlock(connector.CubeGrid);
-                    var aiIgnoreBlock = (ignoreMap?.FatBlock?.GameLogic as AIIgnoreMapBlock);
+                    var aiIgnoreBlock = ignoreMap?.FatBlock?.GameLogic?.GetAs<AIIgnoreMapBlock>();
                     IEnumerable<long> ignoreList = new List<long>();
                     if (aiIgnoreBlock != null && aiIgnoreBlock.IsWorking)
                     {

@@ -80,7 +80,7 @@ namespace AILogisticsAutomation
             var block = GetAIInventoryManagerBlock();
             if (block != null)
             {
-                return block.FatBlock.GameLogic as AIInventoryManagerBlock;
+                return block.FatBlock.GameLogic?.GetAs<AIInventoryManagerBlock>();
             }
             return null;
         }

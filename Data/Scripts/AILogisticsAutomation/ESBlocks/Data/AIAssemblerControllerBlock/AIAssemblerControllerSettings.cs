@@ -84,13 +84,14 @@ namespace AILogisticsAutomation
             {
                 case "VALIDIDS":
                 case "VALIDTYPES":
-                case "IGNOREIDS":
-                case "IGNORETYPES":
                     if (int.TryParse(owner, out valueAsIndex))
                     {
                         return DefaultStock.UpdateData(key, action, value, valueAsIndex);
                     }
                     break;
+                case "IGNOREIDS":
+                case "IGNORETYPES":
+                    return DefaultStock.UpdateData(key, action, value, valueAsIndex);
                 case "NAME":
                 case "CONDITIONS":
                 case "ACTIONS":

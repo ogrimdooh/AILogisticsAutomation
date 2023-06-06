@@ -242,6 +242,8 @@ namespace AILogisticsAutomation
                     var assemblerDef = AIAssemblerControllerBlockTerminal.Controller.Assemblers[block.BlockDefinition.Id];
                     foreach (var blueprint in assemblerDef.ItemBlueprintToUse[key].OrderBy(x => x.DisplayNameText.Contains("Broken") ? 0 : 1))
                     {
+                        if (!blueprint.Results.Any(x => x.Id == key))
+                            continue; /* there are no result of the type */
                         if (blueprint.Prerequisites.Any(x => inventoryManager.GetItemAmount(x.Id) < x.Amount * CICLE_QUEUE_AMOUNT))
                             continue; /* there are no resources to assemble */
                         if (assembler.GetQueue().Any(x => x.Blueprint.Id == blueprint.Id))
@@ -251,14 +253,30 @@ namespace AILogisticsAutomation
                             {
                                 var index = assembler.GetQueue().IndexOf(qItem);
                                 InvokeOnGameThread(() => {
-                                    assembler.InsertQueueItem(index, blueprint, CICLE_QUEUE_AMOUNT - qItem.Amount);
+                                    try
+                                    {
+                                        assembler.InsertQueueItem(index, blueprint, CICLE_QUEUE_AMOUNT - qItem.Amount);
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        AILogisticsAutomationLogging.Instance.LogWarning(GetType(), $"InsertQueueItem: Error when insert [{blueprint.Id}] to [{assembler.DisplayName}] at [{index}]");
+                                        AILogisticsAutomationLogging.Instance.LogError(GetType(), ex);
+                                    }
                                 });
                             }
                         }
                         else
                         {
                             InvokeOnGameThread(() => {
-                                assembler.AddQueueItem(blueprint, CICLE_QUEUE_AMOUNT);
+                                try
+                                {
+                                    assembler.AddQueueItem(blueprint, CICLE_QUEUE_AMOUNT);
+                                }
+                                catch (Exception ex)
+                                {
+                                    AILogisticsAutomationLogging.Instance.LogWarning(GetType(), $"AddQueueItem: Error when add [{blueprint.Id}] to [{assembler.DisplayName}]");
+                                    AILogisticsAutomationLogging.Instance.LogError(GetType(), ex);
+                                }
                             });
                         }
                         break;
@@ -282,14 +300,30 @@ namespace AILogisticsAutomation
                     if (!bluePrint.Results.Any(x=> produceMeta.ContainsKey(x.Id)))
                     {
                         InvokeOnGameThread(() => {
-                            assembler.RemoveQueueItem(i, queue.Amount);
+                            try
+                            {
+                                assembler.RemoveQueueItem(i, queue.Amount);
+                            }
+                            catch (Exception ex)
+                            {
+                                AILogisticsAutomationLogging.Instance.LogWarning(GetType(), $"RemoveQueueItem: Error when remove from [{assembler.DisplayName}] at [{i}]");
+                                AILogisticsAutomationLogging.Instance.LogError(GetType(), ex);
+                            }
                         });
                         continue;
                     }
                     if (bluePrint.Prerequisites.Any(x => inventoryManager.GetItemAmount(x.Id) < x.Amount))
                     {
                         InvokeOnGameThread(() => {
-                            assembler.RemoveQueueItem(i, queue.Amount);
+                            try
+                            {
+                                assembler.RemoveQueueItem(i, queue.Amount);
+                            }
+                            catch (Exception ex)
+                            {
+                                AILogisticsAutomationLogging.Instance.LogWarning(GetType(), $"RemoveQueueItem: Error when remove from [{assembler.DisplayName}] at [{i}]");
+                                AILogisticsAutomationLogging.Instance.LogError(GetType(), ex);
+                            }
                         });
                     }
                 }
