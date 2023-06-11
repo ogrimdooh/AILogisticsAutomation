@@ -12,6 +12,12 @@ namespace AILogisticsAutomation
     public static class ItensConstants
     {
 
+        public static readonly MyObjectBuilderType[] GAS_TYPES = new MyObjectBuilderType[] 
+        {
+            typeof(MyObjectBuilder_GasContainerObject),
+            typeof(MyObjectBuilder_OxygenContainerObject)
+        };
+
         public const string ORGANIC_SUBTYPEID = "Organic";
         public static readonly UniqueEntityId ORGANIC_ID = new UniqueEntityId(typeof(MyObjectBuilder_Ore), ORGANIC_SUBTYPEID);
 
@@ -23,6 +29,18 @@ namespace AILogisticsAutomation
 
         public const string FISH_NOBLE_BAIT_SUBTYPEID = "FishNobleBait";
         public static readonly UniqueEntityId FISH_NOBLE_BAIT_ID = new UniqueEntityId(typeof(MyObjectBuilder_Ingot), FISH_NOBLE_BAIT_SUBTYPEID);
+
+        public const string HYDROGENBOTTLE_SUBTYPEID = "HydrogenBottle";
+        public static readonly UniqueEntityId HYDROGENBOTTLE_ID = new UniqueEntityId(typeof(MyObjectBuilder_GasContainerObject), HYDROGENBOTTLE_SUBTYPEID);
+
+        public const string OXYGENBOTTLE_SUBTYPEID = "OxygenBottle";
+        public static readonly UniqueEntityId OXYGENBOTTLE_ID = new UniqueEntityId(typeof(MyObjectBuilder_OxygenContainerObject), OXYGENBOTTLE_SUBTYPEID);
+
+        public const string OXYGEN_SUBTYPEID = "Oxygen";
+        public static readonly UniqueEntityId OXYGEN_ID = new UniqueEntityId(typeof(MyObjectBuilder_GasProperties), OXYGEN_SUBTYPEID);
+
+        public const string HYDROGEN_SUBTYPEID = "Hydrogen";
+        public static readonly UniqueEntityId HYDROGEN_ID = new UniqueEntityId(typeof(MyObjectBuilder_GasProperties), HYDROGEN_SUBTYPEID);
 
         private static ConcurrentDictionary<UniqueEntityId, MyObjectBuilder_Base> BUILDERS_CACHE = new ConcurrentDictionary<UniqueEntityId, MyObjectBuilder_Base>();
 

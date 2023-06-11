@@ -1,4 +1,5 @@
 ﻿using Sandbox.Common.ObjectBuilders;
+using Sandbox.Definitions;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -93,6 +94,24 @@ namespace AILogisticsAutomation
         public static bool IsGasTank(this MyDefinitionId id)
         {
             return tankFilter.Contains(id.TypeId);
+        }
+
+        public static bool IsGasTank(this SerializableDefinitionId id, MyDefinitionId gasType)
+        {
+            return ((MyDefinitionId)id).IsGasTank(gasType);
+        }
+
+        public static bool IsGasTank(this MyDefinitionId id, MyDefinitionId gasType)
+        {
+            if (id.IsGasTank())
+            {
+                var gasTankDef = MyDefinitionManager.Static.GetCubeBlockDefinition(id) as MyGasTankDefinition;
+                if (gasTankDef != null)
+                {
+                    return gasTankDef.StoredGasId == gasType;
+                }
+            }
+            return false;
         }
 
         public static bool IsBottleTaget(this MyDefinitionId id)

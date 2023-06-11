@@ -15,6 +15,7 @@ using Sandbox.Definitions;
 using System.Collections.Concurrent;
 using VRageMath;
 using Sandbox.Game.Gui;
+using Sandbox.Common.ObjectBuilders.Definitions;
 
 namespace AILogisticsAutomation
 {
@@ -345,13 +346,13 @@ namespace AILogisticsAutomation
                     if (inventoryBase.GetItemsCount() > 0)
                     {
                         // Move itens para o iventário possivel
-                        TryToFullFromInventory(inventoryBase, listaToCheck, null, reactor, gasGenerator);
+                        TryToFullFromInventory(listaToCheck[i].BlockDefinition.Id, inventoryBase, listaToCheck, null, reactor, gasGenerator);
                         // Verifica se tem algo nos inventários de produção, se for uma montadora
                         if (listaToCheck[i].BlockDefinition.Id.IsAssembler())
                         {
                             var assembler = (listaToCheck[i] as IMyAssembler);
                             var inventoryProd = listaToCheck[i].GetInventory(0);
-                            TryToFullFromInventory(inventoryProd, listaToCheck, assembler, null, null);
+                            TryToFullFromInventory(listaToCheck[i].BlockDefinition.Id, inventoryProd, listaToCheck, assembler, null, null);
                         }
                     }
                     if (inventoryBase.GetItemsCount() > 0)
@@ -361,11 +362,68 @@ namespace AILogisticsAutomation
             }
         }
 
+        private void DoTryFillBottle(MyInventoryMap map, MyInventoryMap.MyInventoryMapEntry bottleMap, MyDefinitionId targetGas, List<IMyGasGenerator> gasGenerators, List<IMyGasTank> gasTanks)
+        {
+            if (bottleMap != null)
+            {
+                var gasTankQuery = gasTanks.Where(x => x.FilledRatio > 0 && x.BlockDefinition.IsGasTank(targetGas) && !x.GetInventory().IsFull);
+                var gasGeneratorQuery = gasGenerators.Where(x => !x.GetInventory().IsFull && x.GetInventory().GetItemAmount(ItensConstants.ICE_ID.DefinitionId) > 0);
+                foreach (var itemId in bottleMap.Slots)
+                {
+                    var bottleItem = map.Inventory.GetItemByID(itemId);
+                    if (bottleItem.HasValue)
+                    {
+                        var bottleContent = bottleItem.Value.Content as MyObjectBuilder_GasContainerObject;
+                        if (bottleContent.GasLevel < 1)
+                        {
+                            if (gasTankQuery.Any())
+                            {
+                                foreach (var targetTank in gasTankQuery)
+                                {
+                                    var targetInventory = (MyInventory)targetTank.GetInventory();
+                                    if ((map.Inventory as IMyInventory).CanTransferItemTo(targetInventory, bottleMap.ItemId))
+                                    {
+                                        InvokeOnGameThread(() =>
+                                        {
+                                            MyInventory.Transfer(map.Inventory, targetInventory, itemId);
+                                        });
+                                        targetTank.RefillBottles();
+                                        break;
+                                    }
+                                }
+                            }
+                            else if (gasGeneratorQuery.Any())
+                            {
+                                foreach (var targetGasGen in gasGeneratorQuery)
+                                {
+                                    var targetInventory = (MyInventory)targetGasGen.GetInventory();
+                                    if ((map.Inventory as IMyInventory).CanTransferItemTo(targetInventory, bottleMap.ItemId))
+                                    {
+                                        InvokeOnGameThread(() =>
+                                        {
+                                            MyInventory.Transfer(map.Inventory, targetInventory, itemId);
+                                        });
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         private void DoFillBottles(List<IMyGasGenerator> gasGenerators, List<IMyGasTank> gasTanks)
         {
             if (Settings.GetFillBottles())
             {
-                // TODO: Implementar
+                foreach (var key in inventoryMap.Keys)
+                {
+                    var h2Bottle = inventoryMap[key].GetItem(ItensConstants.HYDROGENBOTTLE_ID.DefinitionId);
+                    DoTryFillBottle(inventoryMap[key], h2Bottle, ItensConstants.HYDROGEN_ID.DefinitionId, gasGenerators, gasTanks);
+                    var o2Bottle = inventoryMap[key].GetItem(ItensConstants.OXYGENBOTTLE_ID.DefinitionId);
+                    DoTryFillBottle(inventoryMap[key], o2Bottle, ItensConstants.OXYGENBOTTLE_ID.DefinitionId, gasGenerators, gasTanks);
+                }
             }
         }
 
@@ -919,13 +977,13 @@ namespace AILogisticsAutomation
                 DoFillFishTrap(fishTraps);
                 DoFillRefrigerator(refrigerators);
                 DoFillComposter(composters);
-                DoFillBottles(gasGenerators, gasTanks);
                 DoCheckAnyCanGoInOtherInventory();
                 DoCheckPullInventories();
+                DoFillBottles(gasGenerators, gasTanks);
             }
         }
 
-        private void TryToFullFromInventory(MyInventory inventoryBase, MyCubeBlock[] listaToCheck, IMyAssembler assembler, IMyReactor reactor, IMyGasGenerator gasGenerator)
+        private void TryToFullFromInventory(MyDefinitionId blockId, MyInventory inventoryBase, MyCubeBlock[] listaToCheck, IMyAssembler assembler, IMyReactor reactor, IMyGasGenerator gasGenerator)
         {
             var pullAll = true;
             var ignoreTypes = new List<MyObjectBuilderType>();
@@ -957,13 +1015,14 @@ namespace AILogisticsAutomation
                     ignoreIds[item.FuelId] = (MyFixedPoint)int.MaxValue;
                 }
             }
-            if (gasGenerator != null)
+            if (gasGenerator != null || blockId.IsGasTank())
             {
                 pullAll = false;
-                var blockId = ((MyDefinitionId)gasGenerator.BlockDefinition);
-                if (blockId.IsGasGenerator())
+                if (blockId.IsGasGenerator() || blockId.IsGasTank())
                 {
                     ignoreIds[ItensConstants.ICE_ID.DefinitionId] = (MyFixedPoint)int.MaxValue;
+                    ignoreIds[ItensConstants.HYDROGENBOTTLE_ID.DefinitionId] = 1;
+                    ignoreIds[ItensConstants.OXYGENBOTTLE_ID.DefinitionId] = 1;
                 }
                 else if (blockId.IsFishTrap())
                 {
@@ -988,12 +1047,23 @@ namespace AILogisticsAutomation
                 {
                     if (ignoreIds.ContainsKey(itemid))
                     {
-                        var invAmount = inventoryBase.GetItemAmount(itemid);
-                        if (invAmount <= ignoreIds[itemid])
+                        if (ItensConstants.GAS_TYPES.Contains(itemid.TypeId))
                         {
-                            continue;
+                            var gasInfo = itemsToCheck[j].Content as MyObjectBuilder_GasContainerObject;
+                            if (gasInfo.GasLevel < 1)
+                            {
+                                continue;
+                            }
                         }
-                        maxForIds[itemid] = invAmount - ignoreIds[itemid];
+                        else
+                        {
+                            var invAmount = inventoryBase.GetItemAmount(itemid);
+                            if (invAmount <= ignoreIds[itemid])
+                            {
+                                continue;
+                            }
+                            maxForIds[itemid] = invAmount - ignoreIds[itemid];
+                        }
                     }
                     else if (ignoreTypes.Contains(itemid.TypeId))
                     {
