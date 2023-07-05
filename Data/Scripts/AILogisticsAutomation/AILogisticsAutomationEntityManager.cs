@@ -64,7 +64,7 @@ namespace AILogisticsAutomation
         {
             try
             {
-                if (netId != AILogisticsAutomationSession.NETWORK_ID_ENTITYCALLS)
+                if (netId != AILogisticsAutomationSession.NETWORK_ID_ENTITYCALLS || (fromServer && IsServer))
                     return;
                 var message = Encoding.Unicode.GetString(data);
                 var mCommandData = MyAPIGateway.Utilities.SerializeFromXML<Command>(message);

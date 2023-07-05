@@ -2,6 +2,7 @@
 using Sandbox.Game;
 using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
+using Sandbox.ModAPI.Weapons;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -229,6 +230,9 @@ namespace AILogisticsAutomation
         [ProtoMember(2)]
         public SerializableDefinitionId CurrentAmmoMagazineId { get; set; }
 
+        [ProtoMember(3)]
+        public int CurrentMagazineAmmunition;
+
     }
 
     public class ExtendedSurvivalCoreAPI
@@ -262,7 +266,8 @@ namespace AILogisticsAutomation
         private static Func<Guid, MyDefinitionId, string> _GetItemInfoByItemType;
         private static Func<Guid, string, string> _GetItemInfoByCategory;
         private static Action<string> _AddTreeDropLoot;
-        private static Func<long, string> _GetHandheldGunInfo;
+        private static Func<long, KeyValuePair<IMyAutomaticRifleGun, string>?> _GetHandheldGunInfo;
+        private static Func<Action<IMyAutomaticRifleGun, int, MyDefinitionId, IMyInventory>, int, bool> _AddOnHandheldGunReloadCallback;
         private static Action<Guid, bool, bool, float> _SetInventoryObserverSpoilStatus;
         private static Func<long, IMySlimBlock[]> _GetUnderwaterCollectors;
         private static Func<long, IMySlimBlock[]> _GetOffwaterCollectors;
@@ -542,16 +547,26 @@ namespace AILogisticsAutomation
         }
 
         /// <summary>
+        /// Add a callback to reload hand guns
+        /// </summary>
+        public static bool AddOnHandheldGunReloadCallback(Action<IMyAutomaticRifleGun, int, MyDefinitionId, IMyInventory> callback, int priority)
+        {
+            return _AddOnHandheldGunReloadCallback?.Invoke(callback, priority) ?? false;
+        }
+
+        /// <summary>
         /// Get a list of itens based in gas Id
         /// </summary>
-        public static HandheldGunInfo GetHandheldGunInfo(long id)
+        public static HandheldGunInfo GetHandheldGunInfo(long id, out IMyAutomaticRifleGun gun)
         {
+            gun = null;
             var data = _GetHandheldGunInfo?.Invoke(id);
-            if (!string.IsNullOrEmpty(data))
+            if (data != null && !string.IsNullOrEmpty(data.Value.Value))
             {
                 try
                 {
-                    var itemInfo = MyAPIGateway.Utilities.SerializeFromXML<HandheldGunInfo>(data);
+                    gun = data.Value.Key;
+                    var itemInfo = MyAPIGateway.Utilities.SerializeFromXML<HandheldGunInfo>(data.Value.Value);
                     return itemInfo;
                 }
                 catch (Exception e)
@@ -752,7 +767,8 @@ namespace AILogisticsAutomation
                         _GetItemInfoByItemType = (Func<Guid, MyDefinitionId, string>)ModAPIMethods["GetItemInfoByItemType"];
                         _GetItemInfoByCategory = (Func<Guid, string, string>)ModAPIMethods["GetItemInfoByCategory"];
                         _AddTreeDropLoot = (Action<string>)ModAPIMethods["AddTreeDropLoot"];
-                        _GetHandheldGunInfo = (Func<long, string>)ModAPIMethods["GetHandheldGunInfo"];
+                        _GetHandheldGunInfo = (Func<long, KeyValuePair<IMyAutomaticRifleGun, string>?>)ModAPIMethods["GetHandheldGunInfo"];
+                        _AddOnHandheldGunReloadCallback = (Func<Action<IMyAutomaticRifleGun, int, MyDefinitionId, IMyInventory>, int, bool>)ModAPIMethods["AddOnHandheldGunReloadCallback"];
                         _SetInventoryObserverSpoilStatus = (Action<Guid, bool, bool, float>)ModAPIMethods["SetInventoryObserverSpoilStatus"];
                         _GetUnderwaterCollectors = (Func<long, IMySlimBlock[]>)ModAPIMethods["GetUnderwaterCollectors"];
                         _GetOffwaterCollectors = (Func<long, IMySlimBlock[]>)ModAPIMethods["GetOffwaterCollectors"];
