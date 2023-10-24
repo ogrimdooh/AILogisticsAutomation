@@ -12,6 +12,9 @@ using System.Collections.Concurrent;
 using VRage;
 using Sandbox.Game;
 using Sandbox.Definitions;
+using Sandbox.Game.Entities.Cube;
+using VRage.Game.Entity;
+using Sandbox.ModAPI.Interfaces;
 
 namespace AILogisticsAutomation
 {
@@ -35,6 +38,19 @@ namespace AILogisticsAutomation
             Settings = new AIRefineryControllerSettings();
             base.OnInit(objectBuilder);
             NeedsUpdate |= MyEntityUpdateEnum.EACH_100TH_FRAME;
+            var range = (ITerminalProperty<float>)CurrentEntity.GetProperty("Range");
+            if (range != null)
+            {
+                range.SetValue(CurrentEntity, range.GetMinimum(CurrentEntity));
+            }
+            if (AILogisticsAutomationSession.IsUsingOreDetectorReforge())
+            {
+                var reforgedRange = (ITerminalProperty<float>)CurrentEntity.GetProperty("Reforged: Range");
+                if (reforgedRange != null)
+                {
+                    reforgedRange.SetValue(CurrentEntity, reforgedRange.GetMinimum(CurrentEntity));
+                }
+            }
         }
 
         protected int CountAIRefineryController(IMyCubeGrid grid)

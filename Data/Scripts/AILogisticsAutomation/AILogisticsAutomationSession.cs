@@ -29,6 +29,7 @@ namespace AILogisticsAutomation
         public const ulong ES_TECHNOLOGY_MODID = 2842844421;
         public const ulong ES_STATS_EFFECTS_MODID = 2840924715;
         public const ulong WC_MODID = 1918681825;
+        public const ulong OREDETECTOR_REFORGED_MODID = 2790047923;
 
         private static bool? isUsingTechnology = null;
         public static bool IsUsingTechnology()
@@ -59,6 +60,15 @@ namespace AILogisticsAutomation
             return isUsingWeaponCore.Value;
         }
 
+        private static bool? isUsingOreDetectorReforge = null;
+        public static bool IsUsingOreDetectorReforge()
+        {
+            if (!isUsingOreDetectorReforge.HasValue)
+                isUsingOreDetectorReforge = MyAPIGateway.Session.Mods.Any(x => x.PublishedFileId == OREDETECTOR_REFORGED_MODID);
+            return isUsingOreDetectorReforge.Value;
+        }
+
+        public NanobotAPI NanobotAPI;
         public ExtendedSurvivalCoreAPI ESCoreAPI;
         public WcApi WeaponCore;
 
@@ -280,6 +290,8 @@ namespace AILogisticsAutomation
 
         public override void LoadData()
         {
+            NanobotAPI = new NanobotAPI();
+
             ESCoreAPI = new ExtendedSurvivalCoreAPI(() =>
             {
                 if (IsServer)
@@ -346,6 +358,7 @@ namespace AILogisticsAutomation
 
         protected override void UnloadData()
         {
+            NanobotAPI.Unregister();
             ESCoreAPI.Unregister();
 
             if (IsServer)

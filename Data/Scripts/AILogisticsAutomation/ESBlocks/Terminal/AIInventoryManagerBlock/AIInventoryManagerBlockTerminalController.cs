@@ -794,7 +794,7 @@ namespace AILogisticsAutomation
                                 ignoreBlocks = system.Settings.GetIgnoreCargos();
                                 break;
                             case 1:
-                                targetFilter = new MyObjectBuilderType[] { typeof(MyObjectBuilder_Assembler), typeof(MyObjectBuilder_Refinery), typeof(MyObjectBuilder_Reactor), typeof(MyObjectBuilder_HydrogenEngine), typeof(MyObjectBuilder_OxygenGenerator), typeof(MyObjectBuilder_OxygenTank), typeof(MyObjectBuilder_GasTank) };
+                                targetFilter = new MyObjectBuilderType[] { typeof(MyObjectBuilder_Assembler), typeof(MyObjectBuilder_Refinery), typeof(MyObjectBuilder_Reactor), typeof(MyObjectBuilder_HydrogenEngine), typeof(MyObjectBuilder_OxygenGenerator), typeof(MyObjectBuilder_OxygenTank), typeof(MyObjectBuilder_GasTank), typeof(MyObjectBuilder_Drill), typeof(MyObjectBuilder_ShipGrinder), typeof(MyObjectBuilder_ShipWelder) };
                                 ignoreBlocks = system.Settings.GetIgnoreFunctionalBlocks();
                                 break;
                             case 2:
@@ -872,7 +872,7 @@ namespace AILogisticsAutomation
                             var inventory = query.FirstOrDefault();
 
                             var targetCargoContainerFilter = new MyObjectBuilderType[] { typeof(MyObjectBuilder_CargoContainer), typeof(MyObjectBuilder_Cockpit), typeof(MyObjectBuilder_CryoChamber) };
-                            var targetFunctionalFilter = new MyObjectBuilderType[] { typeof(MyObjectBuilder_Assembler), typeof(MyObjectBuilder_Refinery), typeof(MyObjectBuilder_Reactor), typeof(MyObjectBuilder_HydrogenEngine), typeof(MyObjectBuilder_OxygenGenerator), typeof(MyObjectBuilder_OxygenTank), typeof(MyObjectBuilder_GasTank) };
+                            var targetFunctionalFilter = new MyObjectBuilderType[] { typeof(MyObjectBuilder_Assembler), typeof(MyObjectBuilder_Refinery), typeof(MyObjectBuilder_Reactor), typeof(MyObjectBuilder_HydrogenEngine), typeof(MyObjectBuilder_OxygenGenerator), typeof(MyObjectBuilder_OxygenTank), typeof(MyObjectBuilder_GasTank), typeof(MyObjectBuilder_Drill), typeof(MyObjectBuilder_ShipGrinder), typeof(MyObjectBuilder_ShipWelder) };
                             var targetConnectorFilter = new MyObjectBuilderType[] { typeof(MyObjectBuilder_ShipConnector) };
 
                             if (targetCargoContainerFilter.Contains(inventory.BlockDefinition.Id.TypeId))
@@ -926,7 +926,7 @@ namespace AILogisticsAutomation
                         addedBlocks.AddRange(system.Settings.GetIgnoreConnectors());
 
                         var targetCargoContainerFilter = new MyObjectBuilderType[] { typeof(MyObjectBuilder_CargoContainer), typeof(MyObjectBuilder_Cockpit), typeof(MyObjectBuilder_CryoChamber) };
-                        var targetFunctionalFilter = new MyObjectBuilderType[] { typeof(MyObjectBuilder_Assembler), typeof(MyObjectBuilder_Refinery), typeof(MyObjectBuilder_Reactor), typeof(MyObjectBuilder_HydrogenEngine), typeof(MyObjectBuilder_OxygenGenerator), typeof(MyObjectBuilder_OxygenTank), typeof(MyObjectBuilder_GasTank) };
+                        var targetFunctionalFilter = new MyObjectBuilderType[] { typeof(MyObjectBuilder_Assembler), typeof(MyObjectBuilder_Refinery), typeof(MyObjectBuilder_Reactor), typeof(MyObjectBuilder_HydrogenEngine), typeof(MyObjectBuilder_OxygenGenerator), typeof(MyObjectBuilder_OxygenTank), typeof(MyObjectBuilder_GasTank), typeof(MyObjectBuilder_Drill), typeof(MyObjectBuilder_ShipGrinder), typeof(MyObjectBuilder_ShipWelder) };
                         var targetConnectorFilter = new MyObjectBuilderType[] { typeof(MyObjectBuilder_ShipConnector) };
 
                         foreach (var inventory in targetGrid.Inventories.Where(x => addedBlocks.Contains(x.EntityId)))

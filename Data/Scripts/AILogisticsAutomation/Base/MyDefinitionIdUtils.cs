@@ -26,6 +26,7 @@ namespace AILogisticsAutomation
         public static readonly string[] isRefrigerator = new string[] { "LargeBlockRefrigerator", "SmallBlockRefrigerator" };
         public static readonly string[] isComposter = new string[] { "LargeBlockComposter" };
         public static readonly string[] isFishTrap = new string[] { "FishTrap" };
+        public static readonly string[] isNanobot = new string[] { "SELtdLargeNanobotBuildAndRepairSystem", "SELtdSmallNanobotBuildAndRepairSystem" };
 
         private static MyDefinitionId[] weaponCoreGuns = new MyDefinitionId[] { };
         public static MyDefinitionId[] WeaponCoreGuns
@@ -142,6 +143,16 @@ namespace AILogisticsAutomation
         public static bool IsFishTrap(this MyDefinitionId id)
         {
             return id.TypeId == typeof(MyObjectBuilder_OxygenGenerator) && isFishTrap.Contains(id.SubtypeName);
+        }
+
+        public static bool IsNanobot(this MyDefinitionId id)
+        {
+            return id.TypeId == typeof(MyObjectBuilder_ShipWelder) && isNanobot.Contains(id.SubtypeName);
+        }
+
+        public static bool IsShipWelder(this MyDefinitionId id)
+        {
+            return id.TypeId == typeof(MyObjectBuilder_ShipWelder);
         }
 
     }

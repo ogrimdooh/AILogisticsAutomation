@@ -11,6 +11,8 @@ using Sandbox.Game.Entities;
 using System.Collections.Concurrent;
 using Sandbox.Definitions;
 using System;
+using Sandbox.Game.Entities.Cube;
+using Sandbox.ModAPI.Interfaces;
 
 namespace AILogisticsAutomation
 {
@@ -33,6 +35,19 @@ namespace AILogisticsAutomation
             Settings = new AIAssemblerControllerSettings();
             base.OnInit(objectBuilder);
             NeedsUpdate |= MyEntityUpdateEnum.EACH_100TH_FRAME;
+            var range = (ITerminalProperty<float>)CurrentEntity.GetProperty("Range");
+            if (range != null)
+            {
+                range.SetValue(CurrentEntity, range.GetMinimum(CurrentEntity));
+            }
+            if (AILogisticsAutomationSession.IsUsingOreDetectorReforge())
+            {
+                var reforgedRange = (ITerminalProperty<float>)CurrentEntity.GetProperty("Reforged: Range");
+                if (reforgedRange != null)
+                {
+                    reforgedRange.SetValue(CurrentEntity, reforgedRange.GetMinimum(CurrentEntity));
+                }
+            }
         }
 
         protected int CountAIAssemblerController(IMyCubeGrid grid)

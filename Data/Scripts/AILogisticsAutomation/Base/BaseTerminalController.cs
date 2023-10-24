@@ -519,6 +519,15 @@ namespace AILogisticsAutomation
             }
         }
 
+        private static string[] OreDetectorReforgeIds = new string[] 
+        {
+            "Reforged: Separator",
+            "Reforged: GPSColor",
+            "Reforged: Range",
+            "Reforged: Count",
+            "Reforged: Whitelist",
+            "Ores"
+        };
         public void CustomControlGetter(IMyTerminalBlock block, List<IMyTerminalControl> controls)
         {
             if (CanAddControls(block))
@@ -526,6 +535,10 @@ namespace AILogisticsAutomation
                 if (GetIdsToRemove().Any())
                 {
                     controls.RemoveAll(x => GetIdsToRemove().Contains(x.Id));
+                }
+                if (AILogisticsAutomationSession.IsUsingOreDetectorReforge())
+                {
+                    controls.RemoveAll(x => OreDetectorReforgeIds.Contains(x.Id));
                 }
                 foreach (var item in CustomControls)
                 {
