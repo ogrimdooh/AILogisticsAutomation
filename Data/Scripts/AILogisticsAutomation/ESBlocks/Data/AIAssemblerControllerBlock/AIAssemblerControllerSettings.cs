@@ -84,7 +84,7 @@ namespace AILogisticsAutomation
             {
                 case "VALIDIDS":
                 case "VALIDTYPES":
-                    if (int.TryParse(owner, out valueAsIndex))
+                    if (string.IsNullOrWhiteSpace(owner) || int.TryParse(owner, out valueAsIndex))
                     {
                         return DefaultStock.UpdateData(key, action, value, valueAsIndex);
                     }

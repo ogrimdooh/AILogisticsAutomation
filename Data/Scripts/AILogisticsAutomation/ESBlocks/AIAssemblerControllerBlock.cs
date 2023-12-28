@@ -22,7 +22,7 @@ namespace AILogisticsAutomation
 
         protected override bool GetHadWorkToDo()
         {
-            return Settings.DefaultStock.ValidIds.Any() || Settings.DefaultStock.ValidTypes.Any();
+            return Settings.DefaultStock.ValidIds.Any() || Settings.DefaultStock.ValidTypes.Any() || Settings.GetTriggers().Any(x => x.Value.Actions.Any());
         }
 
         protected override bool GetIsValidToWork()
@@ -145,7 +145,7 @@ namespace AILogisticsAutomation
                 if (!IsWorking)
                     return;
                 var inventoryManager = GetAIInventoryManager();
-                if (inventoryManager != null && inventoryManager.Settings.GetPullFromRefinary())
+                if (inventoryManager != null && inventoryManager.Settings.GetPullFromAssembler())
                 {
                     DoCheckAssemblerList(ValidInventories.ToArray(), inventoryManager);
                 }
