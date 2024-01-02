@@ -21,7 +21,10 @@ namespace AILogisticsAutomation
         
         [ProtoMember(5)]
         public long[] ignoreRefinery = new long[] { };
-        
+
+        [ProtoMember(6)]
+        public AIRefineryControllerTriggerSettingsData[] triggers = new AIRefineryControllerTriggerSettingsData[] { };
+
     }
 
 }

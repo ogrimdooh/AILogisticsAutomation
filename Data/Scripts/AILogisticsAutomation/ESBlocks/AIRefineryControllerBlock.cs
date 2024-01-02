@@ -23,9 +23,12 @@ namespace AILogisticsAutomation
     public class AIRefineryControllerBlock : BaseAIBlock<IMyOreDetector, AIRefineryControllerSettings, AIRefineryControllerSettingsData>
     {
 
+        private const float IDEAL_FIRST_AMOUNT = 1000;
+        private const float IDEAL_OTHERS_AMOUNT = 100;
+
         protected override bool GetHadWorkToDo()
         {
-            return Settings.DefaultOres.Count() > 0 || Settings.GetDefinitions().Any(x => x.Value.Ores.Count() > 0);
+            return Settings.DefaultOres.Count() > 0 || Settings.GetDefinitions().Any(x => x.Value.Ores.Count() > 0) || Settings.GetTriggers().Any(x => x.Value.Any());
         }
 
         protected override bool GetIsValidToWork()
@@ -94,7 +97,7 @@ namespace AILogisticsAutomation
             power += AILogisticsAutomationSettings.Instance.EnergyCost.DefaultPullCost * Settings.GetDefinitions().Count;
 
             // Get filter power
-            var totalFilters = Settings.DefaultOres.Count() + Settings.GetDefinitions().Values.Sum(x => x.Ores.Count());
+            var totalFilters = Settings.DefaultOres.Count() + Settings.GetDefinitions().Values.Sum(x => x.Ores.Count()) + Settings.GetTriggers().Values.Sum(x => x.Count() + x.Conditions.Count);
             power += AILogisticsAutomationSettings.Instance.EnergyCost.FilterCost * totalFilters;
 
             return power;
@@ -172,13 +175,11 @@ namespace AILogisticsAutomation
         }
 
         private bool DoPushOre(MyDefinitionId oreId, ConcurrentDictionary<MyDefinitionId, MyInventoryOreMap> oreMap, MyInventory inventory, 
-            float targetVolume, AIInventoryManagerBlock inventoryManager)
+            float targetAmount, AIInventoryManagerBlock inventoryManager)
         {
             if (oreMap.ContainsKey(oreId))
             {
                 var oreAmount = (float)inventory.GetItemAmount(oreId);
-                var oreDef = MyDefinitionManager.Static.GetPhysicalItemDefinition(oreId);
-                var targetAmount = targetVolume / oreDef.Volume;
                 if (oreAmount < targetAmount)
                 {
                     var oreToTransfer = targetAmount - oreAmount;
@@ -268,6 +269,49 @@ namespace AILogisticsAutomation
                     }
                 }
 
+                // Conditional Meta
+                string[] triggerPriority = new string[] { };
+                if (Settings.GetTriggers().Any())
+                {
+                    foreach (var triggerId in Settings.GetTriggers().Keys)
+                    {
+                        var targetTrigger = Settings.GetTriggers()[triggerId];
+                        if (!targetTrigger.Conditions.Any())
+                            continue;
+                        var okToRun = false;
+                        var conds = targetTrigger.Conditions.OrderBy(x => x.Index).ToArray();
+                        for (int i = 0; i < conds.Length; i++)
+                        {
+                            var targetAmount = (float)inventoryManager.GetItemAmount(conds[i].Id);
+                            var valueCheck = false;
+                            switch (conds[i].OperationType)
+                            {
+                                case 0: /* GREATER */
+                                    valueCheck = targetAmount > conds[i].Value;
+                                    break;
+                                case 1: /* LESS */
+                                    valueCheck = targetAmount < conds[i].Value;
+                                    break;
+                            }
+                            switch (conds[i].QueryType)
+                            {
+                                case 0: /* AND */
+                                    okToRun = (i == 0 || okToRun) && valueCheck;
+                                    break;
+                                case 1: /* OR */
+                                    okToRun = okToRun || valueCheck;
+                                    break;
+                            }
+                        }
+                        if (okToRun)
+                        {
+                            triggerPriority = targetTrigger.GetAll();
+                        }
+                    }
+                }
+                var defaultPriority = Settings.DefaultOres.GetAll();
+
+
                 for (int i = 0; i < listaToCheck.Length; i++)
                 {
 
@@ -276,19 +320,29 @@ namespace AILogisticsAutomation
 
                     var inventory = listaToCheck[i].GetInventory(0);
 
-                    var oreFilter = Settings.GetDefinitions().ContainsKey(listaToCheck[i].EntityId) ? Settings.GetDefinitions()[listaToCheck[i].EntityId].Ores : Settings.DefaultOres;
+                    var refineryFilter = Settings.GetDefinitions().ContainsKey(listaToCheck[i].EntityId) ? Settings.GetDefinitions()[listaToCheck[i].EntityId].Ores.GetAll() : new string[] { };
+                    var finalFilter = new HashSet<string>();
+                    foreach (var item in triggerPriority)
+                    {
+                        finalFilter.Add(item);
+                    }
+                    foreach (var item in refineryFilter)
+                    {
+                        finalFilter.Add(item);
+                    }
+                    foreach (var item in defaultPriority)
+                    {
+                        finalFilter.Add(item);
+                    }
 
                     bool useConveyorSystem = true;
-                    if (oreFilter.Any())
+                    if (finalFilter.Any())
                     {
                         // Add ore to refinery
-                        var sourceOres = oreFilter.GetAll().Where(x => inventory.GetItemAmount(new MyDefinitionId(oreType, x)) > 0 || oreMap.ContainsKey(new MyDefinitionId(oreType, x))).ToArray();
+                        var sourceOres = finalFilter.Where(x => inventory.GetItemAmount(new MyDefinitionId(oreType, x)) > 0 || oreMap.ContainsKey(new MyDefinitionId(oreType, x))).ToArray();
                         if (sourceOres.Any() && oreMap.Any())
                         {
-                            var maxVolume = (float)inventory.MaxVolume * 0.8f;
-                            var maxOthersVolume = (float)inventory.MaxVolume * 0.15f;
-                            var targetVolume = maxVolume / sourceOres.Count();
-                            var othersVolume = oreMap.Count > sourceOres.Count() ? maxOthersVolume / (oreMap.Count - sourceOres.Count()) : 0;
+                            int c = 0;
                             foreach (var ore in sourceOres)
                             {
                                 var oreId = new MyDefinitionId(oreType, ore);
@@ -296,29 +350,27 @@ namespace AILogisticsAutomation
                                     oreId,
                                     oreMap,
                                     inventory,
-                                    targetVolume,
+                                    c == 0 ? IDEAL_FIRST_AMOUNT : IDEAL_OTHERS_AMOUNT,
+                                    inventoryManager
+                                );
+                                useConveyorSystem = useConveyorSystem && push;
+                                c++;
+                            }
+                            var others = oreMap.Keys.Where(x => !sourceOres.Contains(x.SubtypeName)).ToArray();
+                            foreach (var ore in others)
+                            {
+                                var push = DoPushOre(
+                                    ore,
+                                    oreMap,
+                                    inventory,
+                                    IDEAL_OTHERS_AMOUNT,
                                     inventoryManager
                                 );
                                 useConveyorSystem = useConveyorSystem && push;
                             }
-                            if (othersVolume > 0)
-                            {
-                                var others = oreMap.Keys.Where(x => !sourceOres.Contains(x.SubtypeName)).ToArray();
-                                foreach (var ore in others)
-                                {
-                                    var push = DoPushOre(
-                                        ore,
-                                        oreMap,
-                                        inventory,
-                                        othersVolume,
-                                        inventoryManager
-                                    );
-                                    useConveyorSystem = useConveyorSystem && push;
-                                }
-                            }
                         }
                         // Sort
-                        DoSort(inventory, oreFilter);
+                        DoSort(inventory, finalFilter.ToList());
                     }
                     (listaToCheck[i] as IMyRefinery).UseConveyorSystem = useConveyorSystem;
 
@@ -326,7 +378,7 @@ namespace AILogisticsAutomation
             }
         }
 
-        private void DoSort(MyInventory targetInventory, AIRefineryControllerPrioritySettings priority)
+        private void DoSort(MyInventory targetInventory, List<string> priority)
         {
             if (priority.Any())
             {
@@ -350,7 +402,7 @@ namespace AILogisticsAutomation
                         }
                         else if (priority.Contains(item.Value.Type.SubtypeId) && priority.Contains(itemBefore.Value.Type.SubtypeId))
                         {
-                            dif = priority.GetIndex(item.Value.Type.SubtypeId).CompareTo(priority.GetIndex(itemBefore.Value.Type.SubtypeId)) * -1;
+                            dif = priority.IndexOf(item.Value.Type.SubtypeId).CompareTo(priority.IndexOf(itemBefore.Value.Type.SubtypeId)) * -1;
                         }
                         if (dif > 0)
                         {

@@ -41,6 +41,7 @@ namespace AILogisticsAutomation
             AILogisticsAutomationStorage.Instance.RemoveEntity(CurrentEntity.EntityId);
         }
 
+        protected bool SettingsRecived { get; private set; }
         protected void ReciveFromServer(string encodeData)
         {
             try
@@ -50,6 +51,7 @@ namespace AILogisticsAutomation
                     var decodeData = Base64Utils.DecodeFrom64(encodeData);
                     var data = MyAPIGateway.Utilities.SerializeFromXML<D>(decodeData);
                     Settings.UpdateData(data);
+                    SettingsRecived = true;
                 }
             }
             catch (Exception ex)
@@ -163,7 +165,7 @@ namespace AILogisticsAutomation
         {
             try
             {
-                SendCallClient(MyAPIGateway.Session.Player.SteamUserId, "RequestPower", new Dictionary<string, string>() { });
+                SendCallClient(MyAPIGateway.Multiplayer.MyId, "RequestPower", new Dictionary<string, string>() { });
             }
             catch (Exception ex)
             {
@@ -175,7 +177,7 @@ namespace AILogisticsAutomation
         {
             try
             {
-                SendCallClient(MyAPIGateway.Session.Player.SteamUserId, "RequestSettings", new Dictionary<string, string>() { });
+                SendCallClient(MyAPIGateway.Multiplayer.MyId, "RequestSettings", new Dictionary<string, string>() { });
             }
             catch (Exception ex)
             {
@@ -210,7 +212,7 @@ namespace AILogisticsAutomation
                 if (!IsServer)
                 {
                     var encodeData = GetEncodedData();
-                    SendCallClient(MyAPIGateway.Session.Player.SteamUserId, "SetSettings", changeData);
+                    SendCallClient(MyAPIGateway.Multiplayer.MyId, "SetSettings", changeData);
                 }
                 else
                 {

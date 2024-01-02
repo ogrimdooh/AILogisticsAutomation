@@ -134,6 +134,7 @@ namespace AILogisticsAutomation
         }
 
         protected readonly long cicleType = 3000; /* default cycle time */
+        protected long clientRunCount = 0;
         protected override void OnUpdateAfterSimulation100()
         {
             base.OnUpdateAfterSimulation100();
@@ -163,6 +164,21 @@ namespace AILogisticsAutomation
                 catch (Exception ex)
                 {
                     AILogisticsAutomationLogging.Instance.LogError(GetType(), ex);
+                }
+            }
+            else
+            {
+                if (!SettingsRecived)
+                {
+                    if (clientRunCount % 10 == 0)
+                    {
+                        RequestSettings();
+                        clientRunCount = 0;
+                    }
+                    else
+                    {
+                        clientRunCount++;
+                    }
                 }
             }
             CurrentEntity.ResourceSink.SetRequiredInputByType(MyResourceDistributorComponent.ElectricityId, ComputeRequiredPower());
@@ -221,9 +237,9 @@ namespace AILogisticsAutomation
                 return SetEmissiveState(EmissiveState.Disabled);
             if (!IsWorking)
                 return SetEmissiveState(EmissiveState.Warning);
-            if (cycleIsRuning)
+            if (IsClient || cycleIsRuning)
                 return SetEmissiveState(EmissiveState.Working);
-            return SetEmissiveState(EmissiveState.Alternative);
+            return SetEmissiveState(EmissiveState.Damaged);
         }
 
     }

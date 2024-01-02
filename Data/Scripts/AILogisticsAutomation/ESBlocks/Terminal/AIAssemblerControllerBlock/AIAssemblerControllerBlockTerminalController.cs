@@ -248,7 +248,7 @@ namespace AILogisticsAutomation
                             system.RequestSettings();
                         }
                     },
-                    tooltip: "Sometimes the client desync the configs from the server, of you detect that just click in this button, close the terminal, wait some seconds and open again."
+                    tooltip: "Server and client sometimes get out of sync. Click this button to resync to server (Need to reload terminal to take effect)."
                 );
 
             }

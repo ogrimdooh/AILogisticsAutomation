@@ -17,6 +17,10 @@ namespace AILogisticsAutomation
         public long SelectedIgnoreEntityId { get; set; } = 0;
         public long SelectedAddedIgnoreEntityId { get; set; } = 0;
 
+        public long SelectedTriggerId { get; set; }
+        public int SelectedTriggerConditionIndex { get; set; }
+        public string SelectedTriggerOre { get; set; } = "";
+
         /* Data Properties */
 
         public AIRefineryControllerPrioritySettings DefaultOres { get; set; } = new AIRefineryControllerPrioritySettings();
@@ -25,6 +29,12 @@ namespace AILogisticsAutomation
         public ConcurrentDictionary<long, AIRefineryControllerRefineryPrioritySettings> GetDefinitions()
         {
             return definitions;
+        }
+
+        private ConcurrentDictionary<long, AIRefineryControllerTriggerSettings> triggers = new ConcurrentDictionary<long, AIRefineryControllerTriggerSettings>();
+        public ConcurrentDictionary<long, AIRefineryControllerTriggerSettings> GetTriggers()
+        {
+            return triggers;
         }
 
         private HashSet<long> ignoreRefinery = new HashSet<long>();
@@ -63,7 +73,8 @@ namespace AILogisticsAutomation
                 enabled = enabled,
                 definitions = definitions.Select(x => x.Value.GetData()).ToArray(),
                 ores = DefaultOres.GetAll(),
-                ignoreRefinery = ignoreRefinery.ToArray()
+                ignoreRefinery = ignoreRefinery.ToArray(),
+                triggers = triggers.Select(x => x.Value.GetData()).ToArray()
             };
             return data;
         }
@@ -138,6 +149,32 @@ namespace AILogisticsAutomation
                         return true;
                     }
                     break;
+                case "NAME":
+                case "CONDITIONS":
+                case "TRIGGERORES":
+                    if (long.TryParse(owner, out valueAsId))
+                    {
+                        var def = triggers.ContainsKey(valueAsId) ? triggers[valueAsId] : null;
+                        if (def != null)
+                        {
+                            return def.UpdateData(key, action, value);
+                        }
+                    }
+                    break;
+                case "TRIGGERS":
+                    if (long.TryParse(value, out valueAsId))
+                    {
+                        switch (action)
+                        {
+                            case "ADD":
+                                triggers[valueAsId] = new AIRefineryControllerTriggerSettings() { TriggerId = valueAsId };
+                                return true;
+                            case "DEL":
+                                triggers.Remove(valueAsId);
+                                return true;
+                        }
+                    }
+                    break;
             }
             return false;
         }
@@ -175,7 +212,29 @@ namespace AILogisticsAutomation
             foreach (var item in data.ignoreRefinery)
             {
                 ignoreRefinery.Add(item);
-            }            
+            }
+            var triggersToRemove = triggers.Keys.Where(x => !data.triggers.Any(y => y.triggerId == x)).ToArray();
+            foreach (var item in triggersToRemove)
+            {
+                triggers.Remove(item);
+            }
+            foreach (var item in data.triggers)
+            {
+                var def = triggers.ContainsKey(item.triggerId) ? triggers[item.triggerId] : null;
+                if (def != null)
+                {
+                    def.UpdateData(item);
+                }
+                else
+                {
+                    var newItem = new AIRefineryControllerTriggerSettings()
+                    {
+                        TriggerId = item.triggerId
+                    };
+                    newItem.UpdateData(item);
+                    triggers[item.triggerId] = newItem;
+                }
+            }
             powerConsumption = data.powerConsumption;
             enabled = data.enabled;
         }
