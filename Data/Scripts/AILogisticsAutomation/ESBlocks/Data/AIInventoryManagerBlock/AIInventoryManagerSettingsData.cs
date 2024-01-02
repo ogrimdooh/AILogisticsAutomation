@@ -90,6 +90,12 @@ namespace AILogisticsAutomation
         [ProtoMember(28)]
         public bool stackIfPossible;
 
+        [ProtoMember(29)]
+        public bool pullFarm;
+
+        [ProtoMember(31)]
+        public bool fillFarm;
+
     }
 
 }

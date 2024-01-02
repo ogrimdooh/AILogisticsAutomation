@@ -38,19 +38,6 @@ namespace AILogisticsAutomation
             Settings = new AIRefineryControllerSettings();
             base.OnInit(objectBuilder);
             NeedsUpdate |= MyEntityUpdateEnum.EACH_100TH_FRAME;
-            var range = (ITerminalProperty<float>)CurrentEntity.GetProperty("Range");
-            if (range != null)
-            {
-                range.SetValue(CurrentEntity, range.GetMinimum(CurrentEntity));
-            }
-            if (AILogisticsAutomationSession.IsUsingOreDetectorReforge())
-            {
-                var reforgedRange = (ITerminalProperty<float>)CurrentEntity.GetProperty("Reforged: Range");
-                if (reforgedRange != null)
-                {
-                    reforgedRange.SetValue(CurrentEntity, reforgedRange.GetMinimum(CurrentEntity));
-                }
-            }
         }
 
         protected int CountAIRefineryController(IMyCubeGrid grid)
@@ -147,8 +134,14 @@ namespace AILogisticsAutomation
             }
         }
 
+        protected bool _rangeReset = false;
+        protected int _tryResetCount = 0;
         protected override void DoExecuteCycle()
         {
+            if (!_rangeReset && _tryResetCount < 10)
+                _rangeReset = CurrentEntity.DoResetRange();
+            if (!_rangeReset)
+                _tryResetCount++;
             var power = GetPowerConsumption();
             if (power != Settings.GetPowerConsumption())
             {

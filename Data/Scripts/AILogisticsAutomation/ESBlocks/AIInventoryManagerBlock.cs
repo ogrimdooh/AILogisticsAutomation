@@ -18,6 +18,7 @@ using Sandbox.Game.Gui;
 using Sandbox.Common.ObjectBuilders.Definitions;
 using Sandbox.Game.Entities.Cube;
 using Sandbox.ModAPI.Interfaces;
+using SpaceEngineers.Game.ModAPI;
 
 namespace AILogisticsAutomation
 {
@@ -26,6 +27,8 @@ namespace AILogisticsAutomation
     public class AIInventoryManagerBlock : BaseAIBlock<IMyOreDetector, AIInventoryManagerSettings, AIInventoryManagerSettingsData>
     {
 
+        private const float IDEAL_FARM_ICE = 100;
+        private const float IDEAL_FARM_FERTILIZER = 10;
         private const float IDEAL_COMPOSTER_ORGANIC = 100;
         private const float IDEAL_FISHTRAP_BAIT = 5;
         private const float IDEAL_FISHTRAP_NOBLEBAIT = 2.5f;
@@ -66,19 +69,6 @@ namespace AILogisticsAutomation
             Settings = new AIInventoryManagerSettings();
             base.OnInit(objectBuilder);
             NeedsUpdate |= MyEntityUpdateEnum.EACH_100TH_FRAME;
-            var range = (ITerminalProperty<float>)CurrentEntity.GetProperty("Range");
-            if (range != null)
-            {
-                range.SetValue(CurrentEntity, range.GetMinimum(CurrentEntity));
-            }
-            if (AILogisticsAutomationSession.IsUsingOreDetectorReforge())
-            {
-                var reforgedRange = (ITerminalProperty<float>)CurrentEntity.GetProperty("Reforged: Range");
-                if (reforgedRange != null)
-                {
-                    reforgedRange.SetValue(CurrentEntity, reforgedRange.GetMinimum(CurrentEntity));
-                }
-            }
         }
 
         private void PopulateSubGrids(MyCubeGrid target, ConcurrentDictionary<long, MyCubeGrid> store)
@@ -189,7 +179,8 @@ namespace AILogisticsAutomation
                 (Settings.GetPullFromAssembler() || !x.BlockDefinition.Id.IsAssembler()) &&
                 (Settings.GetPullFromReactor() || !x.BlockDefinition.Id.IsReactor()) &&
                 (Settings.GetPullFromGasGenerator() || !x.BlockDefinition.Id.IsGasGenerator()) &&
-                (Settings.GetPullFromGasTank() || !x.BlockDefinition.Id.IsGasTank())
+                (Settings.GetPullFromGasTank() || !x.BlockDefinition.Id.IsGasTank()) &&
+                (Settings.GetPullFarm() || !x.BlockDefinition.Id.IsAnyFarm())
             );
         }
 
@@ -215,6 +206,12 @@ namespace AILogisticsAutomation
             {
                 var totalReactors = blocks.Count(x => x.BlockDefinition.Id.IsRefrigerator());
                 power += AILogisticsAutomationSettings.Instance.EnergyCost.ExtendedSurvival.FillRefrigeratorCost * totalReactors;
+            }
+
+            if (Settings.GetFillFarm())
+            {
+                var totalReactors = blocks.Count(x => x.BlockDefinition.Id.IsAnyFarm());
+                power += AILogisticsAutomationSettings.Instance.EnergyCost.ExtendedSurvival.FillFarmCost * totalReactors;
             }
 
             if (Settings.GetFillFishTrap())
@@ -289,7 +286,8 @@ namespace AILogisticsAutomation
         }
 
         private void DoCheckInventoryList(MyCubeBlock[] listaToCheck, ref List<IMyReactor> reactors, ref List<IMyGasGenerator> gasGenerators, 
-            ref List<IMyGasTank> gasTanks, ref List<IMyGasGenerator> composters, ref List<IMyGasGenerator> fishTraps, ref List<IMyGasGenerator> refrigerators)
+            ref List<IMyGasTank> gasTanks, ref List<IMyGasGenerator> composters, ref List<IMyGasGenerator> fishTraps, ref List<IMyGasGenerator> refrigerators,
+            ref List<IMyOxygenFarm> farms)
         {
             for (int i = 0; i < listaToCheck.Length; i++)
             {
@@ -346,6 +344,13 @@ namespace AILogisticsAutomation
                     if (!composters.Contains(gasGenerator))
                         composters.Add(gasGenerator);
                 }
+                IMyOxygenFarm farm = null;
+                if (listaToCheck[i].BlockDefinition.Id.IsAnyFarm())
+                {
+                    farm = listaToCheck[i] as IMyOxygenFarm;
+                    if (!farms.Contains(farm))
+                        farms.Add(farm);
+                }
                 IMyGasTank gasTank = null;
                 if (listaToCheck[i].BlockDefinition.Id.IsGasTank())
                 {
@@ -361,13 +366,13 @@ namespace AILogisticsAutomation
                     if (inventoryBase.GetItemsCount() > 0)
                     {
                         // Move itens para o iventário possivel
-                        TryToFullFromInventory(listaToCheck[i].BlockDefinition.Id, inventoryBase, listaToCheck, null, reactor, gasGenerator);
+                        TryToFullFromInventory(listaToCheck[i].BlockDefinition.Id, inventoryBase, listaToCheck, null, reactor, gasGenerator, farm);
                         // Verifica se tem algo nos inventários de produção, se for uma montadora
                         if (listaToCheck[i].BlockDefinition.Id.IsAssembler())
                         {
                             var assembler = (listaToCheck[i] as IMyAssembler);
                             var inventoryProd = listaToCheck[i].GetInventory(0);
-                            TryToFullFromInventory(listaToCheck[i].BlockDefinition.Id, inventoryProd, listaToCheck, assembler, null, null);
+                            TryToFullFromInventory(listaToCheck[i].BlockDefinition.Id, inventoryProd, listaToCheck, assembler, null, null, null);
                         }
                     }
                     if (inventoryBase.GetItemsCount() > 0)
@@ -496,21 +501,107 @@ namespace AILogisticsAutomation
             }
         }
 
+
+        private void DoFillFarms(List<IMyOxygenFarm> farms)
+        {
+            if (Settings.GetFillFarm())
+            {
+                foreach (var farm in farms)
+                {
+                    var farmInventory = farm.GetInventory(0) as MyInventory;
+                    /* Move Ice */
+                    var targetFuelId = ItensConstants.ICE_ID;
+                    var fuelInComposter = (float)farmInventory.GetItemAmount(targetFuelId.DefinitionId);
+                    var targetFuel = IDEAL_FARM_ICE - fuelInComposter;
+                    if (targetFuel > 0)
+                    {
+                        if (fuelInComposter < targetFuel)
+                        {
+                            var fuelToAdd = targetFuel - fuelInComposter;
+                            var keys = Settings.GetDefinitions().Keys.ToArray();
+                            for (int i = 0; i < keys.Length; i++)
+                            {
+                                var def = Settings.GetDefinitions()[keys[i]];
+                                var targetBlock = ValidInventories.FirstOrDefault(x => x.EntityId == def.EntityId);
+                                var targetInventory = targetBlock.GetInventory(0);
+                                var fuelAmount = (float)targetInventory.GetItemAmount(targetFuelId.DefinitionId);
+                                if (fuelAmount > 0)
+                                {
+                                    if ((targetInventory as IMyInventory).CanTransferItemTo(farmInventory, targetFuelId.DefinitionId))
+                                    {
+                                        var builder = ItensConstants.GetPhysicalObjectBuilder(targetFuelId);
+                                        var amountToTransfer = fuelAmount > fuelToAdd ? fuelToAdd : fuelAmount;
+                                        InvokeOnGameThread(() =>
+                                        {
+                                            MyInventory.Transfer(targetInventory, farmInventory, targetFuelId.DefinitionId, amount: (MyFixedPoint)amountToTransfer);
+                                        });
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    /* Move Fertilizer */
+                    MyDefinitionId? targetFertilizerId = null;
+                    foreach (var fertilizer in ItensConstants.FERTILIZERS)
+                    {
+                        var fertilizerCount = farmInventory.GetItemAmount(fertilizer.DefinitionId);
+                        if (fertilizerCount > 0)
+                            targetFertilizerId = fertilizer.DefinitionId;
+                    }
+                    foreach (var fertilizer in ItensConstants.FERTILIZERS.Where(x => !targetFertilizerId.HasValue || x.DefinitionId == targetFertilizerId))
+                    {
+                        fuelInComposter = (float)farmInventory.GetItemAmount(fertilizer.DefinitionId);
+                        targetFuel = IDEAL_FARM_FERTILIZER - fuelInComposter;
+                        if (targetFuel > 0)
+                        {
+                            if (fuelInComposter < targetFuel)
+                            {
+                                var fuelToAdd = targetFuel - fuelInComposter;
+                                var keys = Settings.GetDefinitions().Keys.ToArray();
+                                bool ok = false;
+                                for (int i = 0; i < keys.Length; i++)
+                                {
+                                    var def = Settings.GetDefinitions()[keys[i]];
+                                    var targetBlock = ValidInventories.FirstOrDefault(x => x.EntityId == def.EntityId);
+                                    var targetInventory = targetBlock.GetInventory(0);
+                                    var fuelAmount = (float)targetInventory.GetItemAmount(fertilizer.DefinitionId);
+                                    if (fuelAmount > 0)
+                                    {
+                                        if ((targetInventory as IMyInventory).CanTransferItemTo(farmInventory, fertilizer.DefinitionId))
+                                        {
+                                            var builder = ItensConstants.GetPhysicalObjectBuilder(fertilizer);
+                                            var amountToTransfer = fuelAmount > fuelToAdd ? fuelToAdd : fuelAmount;
+                                            InvokeOnGameThread(() =>
+                                            {
+                                                MyInventory.Transfer(targetInventory, farmInventory, fertilizer.DefinitionId, amount: (MyFixedPoint)amountToTransfer);
+                                            });
+                                            ok = true;
+                                            break;
+                                        }
+                                    }
+                                }
+                                if (ok)
+                                    break;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         private void DoFillComposter(List<IMyGasGenerator> composters)
         {
             if (Settings.GetFillComposter())
             {
                 foreach (var composter in composters)
                 {
-                    var composterDef = MyDefinitionManager.Static.GetCubeBlockDefinition(composter.BlockDefinition) as MyOxygenGeneratorDefinition;
                     var targetFuelId = ItensConstants.ORGANIC_ID.DefinitionId;
                     var composterInventory = composter.GetInventory(0) as MyInventory;
                     if (composterInventory.VolumeFillFactor >= 1)
                         continue;
-                    var fuelInComposter = (float)composterInventory.GetItemAmount(targetFuelId);
-                    var size = composterDef.Size.X * composterDef.Size.Y * composterDef.Size.Z;
-                    var value = IDEAL_COMPOSTER_ORGANIC;
-                    var targetFuel = value * size;
+                    var fuelInComposter = (float)composterInventory.GetItemAmount(targetFuelId);                    
+                    var targetFuel = IDEAL_COMPOSTER_ORGANIC - fuelInComposter;
                     if (targetFuel > 0)
                     {
                         if (fuelInComposter < targetFuel)
@@ -901,7 +992,8 @@ namespace AILogisticsAutomation
         }
 
         private void DoPullFromSubGridList(List<MyCubeGrid> subgrids, ref List<IMyReactor> reactors, ref List<IMyGasGenerator> gasGenerators,
-            ref List<IMyGasTank> gasTanks, ref List<IMyGasGenerator> composters, ref List<IMyGasGenerator> fishTraps, ref List<IMyGasGenerator> refrigerators)
+            ref List<IMyGasTank> gasTanks, ref List<IMyGasGenerator> composters, ref List<IMyGasGenerator> fishTraps, ref List<IMyGasGenerator> refrigerators,
+            ref List<IMyOxygenFarm> farms)
         {
             if (Settings.GetPullSubGrids() && subgrids != null && subgrids.Any())
             {
@@ -919,18 +1011,19 @@ namespace AILogisticsAutomation
                         ignoreList = aiIgnoreBlock?.Settings.GetIgnoreBlocks();
                     }
 
-                    DoCheckInventoryList(DoApplyBasicFilter(grid.Inventories, ignoreList).ToArray(), ref reactors, ref gasGenerators, ref gasTanks, ref composters, ref fishTraps, ref refrigerators);
+                    DoCheckInventoryList(DoApplyBasicFilter(grid.Inventories, ignoreList).ToArray(), ref reactors, ref gasGenerators, ref gasTanks, ref composters, ref fishTraps, ref refrigerators, ref farms);
                     if (Settings.GetPullFromConnectedGrids())
                     {
                         var connectedGrids = GetConnectedGrids(grid);
-                        DoPullFromConnectedGridList(connectedGrids, ref reactors, ref gasGenerators, ref gasTanks, ref composters, ref fishTraps, ref refrigerators);
+                        DoPullFromConnectedGridList(connectedGrids, ref reactors, ref gasGenerators, ref gasTanks, ref composters, ref fishTraps, ref refrigerators, ref farms);
                     }
                 }
             }
         }
 
         private void DoPullFromConnectedGridList(Dictionary<IMyShipConnector, ShipConnected> connectedGrids, ref List<IMyReactor> reactors, ref List<IMyGasGenerator> gasGenerators,
-            ref List<IMyGasTank> gasTanks, ref List<IMyGasGenerator> composters, ref List<IMyGasGenerator> fishTraps, ref List<IMyGasGenerator> refrigerators)
+            ref List<IMyGasTank> gasTanks, ref List<IMyGasGenerator> composters, ref List<IMyGasGenerator> fishTraps, ref List<IMyGasGenerator> refrigerators,
+            ref List<IMyOxygenFarm> farms)
         {
             if (Settings.GetPullFromConnectedGrids() && connectedGrids != null && connectedGrids.Any())
             {
@@ -950,19 +1043,25 @@ namespace AILogisticsAutomation
 
                     if (!Settings.GetIgnoreConnectors().Contains(connector.EntityId) && !ignoreList.Contains(connector.EntityId))
                     {
-                        DoCheckInventoryList(DoApplyBasicFilter(connectedGrids[connector].Grid.Inventories, ignoreList).ToArray(), ref reactors, ref gasGenerators, ref gasTanks, ref composters, ref fishTraps, ref refrigerators);
+                        DoCheckInventoryList(DoApplyBasicFilter(connectedGrids[connector].Grid.Inventories, ignoreList).ToArray(), ref reactors, ref gasGenerators, ref gasTanks, ref composters, ref fishTraps, ref refrigerators, ref farms);
                         if (Settings.GetPullSubGrids())
                         {
                             var subGridsFromConnectedGrid = GetSubGrids(connectedGrids[connector].Grid).Values.ToList();
-                            DoPullFromSubGridList(subGridsFromConnectedGrid, ref reactors, ref gasGenerators, ref gasTanks, ref composters, ref fishTraps, ref refrigerators);
+                            DoPullFromSubGridList(subGridsFromConnectedGrid, ref reactors, ref gasGenerators, ref gasTanks, ref composters, ref fishTraps, ref refrigerators, ref farms);
                         }
                     }
                 }
             }
         }
 
+        protected bool _rangeReset = false;
+        protected int _tryResetCount = 0;
         protected override void DoExecuteCycle()
         {
+            if (!_rangeReset && _tryResetCount < 10)
+                _rangeReset = CurrentEntity.DoResetRange();
+            if (!_rangeReset)
+                _tryResetCount++;
             List<MyCubeGrid> subgrids;
             Dictionary<IMyShipConnector, ShipConnected > connectedGrids;
             var power = GetPowerConsumption(out subgrids, out connectedGrids);
@@ -984,21 +1083,23 @@ namespace AILogisticsAutomation
                 List<IMyGasGenerator> composters = new List<IMyGasGenerator>();
                 List<IMyGasGenerator> fishTraps = new List<IMyGasGenerator>();
                 List<IMyGasGenerator> refrigerators = new List<IMyGasGenerator>();
-                DoCheckInventoryList(ValidInventories.ToArray(), ref reactors, ref gasGenerators, ref gasTanks, ref composters, ref fishTraps, ref refrigerators);
-                DoPullFromSubGridList(subgrids, ref reactors, ref gasGenerators, ref gasTanks, ref composters, ref fishTraps, ref refrigerators);
-                DoPullFromConnectedGridList(connectedGrids, ref reactors, ref gasGenerators, ref gasTanks, ref composters, ref fishTraps, ref refrigerators);
+                List<IMyOxygenFarm> farms = new List<IMyOxygenFarm>();
+                DoCheckInventoryList(ValidInventories.ToArray(), ref reactors, ref gasGenerators, ref gasTanks, ref composters, ref fishTraps, ref refrigerators, ref farms);
+                DoPullFromSubGridList(subgrids, ref reactors, ref gasGenerators, ref gasTanks, ref composters, ref fishTraps, ref refrigerators, ref farms);
+                DoPullFromConnectedGridList(connectedGrids, ref reactors, ref gasGenerators, ref gasTanks, ref composters, ref fishTraps, ref refrigerators, ref farms);
                 DoFillReactors(reactors);
                 DoFillGasGenerator(gasGenerators);
                 DoFillFishTrap(fishTraps);
                 DoFillRefrigerator(refrigerators);
                 DoFillComposter(composters);
+                DoFillFarms(farms);
                 DoCheckAnyCanGoInOtherInventory();
                 DoCheckPullInventories();
                 DoFillBottles(gasGenerators, gasTanks);
             }
         }
 
-        private void TryToFullFromInventory(MyDefinitionId blockId, MyInventory inventoryBase, MyCubeBlock[] listaToCheck, IMyAssembler assembler, IMyReactor reactor, IMyGasGenerator gasGenerator)
+        private void TryToFullFromInventory(MyDefinitionId blockId, MyInventory inventoryBase, MyCubeBlock[] listaToCheck, IMyAssembler assembler, IMyReactor reactor, IMyGasGenerator gasGenerator, IMyOxygenFarm oxygenFarm)
         {
             if (blockId.IsNanobot())
             {
@@ -1068,6 +1169,32 @@ namespace AILogisticsAutomation
                     ignoreTypes.Add(typeof(MyObjectBuilder_ConsumableItem));
                 }
             }
+            if (oxygenFarm != null)
+            {
+                if (blockId.IsAnyFarm())
+                {
+                    pullAll = false;
+                    ignoreIds[ItensConstants.ICE_ID.DefinitionId] = (MyFixedPoint)IDEAL_FARM_ICE;
+                    foreach (var item in ItensConstants.FERTILIZERS)
+                    {
+                        ignoreIds[item.DefinitionId] = (MyFixedPoint)IDEAL_FARM_FERTILIZER;
+                    }
+                    if (blockId.IsFarm())
+                    {
+                        foreach (var item in ItensConstants.SEEDS)
+                        {
+                            ignoreIds[item.DefinitionId] = (MyFixedPoint)int.MaxValue;
+                        }
+                    }
+                    if (blockId.IsTreeFarm())
+                    {
+                        foreach (var item in ItensConstants.TREES)
+                        {
+                            ignoreIds[item.DefinitionId] = (MyFixedPoint)int.MaxValue;
+                        }
+                    }
+                }
+            }
             var itemsToCheck = inventoryBase.GetItems().ToArray();
             for (int j = 0; j < itemsToCheck.Length; j++)
             {
@@ -1115,9 +1242,10 @@ namespace AILogisticsAutomation
                             var targetInventory = targetBlock.GetInventory(0);
                             if ((inventoryBase as IMyInventory).CanTransferItemTo(targetInventory, itemid) && targetInventory.VolumeFillFactor < 1)
                             {
+                                MyFixedPoint? amount = maxForIds.ContainsKey(itemid) ? (MyFixedPoint?)maxForIds[itemid] : null;
                                 InvokeOnGameThread(() =>
                                 {
-                                    MyInventory.Transfer(inventoryBase, targetInventory, itemsToCheck[j].ItemId);
+                                    MyInventory.Transfer(inventoryBase, targetInventory, itemsToCheck[j].ItemId, amount: amount);
                                 });
                                 break;
                             }

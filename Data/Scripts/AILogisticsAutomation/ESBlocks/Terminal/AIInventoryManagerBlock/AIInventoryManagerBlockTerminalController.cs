@@ -1597,6 +1597,68 @@ namespace AILogisticsAutomation
                 );
                 CreateCheckBoxAction("FillRefrigerator", checkboxFillRefrigerator);
 
+                var checkboxPullFromFarm = CreateCheckbox(
+                    "CheckboxPullFromFarm",
+                    "Pull from Farm/Tree Farm.",
+                    isWorkingAndEnabled,
+                    (block) =>
+                    {
+                        var system = GetSystem(block);
+                        if (system != null)
+                        {
+                            return system.Settings.GetPullFarm();
+                        }
+                        return false;
+                    },
+                    (block, value) =>
+                    {
+                        var system = GetSystem(block);
+                        if (system != null)
+                        {
+                            system.Settings.SetPullFarm(value);
+                            system.SendToServer("PullFarm", "SET", value.ToString());
+                            UpdateVisual(block);
+                        }
+                    },
+                    tooltip: "If enabled will pull farm production.",
+                    supMultiple: true
+                );
+                CreateCheckBoxAction("PullFromFarm", checkboxPullFromFarm);
+
+                var checkboxFillFarm = CreateCheckbox(
+                    "CheckboxFillFarm",
+                    "Fill Farm/Tree Farm.",
+                    (block) =>
+                    {
+                        var system = GetSystem(block);
+                        if (system != null)
+                            return isWorkingAndEnabled.Invoke(block) && system.Settings.GetPullFarm();
+                        return false;
+                    },
+                    (block) =>
+                    {
+                        var system = GetSystem(block);
+                        if (system != null)
+                        {
+                            return system.Settings.GetFillFarm();
+                        }
+                        return false;
+                    },
+                    (block, value) =>
+                    {
+                        var system = GetSystem(block);
+                        if (system != null)
+                        {
+                            system.Settings.SetFillFarm(value);
+                            system.SendToServer("FillFarm", "SET", value.ToString());
+                            UpdateVisual(block);
+                        }
+                    },
+                    tooltip: "If enabled will fill farm with ice and fertilizer (to change fertilizer just add the type wanted in the block).",
+                    supMultiple: true
+                );
+                CreateCheckBoxAction("FillFarm", checkboxFillFarm);
+
             }
 
         }

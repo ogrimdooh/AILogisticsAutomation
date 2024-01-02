@@ -28,6 +28,9 @@ namespace AILogisticsAutomation
         public static readonly string[] isFishTrap = new string[] { "FishTrap" };
         public static readonly string[] isNanobot = new string[] { "SELtdLargeNanobotBuildAndRepairSystem", "SELtdSmallNanobotBuildAndRepairSystem" };
 
+        public static readonly string[] isFarm = new string[] { "LargeBlockFarm" };
+        public static readonly string[] isTreeFarm = new string[] { "LargeBlockTreeFarm" };
+
         private static MyDefinitionId[] weaponCoreGuns = new MyDefinitionId[] { };
         public static MyDefinitionId[] WeaponCoreGuns
         {
@@ -153,6 +156,21 @@ namespace AILogisticsAutomation
         public static bool IsShipWelder(this MyDefinitionId id)
         {
             return id.TypeId == typeof(MyObjectBuilder_ShipWelder);
+        }
+
+        public static bool IsAnyFarm(this MyDefinitionId id)
+        {
+            return id.TypeId == typeof(MyObjectBuilder_OxygenFarm) && (isFarm.Contains(id.SubtypeName) || isTreeFarm.Contains(id.SubtypeName));
+        }
+
+        public static bool IsFarm(this MyDefinitionId id)
+        {
+            return id.TypeId == typeof(MyObjectBuilder_OxygenFarm) && isFarm.Contains(id.SubtypeName);
+        }
+
+        public static bool IsTreeFarm(this MyDefinitionId id)
+        {
+            return id.TypeId == typeof(MyObjectBuilder_OxygenFarm) && isTreeFarm.Contains(id.SubtypeName);
         }
 
     }

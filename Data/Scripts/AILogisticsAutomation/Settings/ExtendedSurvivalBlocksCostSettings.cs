@@ -17,6 +17,9 @@ namespace AILogisticsAutomation
         [XmlElement]
         public float FillComposterCost { get; set; } = 0.015f;
 
+        [XmlElement]
+        public float FillFarmCost { get; set; } = 0.015f;
+
     }
 
 }

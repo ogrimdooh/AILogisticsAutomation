@@ -288,6 +288,28 @@ namespace AILogisticsAutomation
             fillRefrigerator = value;
         }
 
+        private bool pullFarm;
+        public bool GetPullFarm()
+        {
+            return pullFarm;
+        }
+
+        public void SetPullFarm(bool value)
+        {
+            pullFarm = value;
+        }
+
+        private bool fillFarm;
+        public bool GetFillFarm()
+        {
+            return fillFarm;
+        }
+
+        public void SetFillFarm(bool value)
+        {
+            fillFarm = value;
+        }
+
         /* Contrutor */
 
         public AIInventoryManagerSettingsData GetData()
@@ -321,7 +343,9 @@ namespace AILogisticsAutomation
                 pullFishTrap = pullFishTrap,
                 pullFromComposter = pullFromComposter,
                 pullRefrigerator = pullRefrigerator,
-                stackIfPossible = stackIfPossible
+                stackIfPossible = stackIfPossible,
+                pullFarm = pullFarm,
+                fillFarm = fillFarm
             };
             return data;
         }
@@ -571,6 +595,20 @@ namespace AILogisticsAutomation
                         return true;
                     }
                     break;
+                case "FILLFARM":
+                    if (bool.TryParse(value, out valueAsFlag))
+                    {
+                        fillFarm = valueAsFlag;
+                        return true;
+                    }
+                    break;
+                case "PULLFARM":
+                    if (bool.TryParse(value, out valueAsFlag))
+                    {
+                        pullFarm = valueAsFlag;
+                        return true;
+                    }
+                    break;
             }
             return false;
         }
@@ -637,6 +675,8 @@ namespace AILogisticsAutomation
             fillFishTrap = data.fillFishTrap;
             pullRefrigerator = data.pullRefrigerator;
             fillRefrigerator = data.fillRefrigerator;
+            fillFarm = data.fillFarm;
+            pullFarm = data.pullFarm;
         }
 
     }
