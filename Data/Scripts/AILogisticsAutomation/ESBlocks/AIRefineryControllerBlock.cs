@@ -177,65 +177,76 @@ namespace AILogisticsAutomation
         private bool DoPushOre(MyDefinitionId oreId, ConcurrentDictionary<MyDefinitionId, MyInventoryOreMap> oreMap, MyInventory inventory, 
             float targetAmount, AIInventoryManagerBlock inventoryManager)
         {
-            if (oreMap.ContainsKey(oreId))
+            var oreAmount = (float)inventory.GetItemAmount(oreId);
+            if (oreAmount < targetAmount && oreMap.ContainsKey(oreId))
             {
-                var oreAmount = (float)inventory.GetItemAmount(oreId);
-                if (oreAmount < targetAmount)
+                var oreToTransfer = targetAmount - oreAmount;
+                while (oreMap[oreId].TotalAmount > 0 && oreMap[oreId].CargoAmount.Any() && oreToTransfer > 0)
                 {
-                    var oreToTransfer = targetAmount - oreAmount;
-                    while (oreMap[oreId].TotalAmount > 0 && oreMap[oreId].CargoAmount.Any() && oreToTransfer > 0)
+                    if (inventory.VolumeFillFactor >= 1)
+                        break;
+                    var targetCargo = oreMap[oreId].CargoAmount.Keys.FirstOrDefault();
+                    var targetCargoCube = CubeGrid.Inventories.FirstOrDefault(x => x.EntityId == targetCargo);
+                    var targetCargoInventory = targetCargoCube?.GetInventory(0);
+                    if (targetCargoInventory == null)
                     {
-                        if (inventory.VolumeFillFactor >= 1)
-                            break;
-                        var targetCargo = oreMap[oreId].CargoAmount.Keys.FirstOrDefault();
-                        var targetCargoCube = CubeGrid.Inventories.FirstOrDefault(x => x.EntityId == targetCargo);
-                        var targetCargoInventory = targetCargoCube?.GetInventory(0);
-                        if (targetCargoInventory == null)
+                        oreMap[oreId].CargoAmount.Remove(targetCargo);
+                        continue;
+                    }
+                    var transferAmoun = oreMap[oreId].CargoAmount[targetCargo] > oreToTransfer ? oreToTransfer : oreMap[oreId].CargoAmount[targetCargo];
+                    if ((targetCargoInventory as IMyInventory).CanTransferItemTo(inventory, oreId) && targetCargoInventory.VolumeFillFactor < 1)
+                    {
+                        oreToTransfer -= transferAmoun;
+                        oreMap[oreId].CargoAmount[targetCargo] -= transferAmoun;
+                        oreMap[oreId].TotalAmount -= transferAmoun;
+                        if (oreMap[oreId].CargoAmount[targetCargo] <= 0)
                         {
                             oreMap[oreId].CargoAmount.Remove(targetCargo);
-                            continue;
+                            var targetItem = targetCargoInventory.FindItem(oreId);
+                            if (targetItem.HasValue)
+                            {
+                                InvokeOnGameThread(() =>
+                                {
+                                    MyInventory.Transfer(targetCargoInventory, inventory, targetItem.Value.ItemId);
+                                });
+                            }
                         }
-                        var transferAmoun = oreMap[oreId].CargoAmount[targetCargo] > oreToTransfer ? oreToTransfer : oreMap[oreId].CargoAmount[targetCargo];
-                        if ((targetCargoInventory as IMyInventory).CanTransferItemTo(inventory, oreId) && targetCargoInventory.VolumeFillFactor < 1)
+                        else
                         {
-                            oreToTransfer -= transferAmoun;
-                            oreMap[oreId].CargoAmount[targetCargo] -= transferAmoun;
-                            oreMap[oreId].TotalAmount -= transferAmoun;
-                            if (oreMap[oreId].CargoAmount[targetCargo] <= 0)
-                                oreMap[oreId].CargoAmount.Remove(targetCargo);
                             InvokeOnGameThread(() =>
                             {
                                 MyInventory.Transfer(targetCargoInventory, inventory, oreId, MyItemFlags.None, (MyFixedPoint)transferAmoun);
                             });
                         }
-                        else
-                        {
-                            oreMap[oreId].CargoAmount.Remove(targetCargo);
-                        }
+                    }
+                    else
+                    {
+                        oreMap[oreId].CargoAmount.Remove(targetCargo);
                     }
                 }
-                else if (oreAmount > targetAmount)
+                return false;
+            }
+            else if (oreAmount > targetAmount)
+            {
+                var amountToRemove = oreAmount - targetAmount;
+                var validTargets = inventoryManager.Settings.GetDefinitions().Values.Where(x =>
+                    (x.ValidIds.Contains(oreId) || x.ValidTypes.Contains(oreId.TypeId)) &&
+                    (!x.IgnoreIds.Contains(oreId) && !x.IgnoreTypes.Contains(oreId.TypeId))
+                );
+                if (validTargets.Any())
                 {
-                    var amountToRemove = oreAmount - targetAmount;
-                    var validTargets = inventoryManager.Settings.GetDefinitions().Values.Where(x =>
-                        (x.ValidIds.Contains(oreId) || x.ValidTypes.Contains(oreId.TypeId)) &&
-                        (!x.IgnoreIds.Contains(oreId) && !x.IgnoreTypes.Contains(oreId.TypeId))
-                    );
-                    if (validTargets.Any())
+                    foreach (var validTarget in validTargets)
                     {
-                        foreach (var validTarget in validTargets)
+                        var targetBlockToSend = CubeGrid.Inventories.FirstOrDefault(x => x.EntityId == validTarget.EntityId);
+                        if (targetBlockToSend != null)
                         {
-                            var targetBlockToSend = CubeGrid.Inventories.FirstOrDefault(x => x.EntityId == validTarget.EntityId);
-                            if (targetBlockToSend != null)
+                            var targetInventoryToSend = targetBlockToSend.GetInventory(0);
+                            if ((inventory as IMyInventory).CanTransferItemTo(targetInventoryToSend, oreId) && targetInventoryToSend.VolumeFillFactor < 1)
                             {
-                                var targetInventoryToSend = targetBlockToSend.GetInventory(0);
-                                if ((inventory as IMyInventory).CanTransferItemTo(targetInventoryToSend, oreId) && targetInventoryToSend.VolumeFillFactor < 1)
+                                InvokeOnGameThread(() =>
                                 {
-                                    InvokeOnGameThread(() =>
-                                    {
-                                        MyInventory.Transfer(inventory, targetInventoryToSend, oreId, MyItemFlags.None, (MyFixedPoint)amountToRemove);
-                                    });
-                                }
+                                    MyInventory.Transfer(inventory, targetInventoryToSend, oreId, MyItemFlags.None, (MyFixedPoint)amountToRemove);
+                                });
                             }
                         }
                     }
@@ -310,7 +321,7 @@ namespace AILogisticsAutomation
                     }
                 }
                 var defaultPriority = Settings.DefaultOres.GetAll();
-
+                var allStoredTypes = oreMap.Keys.Select(x => x.SubtypeName).ToArray();
 
                 for (int i = 0; i < listaToCheck.Length; i++)
                 {
@@ -319,6 +330,7 @@ namespace AILogisticsAutomation
                         continue;
 
                     var inventory = listaToCheck[i].GetInventory(0);
+                    var inInventoryPriority = inventory.GetItems().Select(x => x.Content.SubtypeName).ToArray();
 
                     var refineryFilter = Settings.GetDefinitions().ContainsKey(listaToCheck[i].EntityId) ? Settings.GetDefinitions()[listaToCheck[i].EntityId].Ores.GetAll() : new string[] { };
                     var finalFilter = new HashSet<string>();
@@ -326,11 +338,19 @@ namespace AILogisticsAutomation
                     {
                         finalFilter.Add(item);
                     }
-                    foreach (var item in refineryFilter)
+                    foreach (var item in refineryFilter.Where(x => !finalFilter.Contains(x)))
                     {
                         finalFilter.Add(item);
                     }
-                    foreach (var item in defaultPriority)
+                    foreach (var item in defaultPriority.Where(x => !finalFilter.Contains(x)))
+                    {
+                        finalFilter.Add(item);
+                    }
+                    foreach (var item in inInventoryPriority.Where(x => !finalFilter.Contains(x)))
+                    {
+                        finalFilter.Add(item);
+                    }
+                    foreach (var item in allStoredTypes.Where(x => !finalFilter.Contains(x)))
                     {
                         finalFilter.Add(item);
                     }
@@ -354,7 +374,8 @@ namespace AILogisticsAutomation
                                     inventoryManager
                                 );
                                 useConveyorSystem = useConveyorSystem && push;
-                                c++;
+                                if (inventory.GetItemAmount(oreId) > 0)
+                                    c++;
                             }
                             var others = oreMap.Keys.Where(x => !sourceOres.Contains(x.SubtypeName)).ToArray();
                             foreach (var ore in others)
