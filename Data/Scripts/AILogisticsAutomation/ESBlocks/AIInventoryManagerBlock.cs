@@ -1212,7 +1212,7 @@ namespace AILogisticsAutomation
                         if (ItensConstants.GAS_TYPES.Contains(itemid.TypeId))
                         {
                             var gasInfo = itemsToCheck[j].Content as MyObjectBuilder_GasContainerObject;
-                            if (gasInfo.GasLevel < 1)
+                            if (gasInfo.GasLevel < 1 || ignoreIds.ContainsKey(itemid))
                             {
                                 continue;
                             }

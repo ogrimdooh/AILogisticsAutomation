@@ -281,7 +281,7 @@ namespace AILogisticsAutomation
                 }
 
                 // Conditional Meta
-                string[] triggerPriority = new string[] { };
+                var triggerPriority = new HashSet<string>();
                 if (Settings.GetTriggers().Any())
                 {
                     foreach (var triggerId in Settings.GetTriggers().Keys)
@@ -316,7 +316,10 @@ namespace AILogisticsAutomation
                         }
                         if (okToRun)
                         {
-                            triggerPriority = targetTrigger.GetAll();
+                            foreach (var item in targetTrigger.GetAll())
+                            {
+                                triggerPriority.Add(item);
+                            }
                         }
                     }
                 }
