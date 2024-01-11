@@ -124,6 +124,133 @@ namespace AILogisticsAutomation
             APPLETREE_ID
         };
 
+        public const string MEATRATION_SUBTYPEID = "MeatRation";
+        public static readonly UniqueEntityId MEATRATION_ID = new UniqueEntityId(typeof(MyObjectBuilder_Ore), MEATRATION_SUBTYPEID);
+
+        public const string VEGETABLERATION_SUBTYPEID = "VegetablesRation";
+        public static readonly UniqueEntityId VEGETABLERATION_ID = new UniqueEntityId(typeof(MyObjectBuilder_Ore), VEGETABLERATION_SUBTYPEID);
+
+        public const string GRAINSRATION_SUBTYPEID = "GrainsRation";
+        public static readonly UniqueEntityId GRAINSRATION_ID = new UniqueEntityId(typeof(MyObjectBuilder_Ore), GRAINSRATION_SUBTYPEID);
+
+        public static readonly List<UniqueEntityId> RATIONS_DEFINITIONS = new List<UniqueEntityId>()
+        {
+            MEATRATION_ID,
+            VEGETABLERATION_ID, 
+            GRAINSRATION_ID
+        };
+
+        public const string COWMALE_SUBTYPEID = "CowMale";
+        public static readonly UniqueEntityId COWMALE_ID = new UniqueEntityId(typeof(MyObjectBuilder_GasContainerObject), COWMALE_SUBTYPEID);
+
+        public const string COWFEMALE_SUBTYPEID = "CowFemale";
+        public static readonly UniqueEntityId COWFEMALE_ID = new UniqueEntityId(typeof(MyObjectBuilder_GasContainerObject), COWFEMALE_SUBTYPEID);
+
+        public const string COWBABY_SUBTYPEID = "CowBaby";
+        public static readonly UniqueEntityId COWBABY_ID = new UniqueEntityId(typeof(MyObjectBuilder_GasContainerObject), COWBABY_SUBTYPEID);
+
+        public const string DEERMALE_SUBTYPEID = "DeerMale";
+        public static readonly UniqueEntityId DEERMALE_ID = new UniqueEntityId(typeof(MyObjectBuilder_GasContainerObject), DEERMALE_SUBTYPEID);
+
+        public const string DEERFEMALE_SUBTYPEID = "DeerFemale";
+        public static readonly UniqueEntityId DEERFEMALE_ID = new UniqueEntityId(typeof(MyObjectBuilder_GasContainerObject), DEERFEMALE_SUBTYPEID);
+
+        public const string DEERBABY_SUBTYPEID = "DeerBaby";
+        public static readonly UniqueEntityId DEERBABY_ID = new UniqueEntityId(typeof(MyObjectBuilder_GasContainerObject), DEERBABY_SUBTYPEID);
+
+        public const string HORSEMALE_SUBTYPEID = "HorseMale";
+        public static readonly UniqueEntityId HORSEMALE_ID = new UniqueEntityId(typeof(MyObjectBuilder_GasContainerObject), HORSEMALE_SUBTYPEID);
+
+        public const string HORSEFEMALE_SUBTYPEID = "HorseFemale";
+        public static readonly UniqueEntityId HORSEFEMALE_ID = new UniqueEntityId(typeof(MyObjectBuilder_GasContainerObject), HORSEFEMALE_SUBTYPEID);
+
+        public const string HORSEBABY_SUBTYPEID = "HorseBaby";
+        public static readonly UniqueEntityId HORSEBABY_ID = new UniqueEntityId(typeof(MyObjectBuilder_GasContainerObject), HORSEBABY_SUBTYPEID);
+
+        public const string SHEEPMALE_SUBTYPEID = "SheepMale";
+        public static readonly UniqueEntityId SHEEPMALE_ID = new UniqueEntityId(typeof(MyObjectBuilder_GasContainerObject), SHEEPMALE_SUBTYPEID);
+
+        public const string SHEEPFEMALE_SUBTYPEID = "SheepFemale";
+        public static readonly UniqueEntityId SHEEPFEMALE_ID = new UniqueEntityId(typeof(MyObjectBuilder_GasContainerObject), SHEEPFEMALE_SUBTYPEID);
+
+        public const string SHEEPBABY_SUBTYPEID = "SheepBaby";
+        public static readonly UniqueEntityId SHEEPBABY_ID = new UniqueEntityId(typeof(MyObjectBuilder_GasContainerObject), SHEEPBABY_SUBTYPEID);
+
+        public const string SPIDERMALE_SUBTYPEID = "SpiderMale";
+        public static readonly UniqueEntityId SPIDERMALE_ID = new UniqueEntityId(typeof(MyObjectBuilder_GasContainerObject), SPIDERMALE_SUBTYPEID);
+
+        public const string SPIDERFEMALE_SUBTYPEID = "SpiderFemale";
+        public static readonly UniqueEntityId SPIDERFEMALE_ID = new UniqueEntityId(typeof(MyObjectBuilder_GasContainerObject), SPIDERFEMALE_SUBTYPEID);
+
+        public const string SPIDERBABY_SUBTYPEID = "SpiderBaby";
+        public static readonly UniqueEntityId SPIDERBABY_ID = new UniqueEntityId(typeof(MyObjectBuilder_GasContainerObject), SPIDERBABY_SUBTYPEID);
+
+        public const string WOLFMALE_SUBTYPEID = "WolfMale";
+        public static readonly UniqueEntityId WOLFMALE_ID = new UniqueEntityId(typeof(MyObjectBuilder_GasContainerObject), WOLFMALE_SUBTYPEID);
+
+        public const string WOLFFEMALE_SUBTYPEID = "WolfFemale";
+        public static readonly UniqueEntityId WOLFFEMALE_ID = new UniqueEntityId(typeof(MyObjectBuilder_GasContainerObject), WOLFFEMALE_SUBTYPEID);
+
+        public const string WOLFBABY_SUBTYPEID = "WolfBaby";
+        public static readonly UniqueEntityId WOLFBABY_ID = new UniqueEntityId(typeof(MyObjectBuilder_GasContainerObject), WOLFBABY_SUBTYPEID);
+
+        public const string PIGMALE_SUBTYPEID = "PigMale";
+        public static readonly UniqueEntityId PIGMALE_ID = new UniqueEntityId(typeof(MyObjectBuilder_GasContainerObject), PIGMALE_SUBTYPEID);
+
+        public const string PIGFEMALE_SUBTYPEID = "PigFemale";
+        public static readonly UniqueEntityId PIGFEMALE_ID = new UniqueEntityId(typeof(MyObjectBuilder_GasContainerObject), PIGFEMALE_SUBTYPEID);
+
+        public const string PIGBABY_SUBTYPEID = "PigBaby";
+        public static readonly UniqueEntityId PIGBABY_ID = new UniqueEntityId(typeof(MyObjectBuilder_GasContainerObject), PIGBABY_SUBTYPEID);
+
+        public const string CHICKENMALE_SUBTYPEID = "ChickenMale";
+        public static readonly UniqueEntityId CHICKENMALE_ID = new UniqueEntityId(typeof(MyObjectBuilder_GasContainerObject), CHICKENMALE_SUBTYPEID);
+
+        public const string CHICKENFEMALE_SUBTYPEID = "ChickenFemale";
+        public static readonly UniqueEntityId CHICKENFEMALE_ID = new UniqueEntityId(typeof(MyObjectBuilder_GasContainerObject), CHICKENFEMALE_SUBTYPEID);
+
+        public const string CHICKENBABY_SUBTYPEID = "ChickenBaby";
+        public static readonly UniqueEntityId CHICKENBABY_ID = new UniqueEntityId(typeof(MyObjectBuilder_GasContainerObject), CHICKENBABY_SUBTYPEID);
+
+        public static readonly List<UniqueEntityId> ANIMALS_HERBICORES_IDS = new List<UniqueEntityId>()
+        {
+            COWMALE_ID,
+            COWFEMALE_ID,
+            COWBABY_ID,
+            DEERMALE_ID,
+            DEERFEMALE_ID,
+            DEERBABY_ID,
+            HORSEMALE_ID,
+            HORSEFEMALE_ID,
+            HORSEBABY_ID,
+            SHEEPMALE_ID,
+            SHEEPFEMALE_ID,
+            SHEEPBABY_ID,
+            PIGMALE_ID,
+            PIGFEMALE_ID,
+            PIGBABY_ID
+        };
+
+        public static readonly List<UniqueEntityId> ANIMALS_CARNIVORES_IDS = new List<UniqueEntityId>()
+        {
+            SPIDERMALE_ID,
+            SPIDERFEMALE_ID,
+            SPIDERBABY_ID,
+            WOLFMALE_ID,
+            WOLFFEMALE_ID,
+            WOLFBABY_ID,
+            PIGMALE_ID,
+            PIGFEMALE_ID,
+            PIGBABY_ID
+        };
+
+        public static readonly List<UniqueEntityId> ANIMALS_BIRDS_IDS = new List<UniqueEntityId>()
+        {
+            CHICKENMALE_ID,
+            CHICKENFEMALE_ID,
+            CHICKENBABY_ID
+        };
+
         public static T GetBuilder<T>(UniqueEntityId id, bool cache = true) where T : MyObjectBuilder_Base
         {
             if (cache && BUILDERS_CACHE.ContainsKey(id))

@@ -31,7 +31,8 @@ namespace AILogisticsAutomation
 
         public static readonly string[] isFarm = new string[] { "LargeBlockFarm" };
         public static readonly string[] isTreeFarm = new string[] { "LargeBlockTreeFarm" };
-
+        public static readonly string[] isCage = new string[] { "LargeBlockSmallCage", "SmallBlockSmallCage", "LargeBlockLargeCage" };
+        
         private static MyDefinitionId[] weaponCoreGuns = new MyDefinitionId[] { };
         public static MyDefinitionId[] WeaponCoreGuns
         {
@@ -172,6 +173,11 @@ namespace AILogisticsAutomation
         public static bool IsTreeFarm(this MyDefinitionId id)
         {
             return id.TypeId == typeof(MyObjectBuilder_OxygenFarm) && isTreeFarm.Contains(id.SubtypeName);
+        }
+
+        public static bool IsCage(this MyDefinitionId id)
+        {
+            return id.TypeId == typeof(MyObjectBuilder_CargoContainer) && isCage.Contains(id.SubtypeName);
         }
 
     }

@@ -343,6 +343,28 @@ namespace AILogisticsAutomation
             fillSeedInFarm = value;
         }
 
+        private bool pullCages;
+        public bool GetPullCages()
+        {
+            return pullCages;
+        }
+
+        public void SetPullCages(bool value)
+        {
+            pullCages = value;
+        }
+
+        private bool fillCages;
+        public bool GetFillCages()
+        {
+            return fillCages;
+        }
+
+        public void SetFillCages(bool value)
+        {
+            fillCages = value;
+        }
+
         /* Contrutor */
 
         public AIInventoryManagerSettingsData GetData()
@@ -381,7 +403,9 @@ namespace AILogisticsAutomation
                 allowMultiSeed = allowMultiSeed,
                 fillFarm = fillFarm,
                 fillTreeInFarm = fillTreeInFarm,
-                fillSeedInFarm = fillSeedInFarm
+                fillSeedInFarm = fillSeedInFarm,
+                pullCages = pullCages,
+                fillCages = fillCages
             };
             return data;
         }
@@ -666,6 +690,20 @@ namespace AILogisticsAutomation
                         return true;
                     }
                     break;
+                case "PULLCAGES":
+                    if (bool.TryParse(value, out valueAsFlag))
+                    {
+                        pullCages = valueAsFlag;
+                        return true;
+                    }
+                    break;
+                case "FILLCAGES":
+                    if (bool.TryParse(value, out valueAsFlag))
+                    {
+                        fillCages = valueAsFlag;
+                        return true;
+                    }
+                    break;
             }
             return false;
         }
@@ -737,6 +775,8 @@ namespace AILogisticsAutomation
             pullFarm = data.pullFarm;
             fillSeedInFarm = data.fillSeedInFarm;
             fillTreeInFarm = data.fillTreeInFarm;
+            pullCages = data.pullCages;
+            fillCages = data.fillCages;
         }
 
     }

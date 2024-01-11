@@ -105,6 +105,12 @@ namespace AILogisticsAutomation
         [ProtoMember(33)]
         public bool fillSeedInFarm;
 
+        [ProtoMember(34)]
+        public bool pullCages;
+
+        [ProtoMember(35)]
+        public bool fillCages;
+
     }
 
 }

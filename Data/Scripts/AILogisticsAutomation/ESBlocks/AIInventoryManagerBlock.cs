@@ -30,6 +30,7 @@ namespace AILogisticsAutomation
         private const float IDEAL_FARM_ICE = 100;
         private const float IDEAL_FARM_FERTILIZER = 10;
         private const float IDEAL_FARM_SEED = 10;
+        private const float IDEAL_CAGE_RATION = 10;
         private const float IDEAL_COMPOSTER_ORGANIC = 100;
         private const float IDEAL_FISHTRAP_BAIT = 5;
         private const float IDEAL_FISHTRAP_NOBLEBAIT = 2.5f;
@@ -181,7 +182,8 @@ namespace AILogisticsAutomation
                 (Settings.GetPullFromReactor() || !x.BlockDefinition.Id.IsReactor()) &&
                 (Settings.GetPullFromGasGenerator() || !x.BlockDefinition.Id.IsGasGenerator()) &&
                 (Settings.GetPullFromGasTank() || !x.BlockDefinition.Id.IsGasTank()) &&
-                (Settings.GetPullFarm() || !x.BlockDefinition.Id.IsAnyFarm())
+                (Settings.GetPullFarm() || !x.BlockDefinition.Id.IsAnyFarm()) &&
+                (Settings.GetPullCages() || !x.BlockDefinition.Id.IsCage())
             );
         }
 
@@ -241,6 +243,12 @@ namespace AILogisticsAutomation
             {
                 var totalBottleTargets = blocks.Count(x => x.BlockDefinition.Id.IsBottleTaget());
                 power += AILogisticsAutomationSettings.Instance.EnergyCost.FillBottlesCost * totalBottleTargets;
+            }
+
+            if (Settings.GetFillCages())
+            {
+                var totalCages = blocks.Count(x => x.BlockDefinition.Id.IsCage());
+                power += AILogisticsAutomationSettings.Instance.EnergyCost.ExtendedSurvival.FillCage * totalCages;
             }
 
             return power;
@@ -325,7 +333,7 @@ namespace AILogisticsAutomation
 
         private void DoCheckInventoryList(MyCubeBlock[] listaToCheck, ref List<IMyReactor> reactors, ref List<IMyGasGenerator> gasGenerators, 
             ref List<IMyGasTank> gasTanks, ref List<IMyGasGenerator> composters, ref List<IMyGasGenerator> fishTraps, ref List<IMyGasGenerator> refrigerators,
-            ref List<IMyOxygenFarm> farms)
+            ref List<IMyOxygenFarm> farms, ref List<IMyCargoContainer> cages)
         {
             for (int i = 0; i < listaToCheck.Length; i++)
             {
@@ -396,6 +404,13 @@ namespace AILogisticsAutomation
                     if (!gasTanks.Contains(gasTank))
                         gasTanks.Add(gasTank);
                 }
+                IMyCargoContainer cage = null;
+                if (listaToCheck[i].BlockDefinition.Id.IsCage())
+                {
+                    cage = (listaToCheck[i] as IMyCargoContainer);
+                    if (!cages.Contains(cage))
+                        cages.Add(cage);
+                }
                 if (listaToCheck[i].BlockDefinition.Id.IsAssembler() || listaToCheck[i].BlockDefinition.Id.IsRefinery())
                     targetInventory = 1;
                 var inventoryBase = listaToCheck[i].GetInventory(targetInventory);
@@ -404,13 +419,13 @@ namespace AILogisticsAutomation
                     if (inventoryBase.GetItemsCount() > 0)
                     {
                         // Move itens para o iventário possivel
-                        TryToFullFromInventory(listaToCheck[i].BlockDefinition.Id, inventoryBase, listaToCheck, null, reactor, gasGenerator, farm);
+                        TryToFullFromInventory(listaToCheck[i].BlockDefinition.Id, inventoryBase, listaToCheck, null, reactor, gasGenerator, farm, cage);
                         // Verifica se tem algo nos inventários de produção, se for uma montadora
                         if (listaToCheck[i].BlockDefinition.Id.IsAssembler())
                         {
                             var assembler = (listaToCheck[i] as IMyAssembler);
                             var inventoryProd = listaToCheck[i].GetInventory(0);
-                            TryToFullFromInventory(listaToCheck[i].BlockDefinition.Id, inventoryProd, listaToCheck, assembler, null, null, null);
+                            TryToFullFromInventory(listaToCheck[i].BlockDefinition.Id, inventoryProd, listaToCheck, assembler, null, null, null, null);
                         }
                     }
                     if (inventoryBase.GetItemsCount() > 0)
@@ -539,6 +554,60 @@ namespace AILogisticsAutomation
             }
         }
 
+        private void DoFillCages(List<IMyCargoContainer> cages)
+        {
+            if (Settings.GetFillCages())
+            {
+                foreach (var cage in cages)
+                {
+                    var cageInventory = cage.GetInventory(0) as MyInventory;
+                    var itemIds = cageInventory.GetItems().Select(x => new UniqueEntityId(x.Content.GetId())).Distinct().ToArray();
+                    var fuels = new List<UniqueEntityId>();
+                    var hadCarn = ItensConstants.ANIMALS_CARNIVORES_IDS.Any(x => itemIds.Contains(x));
+                    if (hadCarn)
+                        fuels.Add(ItensConstants.MEATRATION_ID);
+                    var hadHerb = ItensConstants.ANIMALS_HERBICORES_IDS.Any(x => itemIds.Contains(x));
+                    if (hadHerb)
+                        fuels.Add(ItensConstants.VEGETABLERATION_ID);
+                    var hadBird = ItensConstants.ANIMALS_BIRDS_IDS.Any(x => itemIds.Contains(x));
+                    if (hadBird)
+                        fuels.Add(ItensConstants.GRAINSRATION_ID);
+                    foreach (var targetFuelId in fuels)
+                    {
+                        var fuelInComposter = (float)cageInventory.GetItemAmount(targetFuelId.DefinitionId);
+                        var targetFuel = IDEAL_CAGE_RATION - fuelInComposter;
+                        if (targetFuel > 0)
+                        {
+                            if (fuelInComposter < targetFuel)
+                            {
+                                var fuelToAdd = targetFuel - fuelInComposter;
+                                var keys = Settings.GetDefinitions().Keys.ToArray();
+                                for (int i = 0; i < keys.Length; i++)
+                                {
+                                    var def = Settings.GetDefinitions()[keys[i]];
+                                    var targetBlock = ValidInventories.FirstOrDefault(x => x.EntityId == def.EntityId);
+                                    var targetInventory = targetBlock.GetInventory(0);
+                                    var fuelAmount = (float)targetInventory.GetItemAmount(targetFuelId.DefinitionId);
+                                    if (fuelAmount > 0)
+                                    {
+                                        if ((targetInventory as IMyInventory).CanTransferItemTo(cageInventory, targetFuelId.DefinitionId))
+                                        {
+                                            var builder = ItensConstants.GetPhysicalObjectBuilder(targetFuelId);
+                                            var amountToTransfer = fuelAmount > fuelToAdd ? fuelToAdd : fuelAmount;
+                                            InvokeOnGameThread(() =>
+                                            {
+                                                MyInventory.Transfer(targetInventory, cageInventory, targetFuelId.DefinitionId, amount: (MyFixedPoint)amountToTransfer);
+                                            });
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
 
         private void DoFillFarms(List<IMyOxygenFarm> farms)
         {
@@ -1149,7 +1218,7 @@ namespace AILogisticsAutomation
 
         private void DoPullFromSubGridList(List<MyCubeGrid> subgrids, ref List<IMyReactor> reactors, ref List<IMyGasGenerator> gasGenerators,
             ref List<IMyGasTank> gasTanks, ref List<IMyGasGenerator> composters, ref List<IMyGasGenerator> fishTraps, ref List<IMyGasGenerator> refrigerators,
-            ref List<IMyOxygenFarm> farms)
+            ref List<IMyOxygenFarm> farms, ref List<IMyCargoContainer> cages)
         {
             if (Settings.GetPullSubGrids() && subgrids != null && subgrids.Any())
             {
@@ -1162,11 +1231,11 @@ namespace AILogisticsAutomation
                     var ignoreMap = GetAIIgnoreMap(grid);
                     var customIgnoreBlocks = ignoreMap?.Settings.GetIgnoreBlocks().ToArray() ?? new long[] { };
 
-                    DoCheckInventoryList(DoApplyBasicFilter(grid.Inventories, customIgnoreBlocks).ToArray(), ref reactors, ref gasGenerators, ref gasTanks, ref composters, ref fishTraps, ref refrigerators, ref farms);
+                    DoCheckInventoryList(DoApplyBasicFilter(grid.Inventories, customIgnoreBlocks).ToArray(), ref reactors, ref gasGenerators, ref gasTanks, ref composters, ref fishTraps, ref refrigerators, ref farms, ref cages);
                     if (Settings.GetPullFromConnectedGrids())
                     {
                         var connectedGrids = GetConnectedGrids(grid);
-                        DoPullFromConnectedGridList(connectedGrids, ref reactors, ref gasGenerators, ref gasTanks, ref composters, ref fishTraps, ref refrigerators, ref farms);
+                        DoPullFromConnectedGridList(connectedGrids, ref reactors, ref gasGenerators, ref gasTanks, ref composters, ref fishTraps, ref refrigerators, ref farms, ref cages);
                     }
                 }
             }
@@ -1174,7 +1243,7 @@ namespace AILogisticsAutomation
 
         private void DoPullFromConnectedGridList(Dictionary<IMyShipConnector, ShipConnected> connectedGrids, ref List<IMyReactor> reactors, ref List<IMyGasGenerator> gasGenerators,
             ref List<IMyGasTank> gasTanks, ref List<IMyGasGenerator> composters, ref List<IMyGasGenerator> fishTraps, ref List<IMyGasGenerator> refrigerators,
-            ref List<IMyOxygenFarm> farms)
+            ref List<IMyOxygenFarm> farms, ref List<IMyCargoContainer> cages)
         {
             if (Settings.GetPullFromConnectedGrids() && connectedGrids != null && connectedGrids.Any())
             {
@@ -1189,11 +1258,11 @@ namespace AILogisticsAutomation
 
                     if (!Settings.GetIgnoreConnectors().Contains(connector.EntityId) && !customIgnoreBlocks.Contains(connector.EntityId))
                     {
-                        DoCheckInventoryList(DoApplyBasicFilter(connectedGrids[connector].Grid.Inventories, customIgnoreBlocks).ToArray(), ref reactors, ref gasGenerators, ref gasTanks, ref composters, ref fishTraps, ref refrigerators, ref farms);
+                        DoCheckInventoryList(DoApplyBasicFilter(connectedGrids[connector].Grid.Inventories, customIgnoreBlocks).ToArray(), ref reactors, ref gasGenerators, ref gasTanks, ref composters, ref fishTraps, ref refrigerators, ref farms, ref cages);
                         if (Settings.GetPullSubGrids())
                         {
                             var subGridsFromConnectedGrid = GetSubGrids(connectedGrids[connector].Grid).Values.ToList();
-                            DoPullFromSubGridList(subGridsFromConnectedGrid, ref reactors, ref gasGenerators, ref gasTanks, ref composters, ref fishTraps, ref refrigerators, ref farms);
+                            DoPullFromSubGridList(subGridsFromConnectedGrid, ref reactors, ref gasGenerators, ref gasTanks, ref composters, ref fishTraps, ref refrigerators, ref farms, ref cages);
                         }
                     }
                 }
@@ -1230,22 +1299,24 @@ namespace AILogisticsAutomation
                 List<IMyGasGenerator> fishTraps = new List<IMyGasGenerator>();
                 List<IMyGasGenerator> refrigerators = new List<IMyGasGenerator>();
                 List<IMyOxygenFarm> farms = new List<IMyOxygenFarm>();
-                DoCheckInventoryList(ValidInventories.ToArray(), ref reactors, ref gasGenerators, ref gasTanks, ref composters, ref fishTraps, ref refrigerators, ref farms);
-                DoPullFromSubGridList(subgrids, ref reactors, ref gasGenerators, ref gasTanks, ref composters, ref fishTraps, ref refrigerators, ref farms);
-                DoPullFromConnectedGridList(connectedGrids, ref reactors, ref gasGenerators, ref gasTanks, ref composters, ref fishTraps, ref refrigerators, ref farms);
+                List<IMyCargoContainer> cages = new List<IMyCargoContainer>();                
+                DoCheckInventoryList(ValidInventories.ToArray(), ref reactors, ref gasGenerators, ref gasTanks, ref composters, ref fishTraps, ref refrigerators, ref farms, ref cages);
+                DoPullFromSubGridList(subgrids, ref reactors, ref gasGenerators, ref gasTanks, ref composters, ref fishTraps, ref refrigerators, ref farms, ref cages);
+                DoPullFromConnectedGridList(connectedGrids, ref reactors, ref gasGenerators, ref gasTanks, ref composters, ref fishTraps, ref refrigerators, ref farms, ref cages);
                 DoFillReactors(reactors);
                 DoFillGasGenerator(gasGenerators);
                 DoFillFishTrap(fishTraps);
                 DoFillRefrigerator(refrigerators);
                 DoFillComposter(composters);
                 DoFillFarms(farms);
+                DoFillCages(cages);
                 DoCheckAnyCanGoInOtherInventory();
                 DoCheckPullInventories();
                 DoFillBottles(gasGenerators, gasTanks);
             }
         }
 
-        private void TryToFullFromInventory(MyDefinitionId blockId, MyInventory inventoryBase, MyCubeBlock[] listaToCheck, IMyAssembler assembler, IMyReactor reactor, IMyGasGenerator gasGenerator, IMyOxygenFarm oxygenFarm)
+        private void TryToFullFromInventory(MyDefinitionId blockId, MyInventory inventoryBase, MyCubeBlock[] listaToCheck, IMyAssembler assembler, IMyReactor reactor, IMyGasGenerator gasGenerator, IMyOxygenFarm oxygenFarm, IMyCargoContainer cage)
         {
             if (blockId.IsNanobot())
             {
@@ -1372,6 +1443,18 @@ namespace AILogisticsAutomation
                                 }
                             }
                         }
+                    }
+                }
+            }
+            if (cage != null)
+            {
+                if (blockId.IsCage())
+                {
+                    pullAll = false;
+                    ignoreTypes.Add(typeof(MyObjectBuilder_GasContainerObject));
+                    foreach (var ration in ItensConstants.RATIONS_DEFINITIONS)
+                    {
+                        ignoreIds[ration.DefinitionId] = (MyFixedPoint)IDEAL_CAGE_RATION;
                     }
                 }
             }

@@ -51,7 +51,7 @@ namespace AILogisticsAutomation
         {
             get
             {
-                return Settings?.GetEnabled() ?? false;
+                return ((CurrentEntity as IMyFunctionalBlock)?.Enabled ?? false) && (Settings?.GetEnabled() ?? false);
             }
         }
 

@@ -299,7 +299,7 @@ namespace AILogisticsAutomation
                     if (system != null)
                     {
                         var targetGrid = system.CurrentEntity.CubeGrid as MyCubeGrid;
-                        foreach (var inventory in targetGrid.Inventories.Where(x => x.BlockDefinition.Id.TypeId == typeof(MyObjectBuilder_CargoContainer)))
+                        foreach (var inventory in targetGrid.Inventories.Where(x => x.BlockDefinition.Id.TypeId == typeof(MyObjectBuilder_CargoContainer) && !x.BlockDefinition.Id.IsCage()))
                         {
                             var added = system.Settings.GetDefinitions().ContainsKey(inventory.EntityId);
 
@@ -1760,6 +1760,68 @@ namespace AILogisticsAutomation
                     supMultiple: true
                 );
                 CreateCheckBoxAction("FillTreeInFarm", checkboxAllowMultiSeed);
+
+                var checkboxPullFromCages = CreateCheckbox(
+                    "CheckboxPullFromCages",
+                    "Pull from Cages.",
+                    isWorkingAndEnabled,
+                    (block) =>
+                    {
+                        var system = GetSystem(block);
+                        if (system != null)
+                        {
+                            return system.Settings.GetPullCages();
+                        }
+                        return false;
+                    },
+                    (block, value) =>
+                    {
+                        var system = GetSystem(block);
+                        if (system != null)
+                        {
+                            system.Settings.SetPullCages(value);
+                            system.SendToServer("PullCages", "SET", value.ToString());
+                            UpdateVisual(block);
+                        }
+                    },
+                    tooltip: "If enabled will pull not creatures and rations from Cages.",
+                    supMultiple: true
+                );
+                CreateCheckBoxAction("PullFromCages", checkboxPullFromCages);
+
+                var checkboxFillCages = CreateCheckbox(
+                    "CheckboxFillCages",
+                    "Fill Cages with rations.",
+                    (block) =>
+                    {
+                        var system = GetSystem(block);
+                        if (system != null)
+                            return isWorkingAndEnabled.Invoke(block) && system.Settings.GetPullCages();
+                        return false;
+                    },
+                    (block) =>
+                    {
+                        var system = GetSystem(block);
+                        if (system != null)
+                        {
+                            return system.Settings.GetFillCages();
+                        }
+                        return false;
+                    },
+                    (block, value) =>
+                    {
+                        var system = GetSystem(block);
+                        if (system != null)
+                        {
+                            system.Settings.SetFillCages(value);
+                            system.SendToServer("FillCages", "SET", value.ToString());
+                            UpdateVisual(block);
+                        }
+                    },
+                    tooltip: "If enabled will fill Cages with rations.",
+                    supMultiple: true
+                );
+                CreateCheckBoxAction("FillCages", checkboxFillCages);
 
             }
 
