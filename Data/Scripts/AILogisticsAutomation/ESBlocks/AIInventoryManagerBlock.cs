@@ -29,6 +29,7 @@ namespace AILogisticsAutomation
 
         private const float IDEAL_FARM_ICE = 100;
         private const float IDEAL_FARM_FERTILIZER = 10;
+        private const float IDEAL_FARM_SEED = 10;
         private const float IDEAL_COMPOSTER_ORGANIC = 100;
         private const float IDEAL_FISHTRAP_BAIT = 5;
         private const float IDEAL_FISHTRAP_NOBLEBAIT = 2.5f;
@@ -208,10 +209,20 @@ namespace AILogisticsAutomation
                 power += AILogisticsAutomationSettings.Instance.EnergyCost.ExtendedSurvival.FillRefrigeratorCost * totalReactors;
             }
 
+            var farmMultiplier = 0;
             if (Settings.GetFillFarm())
+                farmMultiplier++;
+            if (Settings.GetAllowMultiSeed())
+                farmMultiplier++;
+            if (Settings.GetFillSeedInFarm())
+                farmMultiplier++;
+            if (Settings.GetFillTreeInFarm())
+                farmMultiplier++;
+
+            if (farmMultiplier > 0)
             {
                 var totalReactors = blocks.Count(x => x.BlockDefinition.Id.IsAnyFarm());
-                power += AILogisticsAutomationSettings.Instance.EnergyCost.ExtendedSurvival.FillFarmCost * totalReactors;
+                power += AILogisticsAutomationSettings.Instance.EnergyCost.ExtendedSurvival.FillFarmCost * totalReactors * farmMultiplier;
             }
 
             if (Settings.GetFillFishTrap())
@@ -613,6 +624,92 @@ namespace AILogisticsAutomation
                             }
                         }
                     }
+                    if (((MyDefinitionId)farm.BlockDefinition).IsFarm() && Settings.GetFillSeedInFarm())
+                    {
+                        bool hasSeed = false;
+                        foreach (var item in ItensConstants.SEEDS)
+                        {
+                            if (farmInventory.GetItemAmount(item.DefinitionId) > 0)
+                            {
+                                hasSeed = true;
+                                break;
+                            }
+                        }
+                        if (!hasSeed)
+                        {
+                            foreach (var item in ItensConstants.SEEDS)
+                            {
+                                var fuelToAdd = IDEAL_FARM_SEED;
+                                var keys = Settings.GetDefinitions().Keys.ToArray();
+                                bool ok = false;
+                                for (int i = 0; i < keys.Length; i++)
+                                {
+                                    var def = Settings.GetDefinitions()[keys[i]];
+                                    var targetBlock = ValidInventories.FirstOrDefault(x => x.EntityId == def.EntityId);
+                                    var targetInventory = targetBlock.GetInventory(0);
+                                    var fuelAmount = (float)targetInventory.GetItemAmount(item.DefinitionId);
+                                    if (fuelAmount > 0)
+                                    {
+                                        if ((targetInventory as IMyInventory).CanTransferItemTo(farmInventory, item.DefinitionId))
+                                        {
+                                            var builder = ItensConstants.GetPhysicalObjectBuilder(item);
+                                            var amountToTransfer = fuelAmount > fuelToAdd ? fuelToAdd : fuelAmount;
+                                            InvokeOnGameThread(() =>
+                                            {
+                                                MyInventory.Transfer(targetInventory, farmInventory, item.DefinitionId, amount: (MyFixedPoint)amountToTransfer);
+                                            });
+                                            break;
+                                        }
+                                    }
+                                }
+                                if (ok)
+                                    break;
+                            }
+                        }
+                    }
+                    else if (((MyDefinitionId)farm.BlockDefinition).IsTreeFarm() && Settings.GetFillTreeInFarm())
+                    {
+                        bool hasTree = false;
+                        foreach (var item in ItensConstants.TREES)
+                        {
+                            if (farmInventory.GetItemAmount(item.DefinitionId) > 0)
+                            {
+                                hasTree = true;
+                                break;
+                            }
+                        }
+                        if (!hasTree)
+                        {
+                            foreach (var item in ItensConstants.TREES)
+                            {
+                                var fuelToAdd = 1;
+                                var keys = Settings.GetDefinitions().Keys.ToArray();
+                                bool ok = false;
+                                for (int i = 0; i < keys.Length; i++)
+                                {
+                                    var def = Settings.GetDefinitions()[keys[i]];
+                                    var targetBlock = ValidInventories.FirstOrDefault(x => x.EntityId == def.EntityId);
+                                    var targetInventory = targetBlock.GetInventory(0);
+                                    var fuelAmount = (float)targetInventory.GetItemAmount(item.DefinitionId);
+                                    if (fuelAmount > 0)
+                                    {
+                                        if ((targetInventory as IMyInventory).CanTransferItemTo(farmInventory, item.DefinitionId))
+                                        {
+                                            var builder = ItensConstants.GetPhysicalObjectBuilder(item);
+                                            var amountToTransfer = fuelAmount > fuelToAdd ? fuelToAdd : fuelAmount;
+                                            InvokeOnGameThread(() =>
+                                            {
+                                                MyInventory.Transfer(targetInventory, farmInventory, item.DefinitionId, amount: (MyFixedPoint)amountToTransfer);
+                                            });
+                                            break;
+                                        }
+                                    }
+                                }
+                                if (ok)
+                                    break;
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -714,51 +811,83 @@ namespace AILogisticsAutomation
             }
         }
 
+        private float GetGasGeneratorIdealFuelAmount(IMyGasGenerator gasGenerator, out MyInventory gasGeneratorInventory)
+        {
+            var gasGeneratorDef = MyDefinitionManager.Static.GetCubeBlockDefinition(gasGenerator.BlockDefinition) as MyOxygenGeneratorDefinition;
+            gasGeneratorInventory = gasGenerator.GetInventory(0) as MyInventory;
+            var isLarge = gasGeneratorDef.CubeSize == MyCubeSize.Large;
+            var size = (float)gasGeneratorInventory.MaxVolume / (isLarge ? 1.2f : 0.12f);
+            var value = isLarge ? Settings.GetLargeGasGeneratorAmount() : Settings.GetSmallGasGeneratorAmount();
+            return value * size;
+        }
+
         private void DoFillGasGenerator(List<IMyGasGenerator> gasGenerators)
         {
             if (Settings.GetFillGasGenerator())
             {
                 foreach (var gasGenerator in gasGenerators)
                 {
-                    var gasGeneratorDef = MyDefinitionManager.Static.GetCubeBlockDefinition(gasGenerator.BlockDefinition) as MyOxygenGeneratorDefinition;
-                    var targetFuelId = ItensConstants.ICE_ID.DefinitionId;
-                    var gasGeneratorInventory = gasGenerator.GetInventory(0) as MyInventory;
+                    var fuels = gasGenerator.GetFuelIds();
+                    MyInventory gasGeneratorInventory = null;
+                    var targetFuel = GetGasGeneratorIdealFuelAmount(gasGenerator, out gasGeneratorInventory);
                     if (gasGeneratorInventory.VolumeFillFactor >= 1)
                         continue;
-                    var fuelInGasGenerator = (float)gasGeneratorInventory.GetItemAmount(targetFuelId);
-                    var size = gasGeneratorDef.Size.X * gasGeneratorDef.Size.Y * gasGeneratorDef.Size.Z;
-                    var value = gasGeneratorDef.CubeSize == MyCubeSize.Large ? Settings.GetLargeGasGeneratorAmount() : Settings.GetSmallGasGeneratorAmount();
-                    var targetFuel = value * size;
                     if (targetFuel > 0)
                     {
-                        if (fuelInGasGenerator < targetFuel)
+                        bool ok = false;
+                        foreach (var targetFuelId in fuels)
                         {
-                            var fuelToAdd = targetFuel - fuelInGasGenerator;
-                            var keys = Settings.GetDefinitions().Keys.ToArray();
-                            for (int i = 0; i < keys.Length; i++)
+                            var fuelInGasGenerator = (float)gasGeneratorInventory.GetItemAmount(targetFuelId);
+                            if (fuelInGasGenerator < targetFuel)
                             {
-                                var def = Settings.GetDefinitions()[keys[i]];
-                                var targetBlock = ValidInventories.FirstOrDefault(x => x.EntityId == def.EntityId);
-                                var targetInventory = targetBlock.GetInventory(0);
-                                var fuelAmount = (float)targetInventory.GetItemAmount(targetFuelId);
-                                if (fuelAmount > 0)
+                                var fuelToAdd = targetFuel - fuelInGasGenerator;
+                                var keys = Settings.GetDefinitions().Keys.ToArray();
+                                for (int i = 0; i < keys.Length; i++)
                                 {
-                                    if ((targetInventory as IMyInventory).CanTransferItemTo(gasGeneratorInventory, targetFuelId))
+                                    var def = Settings.GetDefinitions()[keys[i]];
+                                    var targetBlock = ValidInventories.FirstOrDefault(x => x.EntityId == def.EntityId);
+                                    var targetInventory = targetBlock.GetInventory(0);
+                                    var fuelAmount = (float)targetInventory.GetItemAmount(targetFuelId);
+                                    if (fuelAmount > 0)
                                     {
-                                        var builder = ItensConstants.GetPhysicalObjectBuilder(new UniqueEntityId(targetFuelId));
-                                        var amountToTransfer = fuelAmount > fuelToAdd ? fuelToAdd : fuelAmount;
-                                        InvokeOnGameThread(() =>
+                                        if ((targetInventory as IMyInventory).CanTransferItemTo(gasGeneratorInventory, targetFuelId))
                                         {
-                                            MyInventory.Transfer(targetInventory, gasGeneratorInventory, targetFuelId, amount: (MyFixedPoint)amountToTransfer);
-                                        });
-                                        break;
+                                            var builder = ItensConstants.GetPhysicalObjectBuilder(new UniqueEntityId(targetFuelId));
+                                            var amountToTransfer = fuelAmount > fuelToAdd ? fuelToAdd : fuelAmount;
+                                            InvokeOnGameThread(() =>
+                                            {
+                                                MyInventory.Transfer(targetInventory, gasGeneratorInventory, targetFuelId, amount: (MyFixedPoint)amountToTransfer);
+                                            });
+                                            ok = true;
+                                            break;
+                                        }
                                     }
                                 }
+                                if (ok)
+                                    break;
                             }
                         }
                     }
+                    gasGenerator.UseConveyorSystem = false;
                 }
             }
+            else
+            {
+                foreach (var gasGenerator in gasGenerators)
+                {
+                    gasGenerator.UseConveyorSystem = true;
+                }
+            }
+        }
+
+        private float GetReactorIdealFuelAmount(IMyReactor reactor, out MyInventory reactorInventory)
+        {
+            var reactorDef = MyDefinitionManager.Static.GetCubeBlockDefinition(reactor.BlockDefinition) as MyReactorDefinition;
+            reactorInventory = reactor.GetInventory(0) as MyInventory;
+            var isLarge = reactorDef.CubeSize == MyCubeSize.Large;
+            var size = (float)reactorInventory.MaxVolume / (isLarge ? 1.2f : 0.12f);
+            var value = isLarge ? Settings.GetLargeReactorFuelAmount() : Settings.GetSmallReactorFuelAmount();
+            return value * size;
         }
 
         private void DoFillReactors(List<IMyReactor> reactors)
@@ -770,42 +899,54 @@ namespace AILogisticsAutomation
                     var reactorDef = MyDefinitionManager.Static.GetCubeBlockDefinition(reactor.BlockDefinition) as MyReactorDefinition;
                     if (!reactorDef.FuelInfos.Any())
                         continue;
-                    var targetFuelId = reactorDef.FuelInfos[0].FuelId;
-                    var reactorInventory = reactor.GetInventory(0) as MyInventory;
+                    MyInventory reactorInventory = null;
+                    var targetFuel = GetReactorIdealFuelAmount(reactor, out reactorInventory);
                     if (reactorInventory.VolumeFillFactor >= 1)
                         continue;
-                    var fuelInReactor = (float)reactorInventory.GetItemAmount(targetFuelId);
-                    var size = reactorDef.Size.X * reactorDef.Size.Y * reactorDef.Size.Z;
-                    var value = reactorDef.CubeSize == MyCubeSize.Large ? Settings.GetLargeReactorFuelAmount() : Settings.GetSmallReactorFuelAmount();
-                    var targetFuel = value * size;
                     if (targetFuel > 0)
                     {
-                        if (fuelInReactor < targetFuel)
+                        bool ok = false;
+                        foreach (var targetFuelId in reactorDef.FuelInfos.Select(x=>x.FuelId))
                         {
-                            var fuelToAdd = targetFuel - fuelInReactor;
-                            var keys = Settings.GetDefinitions().Keys.ToArray();
-                            for (int i = 0; i < keys.Length; i++)
+                            var fuelInReactor = (float)reactorInventory.GetItemAmount(targetFuelId);
+                            if (fuelInReactor < targetFuel)
                             {
-                                var def = Settings.GetDefinitions()[keys[i]];
-                                var targetBlock = ValidInventories.FirstOrDefault(x => x.EntityId == def.EntityId);
-                                var targetInventory = targetBlock.GetInventory(0);
-                                var fuelAmount = (float)targetInventory.GetItemAmount(targetFuelId);
-                                if (fuelAmount > 0)
+                                var fuelToAdd = targetFuel - fuelInReactor;
+                                var keys = Settings.GetDefinitions().Keys.ToArray();
+                                for (int i = 0; i < keys.Length; i++)
                                 {
-                                    if ((targetInventory as IMyInventory).CanTransferItemTo(reactorInventory, targetFuelId))
+                                    var def = Settings.GetDefinitions()[keys[i]];
+                                    var targetBlock = ValidInventories.FirstOrDefault(x => x.EntityId == def.EntityId);
+                                    var targetInventory = targetBlock.GetInventory(0);
+                                    var fuelAmount = (float)targetInventory.GetItemAmount(targetFuelId);
+                                    if (fuelAmount > 0)
                                     {
-                                        var builder = ItensConstants.GetPhysicalObjectBuilder(new UniqueEntityId(targetFuelId));
-                                        var amountToTransfer = fuelAmount > fuelToAdd ? fuelToAdd : fuelAmount;
-                                        InvokeOnGameThread(() =>
+                                        if ((targetInventory as IMyInventory).CanTransferItemTo(reactorInventory, targetFuelId))
                                         {
-                                            MyInventory.Transfer(targetInventory, reactorInventory, targetFuelId, amount: (MyFixedPoint)amountToTransfer);
-                                        });
-                                        break;
+                                            var builder = ItensConstants.GetPhysicalObjectBuilder(new UniqueEntityId(targetFuelId));
+                                            var amountToTransfer = fuelAmount > fuelToAdd ? fuelToAdd : fuelAmount;
+                                            InvokeOnGameThread(() =>
+                                            {
+                                                MyInventory.Transfer(targetInventory, reactorInventory, targetFuelId, amount: (MyFixedPoint)amountToTransfer);
+                                            });
+                                            ok = true;
+                                            break;
+                                        }
                                     }
                                 }
+                                if (ok)
+                                    break;
                             }
                         }
                     }
+                    reactor.UseConveyorSystem = false;
+                }
+            }
+            else
+            {
+                foreach (var reactor in reactors)
+                {
+                    reactor.UseConveyorSystem = true;
                 }
             }
         }
@@ -1122,6 +1263,7 @@ namespace AILogisticsAutomation
                     return; /* Stop pull if Welder is welding */
             }
             var pullAll = true;
+            bool ignoreGasLevel = false;
             var ignoreTypes = new List<MyObjectBuilderType>();
             var ignoreIds = new ConcurrentDictionary<MyDefinitionId, MyFixedPoint>();
             var maxForIds = new ConcurrentDictionary<MyDefinitionId, MyFixedPoint>();
@@ -1145,10 +1287,12 @@ namespace AILogisticsAutomation
             if (reactor != null)
             {
                 pullAll = false;
+                MyInventory reactorInventory;
+                var targetFuel = GetReactorIdealFuelAmount(reactor, out reactorInventory);
                 var reactorDef = MyDefinitionManager.Static.GetCubeBlockDefinition(reactor.BlockDefinition) as MyReactorDefinition;
                 foreach (var item in reactorDef.FuelInfos)
                 {
-                    ignoreIds[item.FuelId] = (MyFixedPoint)int.MaxValue;
+                    ignoreIds[item.FuelId] = (MyFixedPoint)targetFuel;
                 }
             }
             if (gasGenerator != null || blockId.IsGasTank())
@@ -1156,9 +1300,19 @@ namespace AILogisticsAutomation
                 pullAll = false;
                 if (blockId.IsGasGenerator() || blockId.IsGasTank())
                 {
-                    ignoreIds[ItensConstants.ICE_ID.DefinitionId] = (MyFixedPoint)int.MaxValue;
-                    ignoreIds[ItensConstants.HYDROGENBOTTLE_ID.DefinitionId] = 1;
-                    ignoreIds[ItensConstants.OXYGENBOTTLE_ID.DefinitionId] = 1;
+                    MyInventory gasGeneratorInventory;
+                    var targetFuel = GetGasGeneratorIdealFuelAmount(gasGenerator, out gasGeneratorInventory);
+                    foreach (var item in gasGenerator.GetFuelIds())
+                    {
+                        ignoreIds[item] = (MyFixedPoint)targetFuel;
+                    }
+                    foreach (var item in inventoryBase.Constraint.ConstrainedIds)
+                    {
+                        if (item.TypeId == typeof(MyObjectBuilder_GasContainerObject))
+                        {
+                            ignoreIds[item] = 1;
+                        }
+                    }
                 }
                 else if (blockId.IsFishTrap())
                 {
@@ -1188,14 +1342,35 @@ namespace AILogisticsAutomation
                     {
                         foreach (var item in ItensConstants.SEEDS)
                         {
-                            ignoreIds[item.DefinitionId] = (MyFixedPoint)int.MaxValue;
+                            if (Settings.GetAllowMultiSeed() || inventoryBase.GetItemAmount(item.DefinitionId) > 0)
+                            {
+                                ignoreIds[item.DefinitionId] = (MyFixedPoint)IDEAL_FARM_SEED;
+                                if (!Settings.GetAllowMultiSeed())
+                                    break;
+                            }
                         }
                     }
                     if (blockId.IsTreeFarm())
                     {
-                        foreach (var item in ItensConstants.TREES)
+                        ignoreGasLevel = true;
+                        foreach (var item in ItensConstants.SEEDLINGS)
                         {
                             ignoreIds[item.DefinitionId] = (MyFixedPoint)int.MaxValue;
+                        }                        
+                        foreach (var item in ItensConstants.TREES)
+                        {
+                            if (Settings.GetAllowMultiSeed())
+                            {
+                                ignoreIds[item.DefinitionId] = (MyFixedPoint)int.MaxValue;
+                            }
+                            else
+                            {
+                                if (inventoryBase.GetItemAmount(item.DefinitionId) > 0)
+                                {
+                                    ignoreIds[item.DefinitionId] = 1;
+                                    break;
+                                }
+                            }
                         }
                     }
                 }
@@ -1212,10 +1387,12 @@ namespace AILogisticsAutomation
                         if (ItensConstants.GAS_TYPES.Contains(itemid.TypeId))
                         {
                             var gasInfo = itemsToCheck[j].Content as MyObjectBuilder_GasContainerObject;
-                            if (gasInfo.GasLevel < 1 || ignoreIds.ContainsKey(itemid))
+                            var invAmount = inventoryBase.GetItemAmount(itemid);
+                            if ((!ignoreGasLevel && gasInfo.GasLevel < 1) || (ignoreIds.ContainsKey(itemid) && invAmount <= ignoreIds[itemid]))
                             {
                                 continue;
                             }
+                            maxForIds[itemid] = invAmount - ignoreIds[itemid];
                         }
                         else
                         {

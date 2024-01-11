@@ -93,8 +93,17 @@ namespace AILogisticsAutomation
         [ProtoMember(29)]
         public bool pullFarm;
 
+        [ProtoMember(30)]
+        public bool allowMultiSeed;
+
         [ProtoMember(31)]
         public bool fillFarm;
+
+        [ProtoMember(32)]
+        public bool fillTreeInFarm;
+
+        [ProtoMember(33)]
+        public bool fillSeedInFarm;
 
     }
 

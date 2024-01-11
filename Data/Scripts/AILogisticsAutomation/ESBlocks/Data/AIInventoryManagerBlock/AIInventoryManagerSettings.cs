@@ -298,6 +298,17 @@ namespace AILogisticsAutomation
         {
             pullFarm = value;
         }
+        
+        private bool allowMultiSeed;
+        public bool GetAllowMultiSeed()
+        {
+            return allowMultiSeed;
+        }
+
+        public void SetAllowMultiSeed(bool value)
+        {
+            allowMultiSeed = value;
+        }
 
         private bool fillFarm;
         public bool GetFillFarm()
@@ -308,6 +319,28 @@ namespace AILogisticsAutomation
         public void SetFillFarm(bool value)
         {
             fillFarm = value;
+        }
+
+        private bool fillTreeInFarm;
+        public bool GetFillTreeInFarm()
+        {
+            return fillTreeInFarm;
+        }
+
+        public void SetFillTreeInFarm(bool value)
+        {
+            fillTreeInFarm = value;
+        }
+
+        private bool fillSeedInFarm;
+        public bool GetFillSeedInFarm()
+        {
+            return fillSeedInFarm;
+        }
+
+        public void SetFillSeedInFarm(bool value)
+        {
+            fillSeedInFarm = value;
         }
 
         /* Contrutor */
@@ -345,7 +378,10 @@ namespace AILogisticsAutomation
                 pullRefrigerator = pullRefrigerator,
                 stackIfPossible = stackIfPossible,
                 pullFarm = pullFarm,
-                fillFarm = fillFarm
+                allowMultiSeed = allowMultiSeed,
+                fillFarm = fillFarm,
+                fillTreeInFarm = fillTreeInFarm,
+                fillSeedInFarm = fillSeedInFarm
             };
             return data;
         }
@@ -595,6 +631,20 @@ namespace AILogisticsAutomation
                         return true;
                     }
                     break;
+                case "PULLFARM":
+                    if (bool.TryParse(value, out valueAsFlag))
+                    {
+                        pullFarm = valueAsFlag;
+                        return true;
+                    }
+                    break;
+                case "ALLOWMULTISEED":
+                    if (bool.TryParse(value, out valueAsFlag))
+                    {
+                        allowMultiSeed = valueAsFlag;
+                        return true;
+                    }
+                    break;
                 case "FILLFARM":
                     if (bool.TryParse(value, out valueAsFlag))
                     {
@@ -602,10 +652,17 @@ namespace AILogisticsAutomation
                         return true;
                     }
                     break;
-                case "PULLFARM":
+                case "FILLTREEINFARM":
                     if (bool.TryParse(value, out valueAsFlag))
                     {
-                        pullFarm = valueAsFlag;
+                        fillTreeInFarm = valueAsFlag;
+                        return true;
+                    }
+                    break;
+                case "FILLSEEDINFARM":
+                    if (bool.TryParse(value, out valueAsFlag))
+                    {
+                        fillSeedInFarm = valueAsFlag;
                         return true;
                     }
                     break;
@@ -676,7 +733,10 @@ namespace AILogisticsAutomation
             pullRefrigerator = data.pullRefrigerator;
             fillRefrigerator = data.fillRefrigerator;
             fillFarm = data.fillFarm;
+            allowMultiSeed = data.allowMultiSeed;
             pullFarm = data.pullFarm;
+            fillSeedInFarm = data.fillSeedInFarm;
+            fillTreeInFarm = data.fillTreeInFarm;
         }
 
     }

@@ -1302,7 +1302,7 @@ namespace AILogisticsAutomation
                         val.Append(Math.Round(system.Settings.GetSmallGasGeneratorAmount(), 2, MidpointRounding.AwayFromZero));
                     }
                 },
-                new VRageMath.Vector2(16, 64),
+                new VRageMath.Vector2(10, 100),
                 tooltip: "Set the base amount to fill the small Gas Generators, the value will be multiply by the size of the block.",
                 supMultiple: true
             );
@@ -1340,7 +1340,7 @@ namespace AILogisticsAutomation
                         val.Append(Math.Round(system.Settings.GetLargeGasGeneratorAmount(), 2, MidpointRounding.AwayFromZero));
                     }
                 },
-                new VRageMath.Vector2(100, 2000),
+                new VRageMath.Vector2(100, 1000),
                 tooltip: "Set the base amount to fill the large Gas Generators, the value will be multiply by the size of the block.",
                 supMultiple: true
             );
@@ -1625,6 +1625,40 @@ namespace AILogisticsAutomation
                 );
                 CreateCheckBoxAction("PullFromFarm", checkboxPullFromFarm);
 
+                var checkboxAllowMultiSeed = CreateCheckbox(
+                    "CheckboxAllowMultiSeed",
+                    "Allow Multi Seed/Tree.",
+                    (block) =>
+                    {
+                        var system = GetSystem(block);
+                        if (system != null)
+                            return isWorkingAndEnabled.Invoke(block) && system.Settings.GetPullFarm();
+                        return false;
+                    },
+                    (block) =>
+                    {
+                        var system = GetSystem(block);
+                        if (system != null)
+                        {
+                            return system.Settings.GetAllowMultiSeed();
+                        }
+                        return false;
+                    },
+                    (block, value) =>
+                    {
+                        var system = GetSystem(block);
+                        if (system != null)
+                        {
+                            system.Settings.SetAllowMultiSeed(value);
+                            system.SendToServer("AllowMultiSeed", "SET", value.ToString());
+                            UpdateVisual(block);
+                        }
+                    },
+                    tooltip: "If enabled will let more than one type of seed/tree in the farm.",
+                    supMultiple: true
+                );
+                CreateCheckBoxAction("AllowMultiSeed", checkboxAllowMultiSeed);
+
                 var checkboxFillFarm = CreateCheckbox(
                     "CheckboxFillFarm",
                     "Fill Farm/Tree Farm.",
@@ -1658,6 +1692,74 @@ namespace AILogisticsAutomation
                     supMultiple: true
                 );
                 CreateCheckBoxAction("FillFarm", checkboxFillFarm);
+
+                var checkboxFillSeedInFarm = CreateCheckbox(
+                    "CheckboxFillSeedInFarm",
+                    "Fill Seed In Farm.",
+                    (block) =>
+                    {
+                        var system = GetSystem(block);
+                        if (system != null)
+                            return isWorkingAndEnabled.Invoke(block) && system.Settings.GetPullFarm() && system.Settings.GetFillFarm();
+                        return false;
+                    },
+                    (block) =>
+                    {
+                        var system = GetSystem(block);
+                        if (system != null)
+                        {
+                            return system.Settings.GetFillSeedInFarm();
+                        }
+                        return false;
+                    },
+                    (block, value) =>
+                    {
+                        var system = GetSystem(block);
+                        if (system != null)
+                        {
+                            system.Settings.SetFillSeedInFarm(value);
+                            system.SendToServer("FillSeedInFarm", "SET", value.ToString());
+                            UpdateVisual(block);
+                        }
+                    },
+                    tooltip: "If enabled will add a type of seed in a empty farm.",
+                    supMultiple: true
+                );
+                CreateCheckBoxAction("FillSeedInFarm", checkboxAllowMultiSeed);
+
+                var checkboxFillTreeInFarm = CreateCheckbox(
+                    "CheckboxFillTreeInFarm",
+                    "Fill Tree In Farm.",
+                    (block) =>
+                    {
+                        var system = GetSystem(block);
+                        if (system != null)
+                            return isWorkingAndEnabled.Invoke(block) && system.Settings.GetPullFarm() && system.Settings.GetFillFarm();
+                        return false;
+                    },
+                    (block) =>
+                    {
+                        var system = GetSystem(block);
+                        if (system != null)
+                        {
+                            return system.Settings.GetFillTreeInFarm();
+                        }
+                        return false;
+                    },
+                    (block, value) =>
+                    {
+                        var system = GetSystem(block);
+                        if (system != null)
+                        {
+                            system.Settings.SetFillTreeInFarm(value);
+                            system.SendToServer("FillTreeInFarm", "SET", value.ToString());
+                            UpdateVisual(block);
+                        }
+                    },
+                    tooltip: "If enabled will add a type of tree in a empty tree farm.",
+                    supMultiple: true
+                );
+                CreateCheckBoxAction("FillTreeInFarm", checkboxAllowMultiSeed);
 
             }
 

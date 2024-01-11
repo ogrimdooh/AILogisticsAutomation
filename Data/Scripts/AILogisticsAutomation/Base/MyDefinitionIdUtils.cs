@@ -8,6 +8,7 @@ using VRage.ObjectBuilders;
 
 namespace AILogisticsAutomation
 {
+
     public static class MyDefinitionIdUtils
     {
 

@@ -114,9 +114,13 @@ namespace AILogisticsAutomation
         public const string APPLETREE_SUBTYPEID = "AppleTree";
         public static readonly UniqueEntityId APPLETREE_ID = new UniqueEntityId(typeof(MyObjectBuilder_GasContainerObject), APPLETREE_SUBTYPEID);
 
+        public static readonly List<UniqueEntityId> SEEDLINGS = new List<UniqueEntityId>()
+        {
+            APPLETREESEEDLING_ID
+        };
+
         public static readonly List<UniqueEntityId> TREES = new List<UniqueEntityId>()
         {
-            APPLETREESEEDLING_ID,
             APPLETREE_ID
         };
 
