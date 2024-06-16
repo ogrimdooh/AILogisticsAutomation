@@ -1399,7 +1399,7 @@ namespace AILogisticsAutomation
                     ignoreIds[item.FuelId] = (MyFixedPoint)targetFuel;
                 }
             }
-            if (gasGenerator != null || blockId.IsGasTank())
+            if (gasGenerator != null)
             {
                 pullAll = false;
                 if (blockId.IsGasGenerator() || blockId.IsGasTank())

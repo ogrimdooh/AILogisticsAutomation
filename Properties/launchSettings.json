@@ -1,0 +1,12 @@
+{
+  "profiles": {
+    "Run Space Engineers": {
+      "commandName": "Executable",
+      "executablePath": "$(SERootDirectory)\\Bin64\\SpaceEngineers.exe"
+    },
+    "Debug Space Engineers": {
+      "commandName": "Executable",
+      "executablePath": "$(SERootDirectory)\\Bin64\\SpaceEngineersLauncher.exe"
+    }
+  }
+}
