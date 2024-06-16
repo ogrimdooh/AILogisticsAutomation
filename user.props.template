@@ -1,0 +1,5 @@
+﻿<Project>
+	<PropertyGroup>
+		<SERootDirectory>Your SE installation directory here</SERootDirectory>
+	</PropertyGroup>
+</Project>
