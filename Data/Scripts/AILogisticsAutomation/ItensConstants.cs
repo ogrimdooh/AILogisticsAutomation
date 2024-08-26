@@ -93,19 +93,36 @@ namespace AILogisticsAutomation
         public const string ERYTHROXYLUM_SEEDS_SUBTYPEID = "ErythroxylumSeeds";
         public static readonly UniqueEntityId ERYTHROXYLUM_SEEDS_ID = new UniqueEntityId(typeof(MyObjectBuilder_Ore), ERYTHROXYLUM_SEEDS_SUBTYPEID);
 
-        public static readonly List<UniqueEntityId> SEEDS = new List<UniqueEntityId>()
+        public const string AMANITAMUSCARIA_SEEDS_SUBTYPEID = "AmanitaMuscariaSeeds";
+        public static readonly UniqueEntityId AMANITAMUSCARIA_SEEDS_ID = new UniqueEntityId(typeof(MyObjectBuilder_Ore), AMANITAMUSCARIA_SEEDS_SUBTYPEID);
+
+        public const string CHAMPIGNONS_SEEDS_SUBTYPEID = "ChampignonsSeeds";
+        public static readonly UniqueEntityId CHAMPIGNONS_SEEDS_ID = new UniqueEntityId(typeof(MyObjectBuilder_Ore), CHAMPIGNONS_SEEDS_SUBTYPEID);
+
+        public const string SHIITAKE_SEEDS_SUBTYPEID = "ShiitakeSeeds";
+        public static readonly UniqueEntityId SHIITAKE_SEEDS_ID = new UniqueEntityId(typeof(MyObjectBuilder_Ore), SHIITAKE_SEEDS_SUBTYPEID);
+
+        public const float BASE_HERB_SEED_FACTOR = 0.01f;
+        public const float BASE_GRAIN_SEED_FACTOR = 0.01f;
+        public const float BASE_MUSHROOM_SEED_FACTOR = 0.01f;
+        public const float BASE_VEGETABLE_SEED_FACTOR = 0.1f;
+
+        public static readonly Dictionary<UniqueEntityId, float> SEEDS = new Dictionary<UniqueEntityId, float>()
         {
-            ARNICA_SEEDS_ID,
-            BEETROOT_SEEDS_ID,
-            BROCCOLI_SEEDS_ID,
-            CARROT_SEEDS_ID,
-            COFFEE_SEEDS_ID,
-            MINT_SEEDS_ID,
-            TOMATO_SEEDS_ID,
-            WHEAT_SEEDS_ID,
-            CHAMOMILE_SEEDS_ID,
-            ALOEVERA_SEEDS_ID,
-            ERYTHROXYLUM_SEEDS_ID
+            { ARNICA_SEEDS_ID, BASE_HERB_SEED_FACTOR },
+            { BEETROOT_SEEDS_ID, BASE_VEGETABLE_SEED_FACTOR },
+            { BROCCOLI_SEEDS_ID, BASE_VEGETABLE_SEED_FACTOR },
+            { CARROT_SEEDS_ID, BASE_VEGETABLE_SEED_FACTOR },
+            { COFFEE_SEEDS_ID, BASE_GRAIN_SEED_FACTOR },
+            { MINT_SEEDS_ID, BASE_HERB_SEED_FACTOR },
+            { TOMATO_SEEDS_ID, BASE_VEGETABLE_SEED_FACTOR },
+            { WHEAT_SEEDS_ID, BASE_GRAIN_SEED_FACTOR },
+            { CHAMOMILE_SEEDS_ID, BASE_HERB_SEED_FACTOR },
+            { ALOEVERA_SEEDS_ID, BASE_HERB_SEED_FACTOR },
+            { ERYTHROXYLUM_SEEDS_ID, BASE_HERB_SEED_FACTOR },
+            { AMANITAMUSCARIA_SEEDS_ID, BASE_MUSHROOM_SEED_FACTOR },
+            { CHAMPIGNONS_SEEDS_ID, BASE_MUSHROOM_SEED_FACTOR },
+            { SHIITAKE_SEEDS_ID, BASE_MUSHROOM_SEED_FACTOR }
         };
 
         public const string APPLETREESEEDLING_SUBTYPEID = "AppleTreeSeedling";

@@ -630,31 +630,7 @@ namespace AILogisticsAutomation
                     {
                         if (fuelInComposter < targetFuel)
                         {
-                            var fuelToAdd = targetFuel - fuelInComposter;
-                            var keys = Settings.GetDefinitions().Keys.ToArray();
-                            for (int i = 0; i < keys.Length; i++)
-                            {
-                                var def = Settings.GetDefinitions()[keys[i]];
-                                var targetBlock = ValidInventories.FirstOrDefault(x => x.EntityId == def.EntityId);
-                                if (targetBlock != null)
-                                {
-                                    var targetInventory = targetBlock.GetInventory(0);
-                                    var fuelAmount = (float)targetInventory.GetItemAmount(targetFuelId.DefinitionId);
-                                    if (fuelAmount > 0)
-                                    {
-                                        if ((targetInventory as IMyInventory).CanTransferItemTo(farmInventory, targetFuelId.DefinitionId))
-                                        {
-                                            var builder = ItensConstants.GetPhysicalObjectBuilder(targetFuelId);
-                                            var amountToTransfer = fuelAmount > fuelToAdd ? fuelToAdd : fuelAmount;
-                                            InvokeOnGameThread(() =>
-                                            {
-                                                MyInventory.Transfer(targetInventory, farmInventory, targetFuelId.DefinitionId, amount: (MyFixedPoint)amountToTransfer);
-                                            });
-                                            break;
-                                        }
-                                    }
-                                }
-                            }
+                            MoveAmountFromStock(farmInventory, fuelInComposter, targetFuel, targetFuelId);
                         }
                     }
                     /* Move Fertilizer */
@@ -673,81 +649,41 @@ namespace AILogisticsAutomation
                         {
                             if (fuelInComposter < targetFuel)
                             {
-                                var fuelToAdd = targetFuel - fuelInComposter;
-                                var keys = Settings.GetDefinitions().Keys.ToArray();
-                                bool ok = false;
-                                for (int i = 0; i < keys.Length; i++)
-                                {
-                                    var def = Settings.GetDefinitions()[keys[i]];
-                                    var targetBlock = ValidInventories.FirstOrDefault(x => x.EntityId == def.EntityId);
-                                    if (targetBlock != null)
-                                    {
-                                        var targetInventory = targetBlock.GetInventory(0);
-                                        var fuelAmount = (float)targetInventory.GetItemAmount(fertilizer.DefinitionId);
-                                        if (fuelAmount > 0)
-                                        {
-                                            if ((targetInventory as IMyInventory).CanTransferItemTo(farmInventory, fertilizer.DefinitionId))
-                                            {
-                                                var builder = ItensConstants.GetPhysicalObjectBuilder(fertilizer);
-                                                var amountToTransfer = fuelAmount > fuelToAdd ? fuelToAdd : fuelAmount;
-                                                InvokeOnGameThread(() =>
-                                                {
-                                                    MyInventory.Transfer(targetInventory, farmInventory, fertilizer.DefinitionId, amount: (MyFixedPoint)amountToTransfer);
-                                                });
-                                                ok = true;
-                                                break;
-                                            }
-                                        }
-                                    }
-                                }
-                                if (ok)
+                                if (MoveAmountFromStock(farmInventory, fuelInComposter, targetFuel, fertilizer))
                                     break;
                             }
                         }
                     }
+                    /* Move Seeds */
                     if (((MyDefinitionId)farm.BlockDefinition).IsFarm() && Settings.GetFillSeedInFarm())
                     {
                         bool hasSeed = false;
-                        foreach (var item in ItensConstants.SEEDS)
+                        foreach (var item in ItensConstants.SEEDS.Keys)
                         {
-                            if (farmInventory.GetItemAmount(item.DefinitionId) > 0)
+                            var sAmount = (float)farmInventory.GetItemAmount(item.DefinitionId);
+                            if (sAmount > 0)
                             {
-                                hasSeed = true;
-                                break;
+                                if (sAmount > ItensConstants.SEEDS[item])
+                                {
+                                    hasSeed = true;
+                                    break;
+                                }
                             }
                         }
                         if (!hasSeed)
                         {
-                            foreach (var item in ItensConstants.SEEDS)
+                            foreach (var item in ItensConstants.SEEDS.Keys)
                             {
-                                var fuelToAdd = IDEAL_FARM_SEED;
-                                var keys = Settings.GetDefinitions().Keys.ToArray();
-                                bool ok = false;
-                                for (int i = 0; i < keys.Length; i++)
+                                fuelInComposter = (float)farmInventory.GetItemAmount(item.DefinitionId);
+                                targetFuel = IDEAL_FARM_FERTILIZER - fuelInComposter;
+                                if (targetFuel > ItensConstants.SEEDS[item])
                                 {
-                                    var def = Settings.GetDefinitions()[keys[i]];
-                                    var targetBlock = ValidInventories.FirstOrDefault(x => x.EntityId == def.EntityId);
-                                    if (targetBlock != null)
+                                    if (fuelInComposter < targetFuel)
                                     {
-                                        var targetInventory = targetBlock.GetInventory(0);
-                                        var fuelAmount = (float)targetInventory.GetItemAmount(item.DefinitionId);
-                                        if (fuelAmount > 0)
-                                        {
-                                            if ((targetInventory as IMyInventory).CanTransferItemTo(farmInventory, item.DefinitionId))
-                                            {
-                                                var builder = ItensConstants.GetPhysicalObjectBuilder(item);
-                                                var amountToTransfer = fuelAmount > fuelToAdd ? fuelToAdd : fuelAmount;
-                                                InvokeOnGameThread(() =>
-                                                {
-                                                    MyInventory.Transfer(targetInventory, farmInventory, item.DefinitionId, amount: (MyFixedPoint)amountToTransfer);
-                                                });
-                                                break;
-                                            }
-                                        }
+                                        if (MoveAmountFromStock(farmInventory, fuelInComposter, targetFuel, item, ItensConstants.SEEDS[item]))
+                                            break;
                                     }
                                 }
-                                if (ok)
-                                    break;
                             }
                         }
                     }
@@ -767,38 +703,50 @@ namespace AILogisticsAutomation
                             foreach (var item in ItensConstants.TREES)
                             {
                                 var fuelToAdd = 1;
-                                var keys = Settings.GetDefinitions().Keys.ToArray();
-                                bool ok = false;
-                                for (int i = 0; i < keys.Length; i++)
-                                {
-                                    var def = Settings.GetDefinitions()[keys[i]];
-                                    var targetBlock = ValidInventories.FirstOrDefault(x => x.EntityId == def.EntityId);
-                                    if (targetBlock != null)
-                                    {
-                                        var targetInventory = targetBlock.GetInventory(0);
-                                        var fuelAmount = (float)targetInventory.GetItemAmount(item.DefinitionId);
-                                        if (fuelAmount > 0)
-                                        {
-                                            if ((targetInventory as IMyInventory).CanTransferItemTo(farmInventory, item.DefinitionId))
-                                            {
-                                                var builder = ItensConstants.GetPhysicalObjectBuilder(item);
-                                                var amountToTransfer = fuelAmount > fuelToAdd ? fuelToAdd : fuelAmount;
-                                                InvokeOnGameThread(() =>
-                                                {
-                                                    MyInventory.Transfer(targetInventory, farmInventory, item.DefinitionId, amount: (MyFixedPoint)amountToTransfer);
-                                                });
-                                                break;
-                                            }
-                                        }
-                                    }
-                                }
-                                if (ok)
+                                if (MoveAmountFromStock(farmInventory, item, fuelToAdd))
                                     break;
                             }
                         }
                     }
                 }
             }
+        }
+
+        private bool MoveAmountFromStock(MyInventory blockInventory, float fuelInInventory, float targetFuel, UniqueEntityId itemToMove, float minToMove = 0f)
+        {
+            var fuelToAdd = targetFuel - fuelInInventory;
+            return MoveAmountFromStock(blockInventory, itemToMove, fuelToAdd, minToMove);
+        }
+
+        private bool MoveAmountFromStock(MyInventory blockInventory, UniqueEntityId itemToMove, float fuelToAdd, float minToMove = 0f)
+        {
+            var keys = Settings.GetDefinitions().Keys.ToArray();
+            bool ok = false;
+            for (int i = 0; i < keys.Length; i++)
+            {
+                var def = Settings.GetDefinitions()[keys[i]];
+                var targetBlock = ValidInventories.FirstOrDefault(x => x.EntityId == def.EntityId);
+                if (targetBlock != null)
+                {
+                    var targetInventory = targetBlock.GetInventory(0);
+                    var fuelAmount = (float)targetInventory.GetItemAmount(itemToMove.DefinitionId);
+                    if (fuelAmount > minToMove)
+                    {
+                        if ((targetInventory as IMyInventory).CanTransferItemTo(blockInventory, itemToMove.DefinitionId))
+                        {
+                            var builder = ItensConstants.GetPhysicalObjectBuilder(itemToMove);
+                            var amountToTransfer = fuelAmount > fuelToAdd ? fuelToAdd : fuelAmount;
+                            InvokeOnGameThread(() =>
+                            {
+                                MyInventory.Transfer(targetInventory, blockInventory, itemToMove.DefinitionId, amount: (MyFixedPoint)amountToTransfer);
+                            });
+                            ok = true;
+                            break;
+                        }
+                    }
+                }
+            }
+            return ok;
         }
 
         private void DoFillComposter(List<IMyGasGenerator> composters)
@@ -1444,9 +1392,9 @@ namespace AILogisticsAutomation
                     }
                     if (blockId.IsFarm())
                     {
-                        foreach (var item in ItensConstants.SEEDS)
+                        foreach (var item in ItensConstants.SEEDS.Keys)
                         {
-                            if (Settings.GetAllowMultiSeed() || inventoryBase.GetItemAmount(item.DefinitionId) > 0)
+                            if ((float)inventoryBase.GetItemAmount(item.DefinitionId) > ItensConstants.SEEDS[item])
                             {
                                 ignoreIds[item.DefinitionId] = (MyFixedPoint)IDEAL_FARM_SEED;
                                 if (!Settings.GetAllowMultiSeed())

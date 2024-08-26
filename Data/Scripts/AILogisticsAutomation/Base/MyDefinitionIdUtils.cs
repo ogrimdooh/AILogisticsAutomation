@@ -24,7 +24,7 @@ namespace AILogisticsAutomation
         public static readonly MyObjectBuilderType[] targetAssemblerFilter = new MyObjectBuilderType[] { typeof(MyObjectBuilder_Assembler), typeof(MyObjectBuilder_SurvivalKit) };
 
         public static readonly string[] isWaterSolidificator = new string[] { "LargeWaterSolidificator", "WaterSolidificator" };
-        public static readonly string[] isRefrigerator = new string[] { "LargeBlockRefrigerator", "SmallBlockRefrigerator" };
+        public static readonly string[] isRefrigerator = new string[] { "LargeBlockRefrigerator", "SmallBlockRefrigerator", "LargeBlockLargeRefrigerator" };
         public static readonly string[] isComposter = new string[] { "LargeBlockComposter" };
         public static readonly string[] isFishTrap = new string[] { "FishTrap" };
         public static readonly string[] isNanobot = new string[] { "SELtdLargeNanobotBuildAndRepairSystem", "SELtdSmallNanobotBuildAndRepairSystem" };
