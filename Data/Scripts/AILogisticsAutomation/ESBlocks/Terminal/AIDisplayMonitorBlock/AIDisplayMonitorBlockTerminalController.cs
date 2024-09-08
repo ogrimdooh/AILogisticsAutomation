@@ -143,7 +143,7 @@ namespace AILogisticsAutomation
             return "AIDisplayMonitor";
         }
 
-        private readonly string[] idsToRemove = new string[] { "Range", "BroadcastUsingAntennas" };
+        private readonly string[] idsToRemove = new string[] { "Range", "BroadcastUsingAntennas", "CustomData" };
         protected override string[] GetIdsToRemove()
         {
             return idsToRemove;

@@ -1,5 +1,6 @@
 ﻿using ProtoBuf;
 using VRage.ObjectBuilders;
+using VRageMath;
 
 namespace AILogisticsAutomation
 {
@@ -25,6 +26,9 @@ namespace AILogisticsAutomation
 
         [ProtoMember(6)]
         public AIAssemblerControllerTriggerSettingsData[] triggers = new AIAssemblerControllerTriggerSettingsData[] { };
+
+        [ProtoMember(7)]
+        public Vector3I[] ignoreAssemblerPos = new Vector3I[] { };
 
     }
 

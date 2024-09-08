@@ -1,4 +1,5 @@
 ﻿using ProtoBuf;
+using VRageMath;
 
 namespace AILogisticsAutomation
 {
@@ -11,6 +12,9 @@ namespace AILogisticsAutomation
 
         [ProtoMember(2)]
         public string[] ores = new string[] { };
+
+        [ProtoMember(3)]
+        public Vector3I position;
 
     }
 

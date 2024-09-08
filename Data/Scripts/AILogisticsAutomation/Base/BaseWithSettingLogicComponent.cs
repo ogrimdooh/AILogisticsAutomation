@@ -16,24 +16,37 @@ namespace AILogisticsAutomation
         void UpdateData(T data);
         float GetPowerConsumption();
         void SetPowerConsumption(float value);
+        void DoBeforeSave(IMyTerminalBlock source);
+        void DoAfterLoad(IMyTerminalBlock source);
     }
 
-    public abstract class BaseWithSettingLogicComponent<T, S, D> : BaseLogicComponent<T> where T : IMyCubeBlock where S : IBlockSettings<D>
+    public abstract class BaseWithSettingLogicComponent<T, S, D> : BaseLogicComponent<T> where T : IMyTerminalBlock where S : IBlockSettings<D>
     {
 
+        public bool SettingsLoaded { get; private set; } 
         public S Settings { get; set; }
 
         protected override void OnInit(MyObjectBuilder_EntityBase objectBuilder)
         {
             if (IsServer)
             {
-                LoadSettings();
                 CurrentEntity.OnClose += CurrentEntity_OnClose;
             }
             else
             {
                 RequestSettings();
             }
+        }
+
+        protected override void OnUpdateAfterSimulation100()
+        {
+            if (IsServer && !SettingsLoaded)
+            {
+                LoadSettings();
+                Settings.DoAfterLoad(CurrentEntity);
+                SaveSettings(); /* Force save after load because config can be change in DoAfterLoad */
+            }
+            base.OnUpdateAfterSimulation100();
         }
 
         protected virtual void CurrentEntity_OnClose(IMyEntity obj)
@@ -52,6 +65,7 @@ namespace AILogisticsAutomation
                     var data = MyAPIGateway.Utilities.SerializeFromXML<D>(decodeData);
                     Settings.UpdateData(data);
                     SettingsRecived = true;
+                SettingsLoaded = true;
                 }
             }
             catch (Exception ex)
@@ -66,6 +80,7 @@ namespace AILogisticsAutomation
             {
                 var data = Settings.GetData();
                 var dataToSend = MyAPIGateway.Utilities.SerializeToXML<D>(data);
+                dataToSend = JsonUtils.XmlToJson(dataToSend); // Transform into Json
                 return Base64Utils.EncodeToBase64(dataToSend);
             }
             catch (Exception ex)
@@ -147,13 +162,25 @@ namespace AILogisticsAutomation
         {
             try
             {
-                var storedData = AILogisticsAutomationStorage.Instance.GetEntityValue(CurrentEntity.EntityId, "DATA");
-                if (!string.IsNullOrWhiteSpace(storedData))
+                D data = default(D);
+                string decodeData = null;
+                if (!string.IsNullOrWhiteSpace(CurrentEntity.CustomData) && 
+                    Base64Utils.TryDecodeFrom64(CurrentEntity.CustomData, out decodeData) &&
+                    SerializeUtils.TrySerializeFromXML<D>(decodeData, out data))
                 {
-                    var decodeData = Base64Utils.DecodeFrom64(storedData);
-                    var data = MyAPIGateway.Utilities.SerializeFromXML<D>(decodeData);
                     Settings.UpdateData(data);
                 }
+                else
+                {
+                    var storedData = AILogisticsAutomationStorage.Instance.GetEntityValue(CurrentEntity.EntityId, "DATA");
+                    if (!string.IsNullOrWhiteSpace(storedData) && 
+                        Base64Utils.TryDecodeFrom64(storedData, out decodeData) && 
+                        SerializeUtils.TrySerializeFromXML<D>(decodeData, out data))
+                    {
+                        Settings.UpdateData(data);
+                    }
+                }
+                SettingsLoaded = true;
             }
             catch (Exception ex)
             {
@@ -189,8 +216,9 @@ namespace AILogisticsAutomation
         {
             try
             {
+                Settings.DoBeforeSave(CurrentEntity);
                 var encodeData = GetEncodedData();
-                AILogisticsAutomationStorage.Instance.SetEntityValue(CurrentEntity.EntityId, "DATA", encodeData);
+                CurrentEntity.CustomData = encodeData;
             }
             catch (Exception ex)
             {

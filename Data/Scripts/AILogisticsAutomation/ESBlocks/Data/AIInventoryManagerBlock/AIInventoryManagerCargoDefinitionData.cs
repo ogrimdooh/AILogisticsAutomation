@@ -1,5 +1,6 @@
 ﻿using VRage.ObjectBuilders;
 using ProtoBuf;
+using VRageMath;
 
 namespace AILogisticsAutomation
 {
@@ -21,6 +22,9 @@ namespace AILogisticsAutomation
 
         [ProtoMember(5)]
         public string[] ignoreTypes = new string[] { };
+
+        [ProtoMember(6)]
+        public Vector3I position;
 
     }
 

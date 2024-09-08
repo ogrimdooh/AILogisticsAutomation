@@ -359,43 +359,48 @@ namespace AILogisticsAutomation
                     }
 
                     bool useConveyorSystem = true;
-                    if (finalFilter.Any())
+
+                    // Add ore to refinery
+                    var sourceOres = finalFilter.Any() ?
+                        finalFilter.Where(x =>
+                            inventory.GetItemAmount(new MyDefinitionId(oreType, x)) > 0 ||
+                            oreMap.ContainsKey(new MyDefinitionId(oreType, x))
+                        ).ToArray() :
+                        new string[] { };
+
+                    if (sourceOres.Any() && oreMap.Any())
                     {
-                        // Add ore to refinery
-                        var sourceOres = finalFilter.Where(x => inventory.GetItemAmount(new MyDefinitionId(oreType, x)) > 0 || oreMap.ContainsKey(new MyDefinitionId(oreType, x))).ToArray();
-                        if (sourceOres.Any() && oreMap.Any())
+                        int c = 0;
+                        foreach (var ore in sourceOres)
                         {
-                            int c = 0;
-                            foreach (var ore in sourceOres)
-                            {
-                                var oreId = new MyDefinitionId(oreType, ore);
-                                var push = DoPushOre(
-                                    oreId,
-                                    oreMap,
-                                    inventory,
-                                    c == 0 ? IDEAL_FIRST_AMOUNT : IDEAL_OTHERS_AMOUNT,
-                                    inventoryManager
-                                );
-                                useConveyorSystem = useConveyorSystem && push;
-                                if (inventory.GetItemAmount(oreId) > 0)
-                                    c++;
-                            }
-                            var others = oreMap.Keys.Where(x => !sourceOres.Contains(x.SubtypeName)).ToArray();
-                            foreach (var ore in others)
-                            {
-                                var push = DoPushOre(
-                                    ore,
-                                    oreMap,
-                                    inventory,
-                                    IDEAL_OTHERS_AMOUNT,
-                                    inventoryManager
-                                );
-                                useConveyorSystem = useConveyorSystem && push;
-                            }
+                            var oreId = new MyDefinitionId(oreType, ore);
+                            var push = DoPushOre(
+                                oreId,
+                                oreMap,
+                                inventory,
+                                c == 0 ? IDEAL_FIRST_AMOUNT : IDEAL_OTHERS_AMOUNT,
+                                inventoryManager
+                            );
+                            useConveyorSystem = useConveyorSystem && push;
+                            if (inventory.GetItemAmount(oreId) > 0)
+                                c++;
                         }
-                        // Sort
-                        DoSort(inventory, finalFilter.ToList());
+                        var others = oreMap.Keys.Where(x => !sourceOres.Contains(x.SubtypeName)).ToArray();
+                        foreach (var ore in others)
+                        {
+                            var push = DoPushOre(
+                                ore,
+                                oreMap,
+                                inventory,
+                                IDEAL_OTHERS_AMOUNT,
+                                inventoryManager
+                            );
+                            useConveyorSystem = useConveyorSystem && push;
+                        }
                     }
+
+                    // Sort
+                    DoSort(inventory, finalFilter.ToList());
                     (listaToCheck[i] as IMyRefinery).UseConveyorSystem = useConveyorSystem;
 
                 }

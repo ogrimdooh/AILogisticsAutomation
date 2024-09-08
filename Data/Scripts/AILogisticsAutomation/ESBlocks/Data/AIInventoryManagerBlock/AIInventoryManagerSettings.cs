@@ -1,6 +1,9 @@
-﻿using System.Collections.Concurrent;
+﻿using Sandbox.ModAPI;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using VRage.Game.ModAPI;
+using VRageMath;
 
 namespace AILogisticsAutomation
 {
@@ -39,6 +42,24 @@ namespace AILogisticsAutomation
         public HashSet<long> GetIgnoreConnectors()
         {
             return ignoreConnectors;
+        }
+
+        private HashSet<Vector3I> ignoreCargosPos = new HashSet<Vector3I>();
+        public HashSet<Vector3I> GetIgnoreCargosPos()
+        {
+            return ignoreCargosPos;
+        }
+
+        private readonly HashSet<Vector3I> ignoreFunctionalBlocksPos = new HashSet<Vector3I>();
+        public HashSet<Vector3I> GetIgnoreFunctionalBlocksPos()
+        {
+            return ignoreFunctionalBlocksPos;
+        }
+
+        private readonly HashSet<Vector3I> ignoreConnectorsPos = new HashSet<Vector3I>();
+        public HashSet<Vector3I> GetIgnoreConnectorsPos()
+        {
+            return ignoreConnectorsPos;
         }
 
         private bool enabled = true;
@@ -365,6 +386,16 @@ namespace AILogisticsAutomation
             fillCages = value;
         }
 
+        public IEnumerable<long> GetIgnoreBlocks()
+        {
+            return ignoreCargos.Concat(ignoreFunctionalBlocks).Concat(ignoreConnectors);
+        }
+
+        public IEnumerable<Vector3I> GetIgnoreBlocksPos()
+        {
+            return ignoreCargosPos.Concat(ignoreFunctionalBlocksPos).Concat(ignoreConnectorsPos);
+        }
+
         /* Contrutor */
 
         public AIInventoryManagerSettingsData GetData()
@@ -405,7 +436,10 @@ namespace AILogisticsAutomation
                 fillTreeInFarm = fillTreeInFarm,
                 fillSeedInFarm = fillSeedInFarm,
                 pullCages = pullCages,
-                fillCages = fillCages
+                fillCages = fillCages,
+                ignoreCargosPos = ignoreCargosPos.ToArray(),
+                ignoreConnectorsPos = ignoreConnectorsPos.ToArray(),
+                ignoreFunctionalBlocksPos = ignoreFunctionalBlocksPos.ToArray()
             };
             return data;
         }
@@ -747,6 +781,21 @@ namespace AILogisticsAutomation
             {
                 ignoreConnectors.Add(item);
             }
+            ignoreCargosPos.Clear();
+            foreach (var item in data.ignoreCargosPos)
+            {
+                ignoreCargosPos.Add(item);
+            }
+            ignoreFunctionalBlocksPos.Clear();
+            foreach (var item in data.ignoreFunctionalBlocksPos)
+            {
+                ignoreFunctionalBlocksPos.Add(item);
+            }
+            ignoreConnectorsPos.Clear();
+            foreach (var item in data.ignoreConnectorsPos)
+            {
+                ignoreConnectorsPos.Add(item);
+            }
             pullFromConnectedGrids = data.pullFromConnectedGrids;
             pullSubGrids = data.pullSubGrids;
             sortItensType = data.sortItensType;
@@ -777,6 +826,225 @@ namespace AILogisticsAutomation
             fillTreeInFarm = data.fillTreeInFarm;
             pullCages = data.pullCages;
             fillCages = data.fillCages;
+        }
+
+        public void DoBeforeSave(IMyTerminalBlock source)
+        {
+            if (source?.CubeGrid == null)
+                return;
+            ignoreCargosPos.Clear();
+            ignoreFunctionalBlocksPos.Clear();
+            ignoreConnectorsPos.Clear();
+            if (GetIgnoreBlocks().Any() || GetDefinitions().Any())
+            {
+                List<IMySlimBlock> blocks = new List<IMySlimBlock>();
+                source.CubeGrid.GetBlocks(blocks, (x) => 
+                    GetIgnoreBlocks().Contains(x.FatBlock?.EntityId ?? 0) ||
+                    GetDefinitions().ContainsKey(x.FatBlock?.EntityId ?? 0)
+                );
+                if (blocks.Any())
+                {
+                    var blocksInfo = blocks.ToDictionary(k => k.FatBlock.EntityId, v => v.FatBlock);
+                    foreach (var entityId in ignoreCargos)
+                    {
+                        if (blocksInfo.ContainsKey(entityId))
+                        {
+                            ignoreCargosPos.Add(blocksInfo[entityId].Position);
+                        }
+                    }
+                    foreach (var entityId in ignoreFunctionalBlocks)
+                    {
+                        if (blocksInfo.ContainsKey(entityId))
+                        {
+                            ignoreFunctionalBlocksPos.Add(blocksInfo[entityId].Position);
+                        }
+                    }
+                    foreach (var entityId in ignoreConnectors)
+                    {
+                        if (blocksInfo.ContainsKey(entityId))
+                        {
+                            ignoreConnectorsPos.Add(blocksInfo[entityId].Position);
+                        }
+                    }
+                    foreach (var entityId in GetDefinitions().Keys)
+                    {
+                        if (blocksInfo.ContainsKey(entityId))
+                        {
+                            GetDefinitions()[entityId].Position = blocksInfo[entityId].Position;
+                        }
+                        else
+                        {
+                            GetDefinitions()[entityId].Position = Vector3I.Zero;
+                        }
+                    }
+                }
+            }
+        }
+
+        public void DoAfterLoad(IMyTerminalBlock source)
+        {
+            if (source?.CubeGrid == null)
+                return;
+            if (GetIgnoreBlocks().Any() || GetDefinitions().Any())
+            {
+                List<IMySlimBlock> blocks = new List<IMySlimBlock>();
+                source.CubeGrid.GetBlocks(blocks, (x) => 
+                    GetIgnoreBlocks().Contains(x.FatBlock?.EntityId ?? 0) ||
+                    GetDefinitions().ContainsKey(x.FatBlock?.EntityId ?? 0)
+                );
+                var blocksInfo = blocks.ToDictionary(k => k.FatBlock.EntityId, v => v.FatBlock);
+                if (blocks.Any())
+                {
+                    // Remove chaves com problema
+                    var keys = ignoreCargos.ToArray();
+                    foreach (var entityId in keys)
+                    {
+                        if (!blocksInfo.ContainsKey(entityId))
+                        {
+                            ignoreCargos.Remove(entityId);
+                        }
+                    }
+                    keys = ignoreFunctionalBlocks.ToArray();
+                    foreach (var entityId in keys)
+                    {
+                        if (!blocksInfo.ContainsKey(entityId))
+                        {
+                            ignoreFunctionalBlocks.Remove(entityId);
+                        }
+                    }
+                    keys = ignoreConnectors.ToArray();
+                    foreach (var entityId in keys)
+                    {
+                        if (!blocksInfo.ContainsKey(entityId))
+                        {
+                            ignoreConnectors.Remove(entityId);
+                        }
+                    }
+                    foreach (var entityId in GetDefinitions().Keys)
+                    {
+                        if (!blocksInfo.ContainsKey(entityId))
+                        {
+                            GetDefinitions()[entityId].EntityId = 0;
+                        }
+                        else
+                        {
+                            GetDefinitions()[entityId].Position = blocksInfo[entityId].Position;
+                        }
+                    }
+                    // Adiciona posições faltantes
+                    foreach (var entityId in ignoreCargos)
+                    {
+                        if (blocksInfo.ContainsKey(entityId))
+                        {
+                            if (!ignoreCargosPos.Contains(blocksInfo[entityId].Position))
+                            {
+                                ignoreCargosPos.Add(blocksInfo[entityId].Position);
+                            }
+                        }
+                    }
+                    foreach (var entityId in ignoreFunctionalBlocks)
+                    {
+                        if (blocksInfo.ContainsKey(entityId))
+                        {
+                            if (!ignoreFunctionalBlocksPos.Contains(blocksInfo[entityId].Position))
+                            {
+                                ignoreFunctionalBlocksPos.Add(blocksInfo[entityId].Position);
+                            }
+                        }
+                    }
+                    foreach (var entityId in ignoreConnectors)
+                    {
+                        if (blocksInfo.ContainsKey(entityId))
+                        {
+                            if (!ignoreConnectorsPos.Contains(blocksInfo[entityId].Position))
+                            {
+                                ignoreConnectorsPos.Add(blocksInfo[entityId].Position);
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    ignoreCargos.Clear();
+                    ignoreFunctionalBlocks.Clear();
+                    ignoreConnectors.Clear();
+                    foreach (var entityId in GetDefinitions().Keys)
+                    {
+                        GetDefinitions()[entityId].EntityId = 0;
+                    }
+                }
+            }
+            if (GetIgnoreBlocksPos().Any())
+            {
+                foreach (var entityPos in ignoreCargosPos)
+                {
+                    if (source.CubeGrid.CubeExists(entityPos))
+                    {
+                        var block = source.CubeGrid.GetCubeBlock(entityPos);
+                        if (block?.FatBlock != null && !ignoreCargos.Contains(block.FatBlock.EntityId))
+                        {
+                            ignoreCargos.Add(block.FatBlock.EntityId);
+                        }
+                    }
+                }
+                foreach (var entityPos in ignoreFunctionalBlocksPos)
+                {
+                    if (source.CubeGrid.CubeExists(entityPos))
+                    {
+                        var block = source.CubeGrid.GetCubeBlock(entityPos);
+                        if (block?.FatBlock != null && !ignoreFunctionalBlocks.Contains(block.FatBlock.EntityId))
+                        {
+                            ignoreFunctionalBlocks.Add(block.FatBlock.EntityId);
+                        }
+                    }
+                }
+                foreach (var entityPos in ignoreConnectorsPos)
+                {
+                    if (source.CubeGrid.CubeExists(entityPos))
+                    {
+                        var block = source.CubeGrid.GetCubeBlock(entityPos);
+                        if (block?.FatBlock != null && !ignoreConnectors.Contains(block.FatBlock.EntityId))
+                        {
+                            ignoreConnectors.Add(block.FatBlock.EntityId);
+                        }
+                    }
+                }
+            }
+            if (GetDefinitions().Any())
+            {
+                foreach (var entityId in GetDefinitions().Keys)
+                {
+                    var entityPos = GetDefinitions()[entityId].Position;
+                    if (source.CubeGrid.CubeExists(entityPos))
+                    {
+                        var block = source.CubeGrid.GetCubeBlock(entityPos);
+                        if (block?.FatBlock != null)
+                        {
+                            GetDefinitions()[entityId].EntityId = block.FatBlock.EntityId;
+                        }
+                    }
+                }
+                // Remove all with EntityId = 0
+                var keysToRemove = GetDefinitions().Where(x => x.Value.EntityId == 0).Select(x => x.Key).ToArray();
+                if (keysToRemove.Any())
+                {
+                    foreach (var key in keysToRemove)
+                    {
+                        GetDefinitions().Remove(key);
+                    }
+                }
+                // Change key id to all with new EntityId
+                var keysToReAdd = GetDefinitions().Where(x => x.Value.EntityId != x.Key).Select(x => x.Key).ToArray();
+                if (keysToReAdd.Any())
+                {
+                    foreach (var key in keysToReAdd)
+                    {
+                        var baseItem = GetDefinitions()[key];
+                        GetDefinitions()[baseItem.EntityId] = baseItem;
+                        GetDefinitions().Remove(key);
+                    }
+                }
+            }
         }
 
     }

@@ -1,8 +1,12 @@
-﻿using System.Collections.Concurrent;
+﻿using Sandbox.Game.Entities;
+using Sandbox.ModAPI;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using VRage.Game;
+using VRage.Game.ModAPI;
 using VRage.ObjectBuilders;
+using VRageMath;
 
 namespace AILogisticsAutomation
 {
@@ -37,6 +41,12 @@ namespace AILogisticsAutomation
             return ignoreAssembler;
         }
 
+        private HashSet<Vector3I> ignoreAssemblerPos = new HashSet<Vector3I>();
+        public HashSet<Vector3I> GetIgnoreAssemblerPos()
+        {
+            return ignoreAssemblerPos;
+        }
+
         private float powerConsumption = 0;
         public float GetPowerConsumption()
         {
@@ -68,6 +78,7 @@ namespace AILogisticsAutomation
                 triggers = triggers.Select(x => x.Value.GetData()).ToArray(),
                 defaultPriority = DefaultPriority.GetAll().Select(x => (SerializableDefinitionId)x).ToArray(),
                 ignoreAssembler = ignoreAssembler.ToArray(),
+                ignoreAssemblerPos = ignoreAssemblerPos.ToArray(),
                 stock = DefaultStock.GetData()
             };
             return data;
@@ -175,6 +186,11 @@ namespace AILogisticsAutomation
             {
                 ignoreAssembler.Add(item);
             }
+            ignoreAssemblerPos.Clear();
+            foreach (var item in data.ignoreAssemblerPos)
+            {
+                ignoreAssemblerPos.Add(item);
+            }
             var triggersToRemove = triggers.Keys.Where(x => !data.triggers.Any(y => y.triggerId == x)).ToArray();
             foreach (var item in triggersToRemove)
             {
@@ -200,6 +216,82 @@ namespace AILogisticsAutomation
             DefaultStock.UpdateData(data.stock);
             powerConsumption = data.powerConsumption;
             enabled = data.enabled;
+        }
+
+        public void DoBeforeSave(IMyTerminalBlock source)
+        {
+            if (source?.CubeGrid == null)
+                return;
+            ignoreAssemblerPos.Clear();
+            if (GetIgnoreAssembler().Any())
+            {
+                List<IMySlimBlock> blocks = new List<IMySlimBlock>();
+                source.CubeGrid.GetBlocks(blocks, (x) => GetIgnoreAssembler().Contains(x.FatBlock?.EntityId ?? 0));
+                if (blocks.Any())
+                {
+                    var blocksInfo = blocks.ToDictionary(k => k.FatBlock.EntityId, v => v.FatBlock);
+                    foreach (var entityId in ignoreAssembler)
+                    {
+                        if (blocksInfo.ContainsKey(entityId))
+                        {
+                            ignoreAssemblerPos.Add(blocksInfo[entityId].Position);
+                        }
+                    }
+                }
+            }
+        }
+
+        public void DoAfterLoad(IMyTerminalBlock source)
+        {
+            if (source?.CubeGrid == null)
+                return;
+            if (GetIgnoreAssembler().Any())
+            {
+                List<IMySlimBlock> blocks = new List<IMySlimBlock>();
+                source.CubeGrid.GetBlocks(blocks, (x) => GetIgnoreAssembler().Contains(x.FatBlock?.EntityId ?? 0));
+                var blocksInfo = blocks.ToDictionary(k => k.FatBlock.EntityId, v => v.FatBlock);
+                if (blocks.Any())
+                {
+                    // Remove chaves com problema
+                    var keys = ignoreAssembler.ToArray();
+                    foreach (var entityId in keys)
+                    {
+                        if (!blocksInfo.ContainsKey(entityId))
+                        {
+                            ignoreAssembler.Remove(entityId);
+                        }
+                    }
+                    // Adiciona posições faltantes
+                    foreach (var entityId in ignoreAssembler)
+                    {
+                        if (blocksInfo.ContainsKey(entityId))
+                        {
+                            if (!ignoreAssemblerPos.Contains(blocksInfo[entityId].Position))
+                            {
+                                ignoreAssemblerPos.Add(blocksInfo[entityId].Position);
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    ignoreAssembler.Clear();
+                }
+            }
+            if (GetIgnoreAssemblerPos().Any())
+            {
+                foreach (var entityPos in ignoreAssemblerPos)
+                {
+                    if (source.CubeGrid.CubeExists(entityPos))
+                    {
+                        var block = source.CubeGrid.GetCubeBlock(entityPos);
+                        if (block?.FatBlock != null && !ignoreAssembler.Contains(block.FatBlock.EntityId))
+                        {
+                            ignoreAssembler.Add(block.FatBlock.EntityId);
+                        }
+                    }
+                }
+            }
         }
 
     }

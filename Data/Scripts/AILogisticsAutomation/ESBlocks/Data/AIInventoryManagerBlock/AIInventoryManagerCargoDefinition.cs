@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using VRage.Game;
+using VRageMath;
 
 namespace AILogisticsAutomation
 {
@@ -9,6 +10,7 @@ namespace AILogisticsAutomation
     {
 
         public long EntityId { get; set; }
+        public Vector3I Position { get; set; }
         public HashSet<SerializableDefinitionId> ValidIds { get; set; } = new HashSet<SerializableDefinitionId>();
         public HashSet<MyObjectBuilderType> ValidTypes { get; set; } = new HashSet<MyObjectBuilderType>();
         public HashSet<SerializableDefinitionId> IgnoreIds { get; set; } = new HashSet<SerializableDefinitionId>();
@@ -18,7 +20,8 @@ namespace AILogisticsAutomation
         {
             var data = new AIInventoryManagerCargoDefinitionData()
             {
-                entityId = EntityId
+                entityId = EntityId,
+                position = Position
             };
             data.validIds = ValidIds.ToArray();
             data.validTypes = ValidTypes.Select(x => x.ToString()).ToArray();
@@ -95,6 +98,7 @@ namespace AILogisticsAutomation
 
         public void UpdateData(AIInventoryManagerCargoDefinitionData data)
         {
+            Position = data.position;
             ValidIds.Clear();
             foreach (var item in data.validIds)
             {

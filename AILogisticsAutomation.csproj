@@ -11,7 +11,10 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-		<PackageReference Include="Mal.Mdk2.References" Version="2.2.2" />
+		<PackageReference Include="Mal.Mdk2.References" Version="2.2.3">
+		  <PrivateAssets>all</PrivateAssets>
+		  <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+		</PackageReference>
 	</ItemGroup>
 
 </Project>

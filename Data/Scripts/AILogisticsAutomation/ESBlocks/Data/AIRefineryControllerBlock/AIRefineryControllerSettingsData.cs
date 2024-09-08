@@ -1,4 +1,5 @@
 ﻿using ProtoBuf;
+using VRageMath;
 
 namespace AILogisticsAutomation
 {
@@ -24,6 +25,9 @@ namespace AILogisticsAutomation
 
         [ProtoMember(6)]
         public AIRefineryControllerTriggerSettingsData[] triggers = new AIRefineryControllerTriggerSettingsData[] { };
+
+        [ProtoMember(7)]
+        public Vector3I[] ignoreRefineryPos = new Vector3I[] { };
 
     }
 

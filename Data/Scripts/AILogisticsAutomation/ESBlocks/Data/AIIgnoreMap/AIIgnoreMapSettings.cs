@@ -1,6 +1,9 @@
-﻿using System.Collections.Concurrent;
+﻿using Sandbox.ModAPI;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using VRage.Game.ModAPI;
+using VRageMath;
 
 namespace AILogisticsAutomation
 {
@@ -53,9 +56,32 @@ namespace AILogisticsAutomation
             return ignoreConnectors;
         }
 
+        private HashSet<Vector3I> ignoreCargosPos = new HashSet<Vector3I>();
+        public HashSet<Vector3I> GetIgnoreCargosPos()
+        {
+            return ignoreCargosPos;
+        }
+
+        private readonly HashSet<Vector3I> ignoreFunctionalBlocksPos = new HashSet<Vector3I>();
+        public HashSet<Vector3I> GetIgnoreFunctionalBlocksPos()
+        {
+            return ignoreFunctionalBlocksPos;
+        }
+
+        private readonly HashSet<Vector3I> ignoreConnectorsPos = new HashSet<Vector3I>();
+        public HashSet<Vector3I> GetIgnoreConnectorsPos()
+        {
+            return ignoreConnectorsPos;
+        }
+
         public IEnumerable<long> GetIgnoreBlocks()
         {
             return ignoreCargos.Concat(ignoreFunctionalBlocks).Concat(ignoreConnectors);
+        }
+
+        public IEnumerable<Vector3I> GetIgnoreBlocksPos()
+        {
+            return ignoreCargosPos.Concat(ignoreFunctionalBlocksPos).Concat(ignoreConnectorsPos);
         }
 
         /* Contrutor */
@@ -68,7 +94,10 @@ namespace AILogisticsAutomation
                 enabled = enabled,
                 ignoreCargos = ignoreCargos.ToArray(),
                 ignoreFunctionalBlocks = ignoreFunctionalBlocks.ToArray(),
-                ignoreConnectors = ignoreConnectors.ToArray()
+                ignoreConnectors = ignoreConnectors.ToArray(),
+                ignoreCargosPos = ignoreCargosPos.ToArray(),
+                ignoreConnectorsPos = ignoreConnectorsPos.ToArray(),
+                ignoreFunctionalBlocksPos = ignoreFunctionalBlocksPos.ToArray(),
             };
             return data;
         }
@@ -152,6 +181,173 @@ namespace AILogisticsAutomation
             foreach (var item in data.ignoreConnectors)
             {
                 ignoreConnectors.Add(item);
+            }
+            ignoreCargosPos.Clear();
+            foreach (var item in data.ignoreCargosPos)
+            {
+                ignoreCargosPos.Add(item);
+            }
+            ignoreFunctionalBlocksPos.Clear();
+            foreach (var item in data.ignoreFunctionalBlocksPos)
+            {
+                ignoreFunctionalBlocksPos.Add(item);
+            }
+            ignoreConnectorsPos.Clear();
+            foreach (var item in data.ignoreConnectorsPos)
+            {
+                ignoreConnectorsPos.Add(item);
+            }
+        }
+
+        public void DoBeforeSave(IMyTerminalBlock source)
+        {
+            if (source?.CubeGrid == null)
+                return;
+            ignoreCargosPos.Clear();
+            ignoreFunctionalBlocksPos.Clear();
+            ignoreConnectorsPos.Clear();
+            if (GetIgnoreBlocks().Any())
+            {
+                List<IMySlimBlock> blocks = new List<IMySlimBlock>();
+                source.CubeGrid.GetBlocks(blocks, (x) => GetIgnoreBlocks().Contains(x.FatBlock?.EntityId ?? 0));
+                if (blocks.Any())
+                {
+                    var blocksInfo = blocks.ToDictionary(k => k.FatBlock.EntityId, v => v.FatBlock);
+                    foreach (var entityId in ignoreCargos)
+                    {
+                        if (blocksInfo.ContainsKey(entityId))
+                        {
+                            ignoreCargosPos.Add(blocksInfo[entityId].Position);
+                        }
+                    }
+                    foreach (var entityId in ignoreFunctionalBlocks)
+                    {
+                        if (blocksInfo.ContainsKey(entityId))
+                        {
+                            ignoreFunctionalBlocksPos.Add(blocksInfo[entityId].Position);
+                        }
+                    }
+                    foreach (var entityId in ignoreConnectors)
+                    {
+                        if (blocksInfo.ContainsKey(entityId))
+                        {
+                            ignoreConnectorsPos.Add(blocksInfo[entityId].Position);
+                        }
+                    }
+                }
+            }
+        }
+
+        public void DoAfterLoad(IMyTerminalBlock source)
+        {
+            if (source?.CubeGrid == null)
+                return;
+            if (GetIgnoreBlocks().Any())
+            {
+                List<IMySlimBlock> blocks = new List<IMySlimBlock>();
+                source.CubeGrid.GetBlocks(blocks, (x) => GetIgnoreBlocks().Contains(x.FatBlock?.EntityId ?? 0));
+                var blocksInfo = blocks.ToDictionary(k => k.FatBlock.EntityId, v => v.FatBlock);
+                if (blocks.Any())
+                {
+                    // Remove chaves com problema
+                    var keys = ignoreCargos.ToArray();
+                    foreach (var entityId in keys)
+                    {
+                        if (!blocksInfo.ContainsKey(entityId))
+                        {
+                            ignoreCargos.Remove(entityId);
+                        }
+                    }
+                    keys = ignoreFunctionalBlocks.ToArray();
+                    foreach (var entityId in keys)
+                    {
+                        if (!blocksInfo.ContainsKey(entityId))
+                        {
+                            ignoreFunctionalBlocks.Remove(entityId);
+                        }
+                    }
+                    keys = ignoreConnectors.ToArray();
+                    foreach (var entityId in keys)
+                    {
+                        if (!blocksInfo.ContainsKey(entityId))
+                        {
+                            ignoreConnectors.Remove(entityId);
+                        }
+                    }
+                    // Adiciona posições faltantes
+                    foreach (var entityId in ignoreCargos)
+                    {
+                        if (blocksInfo.ContainsKey(entityId))
+                        {
+                            if (!ignoreCargosPos.Contains(blocksInfo[entityId].Position))
+                            {
+                                ignoreCargosPos.Add(blocksInfo[entityId].Position);
+                            }
+                        }
+                    }
+                    foreach (var entityId in ignoreFunctionalBlocks)
+                    {
+                        if (blocksInfo.ContainsKey(entityId))
+                        {
+                            if (!ignoreFunctionalBlocksPos.Contains(blocksInfo[entityId].Position))
+                            {
+                                ignoreFunctionalBlocksPos.Add(blocksInfo[entityId].Position);
+                            }
+                        }
+                    }
+                    foreach (var entityId in ignoreConnectors)
+                    {
+                        if (blocksInfo.ContainsKey(entityId))
+                        {
+                            if (!ignoreConnectorsPos.Contains(blocksInfo[entityId].Position))
+                            {
+                                ignoreConnectorsPos.Add(blocksInfo[entityId].Position);
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    ignoreCargos.Clear();
+                    ignoreFunctionalBlocks.Clear();
+                    ignoreConnectors.Clear();
+                }
+            }
+            if (GetIgnoreBlocksPos().Any())
+            {
+                foreach (var entityPos in ignoreCargosPos)
+                {
+                    if (source.CubeGrid.CubeExists(entityPos))
+                    {
+                        var block = source.CubeGrid.GetCubeBlock(entityPos);
+                        if (block?.FatBlock != null && !ignoreCargos.Contains(block.FatBlock.EntityId))
+                        {
+                            ignoreCargos.Add(block.FatBlock.EntityId);
+                        }
+                    }
+                }
+                foreach (var entityPos in ignoreFunctionalBlocksPos)
+                {
+                    if (source.CubeGrid.CubeExists(entityPos))
+                    {
+                        var block = source.CubeGrid.GetCubeBlock(entityPos);
+                        if (block?.FatBlock != null && !ignoreFunctionalBlocks.Contains(block.FatBlock.EntityId))
+                        {
+                            ignoreFunctionalBlocks.Add(block.FatBlock.EntityId);
+                        }
+                    }
+                }
+                foreach (var entityPos in ignoreConnectorsPos)
+                {
+                    if (source.CubeGrid.CubeExists(entityPos))
+                    {
+                        var block = source.CubeGrid.GetCubeBlock(entityPos);
+                        if (block?.FatBlock != null && !ignoreConnectors.Contains(block.FatBlock.EntityId))
+                        {
+                            ignoreConnectors.Add(block.FatBlock.EntityId);
+                        }
+                    }
+                }
             }
         }
 

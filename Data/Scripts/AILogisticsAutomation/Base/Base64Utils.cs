@@ -5,6 +5,7 @@ namespace AILogisticsAutomation
 {
     public static class Base64Utils
     {
+
         //convert string para base64
         static public string EncodeToBase64(string texto)
         {
@@ -19,6 +20,22 @@ namespace AILogisticsAutomation
                 throw;
             }
         }
+
+        //convert string para base64
+        static public bool TryEncodeToBase64(string data, out string decodeData)
+        {
+            decodeData = null;
+            try
+            {
+                decodeData = EncodeToBase64(data);
+                return true;
+            }
+            catch (Exception)
+            {
+                return false;
+            }
+        }
+
         //converte de base64 para texto
         static public string DecodeFrom64(string dados)
         {
@@ -33,6 +50,22 @@ namespace AILogisticsAutomation
                 throw;
             }
         }
+
+        //converte de base64 para texto
+        static public bool TryDecodeFrom64(string data, out string decodeData)
+        {
+            decodeData = null;
+            try
+            {
+                decodeData = DecodeFrom64(data);
+                return true;
+            }
+            catch (Exception)
+            {
+                return false;
+            }
+        }
+
     }
 
 }

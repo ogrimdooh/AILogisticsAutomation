@@ -1,9 +1,12 @@
-﻿namespace AILogisticsAutomation
+﻿using VRageMath;
+
+namespace AILogisticsAutomation
 {
     public class AIRefineryControllerRefineryPrioritySettings
     {
 
         public long EntityId { get; set; }
+        public Vector3I Position { get; set; }
         public AIRefineryControllerPrioritySettings Ores { get; set; } = new AIRefineryControllerPrioritySettings();
 
         public AIRefineryControllerRefinerySettingsData GetData()
@@ -11,6 +14,7 @@
             var data = new AIRefineryControllerRefinerySettingsData
             {
                 entityId = EntityId,
+                position = Position,
                 ores = Ores.GetAll()
             };
             return data;
@@ -43,6 +47,7 @@
 
         public void UpdateData(AIRefineryControllerRefinerySettingsData data)
         {
+            Position = data.position;
             Ores.Clear();
             foreach (var item in data.ores)
             {

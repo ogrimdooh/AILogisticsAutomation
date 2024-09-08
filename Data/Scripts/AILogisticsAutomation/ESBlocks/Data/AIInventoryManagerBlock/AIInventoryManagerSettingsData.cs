@@ -1,4 +1,5 @@
 ﻿using ProtoBuf;
+using VRageMath;
 
 namespace AILogisticsAutomation
 {
@@ -110,6 +111,15 @@ namespace AILogisticsAutomation
 
         [ProtoMember(35)]
         public bool fillCages;
+
+        [ProtoMember(36)]
+        public Vector3I[] ignoreCargosPos = new Vector3I[] { };
+
+        [ProtoMember(37)]
+        public Vector3I[] ignoreFunctionalBlocksPos = new Vector3I[] { };
+
+        [ProtoMember(38)]
+        public Vector3I[] ignoreConnectorsPos = new Vector3I[] { };
 
     }
 

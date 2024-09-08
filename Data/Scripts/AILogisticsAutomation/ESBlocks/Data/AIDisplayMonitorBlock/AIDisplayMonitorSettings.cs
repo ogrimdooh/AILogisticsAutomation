@@ -1,4 +1,5 @@
-﻿using System.Collections.Concurrent;
+﻿using Sandbox.ModAPI;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -68,6 +69,16 @@ namespace AILogisticsAutomation
         {
             powerConsumption = data.powerConsumption;
             enabled = data.enabled;
+        }
+
+        public void DoBeforeSave(IMyTerminalBlock source)
+        {
+
+        }
+
+        public void DoAfterLoad(IMyTerminalBlock source)
+        {
+
         }
 
     }
