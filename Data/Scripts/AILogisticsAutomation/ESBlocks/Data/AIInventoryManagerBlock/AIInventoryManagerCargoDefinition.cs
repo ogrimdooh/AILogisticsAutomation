@@ -11,9 +11,9 @@ namespace AILogisticsAutomation
 
         public long EntityId { get; set; }
         public Vector3I Position { get; set; }
-        public HashSet<SerializableDefinitionId> ValidIds { get; set; } = new HashSet<SerializableDefinitionId>();
+        public HashSet<MyDefinitionId> ValidIds { get; set; } = new HashSet<MyDefinitionId>();
         public HashSet<MyObjectBuilderType> ValidTypes { get; set; } = new HashSet<MyObjectBuilderType>();
-        public HashSet<SerializableDefinitionId> IgnoreIds { get; set; } = new HashSet<SerializableDefinitionId>();
+        public HashSet<MyDefinitionId> IgnoreIds { get; set; } = new HashSet<MyDefinitionId>();
         public HashSet<MyObjectBuilderType> IgnoreTypes { get; set; } = new HashSet<MyObjectBuilderType>();
 
         public AIInventoryManagerCargoDefinitionData GetData()
@@ -23,9 +23,9 @@ namespace AILogisticsAutomation
                 entityId = EntityId,
                 position = Position
             };
-            data.validIds = ValidIds.ToArray();
+            data.validIds = ValidIds.Select(x => new DocumentedDefinitionId(x)).ToArray();
             data.validTypes = ValidTypes.Select(x => x.ToString()).ToArray();
-            data.ignoreIds = IgnoreIds.ToArray();
+            data.ignoreIds = IgnoreIds.Select(x => new DocumentedDefinitionId(x)).ToArray();
             data.ignoreTypes = IgnoreTypes.Select(x => x.ToString()).ToArray();
             return data;
         }
@@ -102,7 +102,11 @@ namespace AILogisticsAutomation
             ValidIds.Clear();
             foreach (var item in data.validIds)
             {
-                ValidIds.Add(item);
+                var id = item.GetId();
+                if (id.HasValue)
+                {
+                    ValidIds.Add(id.Value);
+                }
             }
             ValidTypes.Clear();
             foreach (var item in data.validTypes)
@@ -114,7 +118,11 @@ namespace AILogisticsAutomation
             IgnoreIds.Clear();
             foreach (var item in data.ignoreIds)
             {
-                IgnoreIds.Add(item);
+                var id = item.GetId();
+                if (id.HasValue)
+                {
+                    IgnoreIds.Add(id.Value);
+                }
             }
             IgnoreTypes.Clear();
             foreach (var item in data.ignoreTypes)

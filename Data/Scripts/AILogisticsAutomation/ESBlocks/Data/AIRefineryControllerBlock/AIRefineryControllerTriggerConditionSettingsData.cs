@@ -11,7 +11,7 @@ namespace AILogisticsAutomation
         public int queryType;
 
         [ProtoMember(2)]
-        public SerializableDefinitionId id;
+        public DocumentedDefinitionId id;
 
         [ProtoMember(3)]
         public int operationType;

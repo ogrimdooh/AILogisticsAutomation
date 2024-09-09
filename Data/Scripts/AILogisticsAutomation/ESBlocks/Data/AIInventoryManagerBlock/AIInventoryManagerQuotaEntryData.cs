@@ -1,10 +1,10 @@
-﻿using ProtoBuf;
-using VRage.ObjectBuilders;
+﻿using VRage.ObjectBuilders;
+using ProtoBuf;
 
 namespace AILogisticsAutomation
 {
     [ProtoContract]
-    public class AIAssemblerControllerTriggerActionSettingsData
+    public class AIInventoryManagerQuotaEntryData
     {
 
         [ProtoMember(1)]
@@ -12,7 +12,7 @@ namespace AILogisticsAutomation
 
         [ProtoMember(2)]
         public float value;
-
+        
         [ProtoMember(3)]
         public int index;
 

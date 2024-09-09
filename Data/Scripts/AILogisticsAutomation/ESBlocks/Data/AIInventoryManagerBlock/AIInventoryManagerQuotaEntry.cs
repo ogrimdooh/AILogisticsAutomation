@@ -2,16 +2,16 @@
 
 namespace AILogisticsAutomation
 {
-    public class AIAssemblerControllerTriggerActionSettings
+    public class AIInventoryManagerQuotaEntry
     {
 
         public MyDefinitionId Id { get; set; }
         public float Value { get; set; }
         public int Index { get; set; }
 
-        public AIAssemblerControllerTriggerActionSettingsData GetData()
+        public AIInventoryManagerQuotaEntryData GetData()
         {
-            return new AIAssemblerControllerTriggerActionSettingsData()
+            return new AIInventoryManagerQuotaEntryData()
             {
                 id = new DocumentedDefinitionId(Id),
                 value = Value,

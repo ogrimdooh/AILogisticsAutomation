@@ -76,7 +76,7 @@ namespace AILogisticsAutomation
                 powerConsumption = powerConsumption,
                 enabled = enabled,
                 triggers = triggers.Select(x => x.Value.GetData()).ToArray(),
-                defaultPriority = DefaultPriority.GetAll().Select(x => (SerializableDefinitionId)x).ToArray(),
+                defaultPriority = DefaultPriority.GetAll().Select(x => new DocumentedDefinitionId(x)).ToArray(),
                 ignoreAssembler = ignoreAssembler.ToArray(),
                 ignoreAssemblerPos = ignoreAssemblerPos.ToArray(),
                 stock = DefaultStock.GetData()
@@ -179,7 +179,11 @@ namespace AILogisticsAutomation
             DefaultPriority.Clear();
             foreach (var item in data.defaultPriority)
             {
-                DefaultPriority.AddPriority(item);
+                var id = item.GetId();
+                if (id.HasValue)
+                {
+                    DefaultPriority.AddPriority(id.Value);
+                }
             }
             ignoreAssembler.Clear();
             foreach (var item in data.ignoreAssembler)

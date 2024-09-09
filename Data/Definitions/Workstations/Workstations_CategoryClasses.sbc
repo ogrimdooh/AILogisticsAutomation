@@ -22,6 +22,10 @@
         <string>OreDetector/AIIgnoreMapReskin</string>
         <string>OreDetector/AIIgnoreMapSmall</string>
         <string>OreDetector/AIIgnoreMapReskinSmall</string>
+        <string>OreDetector/AIQuotaMap</string>
+        <string>OreDetector/AIQuotaMapReskin</string>
+        <string>OreDetector/AIQuotaMapSmall</string>
+        <string>OreDetector/AIQuotaMapReskinSmall</string>
       </ItemIds>
     </Category>
     

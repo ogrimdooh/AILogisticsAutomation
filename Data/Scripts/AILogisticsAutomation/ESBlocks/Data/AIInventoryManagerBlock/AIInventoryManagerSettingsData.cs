@@ -121,6 +121,9 @@ namespace AILogisticsAutomation
         [ProtoMember(38)]
         public Vector3I[] ignoreConnectorsPos = new Vector3I[] { };
 
+        [ProtoMember(39)]
+        public AIInventoryManagerQuotaDefinitionData[] quotas = new AIInventoryManagerQuotaDefinitionData[] { };
+
     }
 
 }

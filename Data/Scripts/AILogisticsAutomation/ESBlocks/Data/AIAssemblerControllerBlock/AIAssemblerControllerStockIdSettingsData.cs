@@ -8,7 +8,7 @@ namespace AILogisticsAutomation
     {
 
         [ProtoMember(1)]
-        public SerializableDefinitionId id;
+        public DocumentedDefinitionId id;
 
         [ProtoMember(2)]
         public int amount;

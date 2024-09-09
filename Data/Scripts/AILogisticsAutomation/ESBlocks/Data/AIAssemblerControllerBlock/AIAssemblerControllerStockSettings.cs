@@ -19,9 +19,9 @@ namespace AILogisticsAutomation
         {
             var data = new AIAssemblerControllerStockSettingsData
             {
-                validIds = ValidIds.Select(x => new AIAssemblerControllerStockIdSettingsData() { id = x.Key, amount = x.Value }).ToArray(),
+                validIds = ValidIds.Select(x => new AIAssemblerControllerStockIdSettingsData() { id = new DocumentedDefinitionId(x.Key), amount = x.Value }).ToArray(),
                 validTypes = ValidTypes.Select(x => new AIAssemblerControllerStockTypeSettingsData() { type = x.Key.ToString(), amount = x.Value }).ToArray(),
-                ignoreIds = IgnoreIds.Select(x => (SerializableDefinitionId)x).ToArray(),
+                ignoreIds = IgnoreIds.Select(x => new DocumentedDefinitionId(x)).ToArray(),
                 ignoreTypes = IgnoreTypes.Select(x => x.ToString()).ToArray()
             };
             return data;
@@ -112,7 +112,11 @@ namespace AILogisticsAutomation
             ValidIds.Clear();
             foreach (var item in data.validIds)
             {
-                ValidIds[item.id] = item.amount;
+                var id = item.id.GetId();
+                if (id.HasValue)
+                {
+                    ValidIds[id.Value] = item.amount;
+                }
             }
             ValidTypes.Clear();
             foreach (var item in data.validTypes)
@@ -124,7 +128,11 @@ namespace AILogisticsAutomation
             IgnoreIds.Clear();
             foreach (var item in data.ignoreIds)
             {
-                IgnoreIds.Add(item);
+                var id = item.GetId();
+                if (id.HasValue)
+                {
+                    IgnoreIds.Add(id.Value);
+                }
             }
             IgnoreTypes.Clear();
             foreach (var item in data.ignoreTypes)

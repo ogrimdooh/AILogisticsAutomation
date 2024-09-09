@@ -105,14 +105,18 @@ namespace AILogisticsAutomation
             Conditions.Clear();
             foreach (var item in data.conditions)
             {
-                Conditions.Add(new AIRefineryControllerTriggerConditionSettings() 
-                { 
-                    QueryType = item.queryType,
-                    Id = item.id,
-                    OperationType = item.operationType,
-                    Value = item.value,
-                    Index = item.index
-                });
+                var id = item.id.GetId();
+                if (id.HasValue)
+                {
+                    Conditions.Add(new AIRefineryControllerTriggerConditionSettings()
+                    {
+                        QueryType = item.queryType,
+                        Id = id.Value,
+                        OperationType = item.operationType,
+                        Value = item.value,
+                        Index = item.index
+                    });
+                }
             }
             Clear();
             foreach (var item in data.ores)

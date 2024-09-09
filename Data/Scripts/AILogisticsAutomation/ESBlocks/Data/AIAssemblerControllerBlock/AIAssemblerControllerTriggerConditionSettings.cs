@@ -16,7 +16,7 @@ namespace AILogisticsAutomation
             return new AIAssemblerControllerTriggerConditionSettingsData()
             {
                 queryType = QueryType,
-                id = Id,
+                id = new DocumentedDefinitionId(Id),
                 operationType = OperationType,
                 value = Value,
                 index = Index

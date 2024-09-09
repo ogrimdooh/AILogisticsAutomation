@@ -14,7 +14,7 @@ namespace AILogisticsAutomation
         public AIAssemblerControllerStockTypeSettingsData[] validTypes = new AIAssemblerControllerStockTypeSettingsData[] { };
 
         [ProtoMember(3)]
-        public SerializableDefinitionId[] ignoreIds = new SerializableDefinitionId[] { };
+        public DocumentedDefinitionId[] ignoreIds = new DocumentedDefinitionId[] { };
 
         [ProtoMember(4)]
         public string[] ignoreTypes = new string[] { };

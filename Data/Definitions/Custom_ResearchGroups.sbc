@@ -43,6 +43,16 @@
         <BlockId Type="MyObjectBuilder_OreDetector" Subtype="AIIgnoreMapReskinSmall" />
       </Members>
     </ResearchGroup>
-    
+
+    <ResearchGroup xsi:type="ResearchGroup">
+      <Id Type="MyObjectBuilder_ResearchGroupDefinition" Subtype="12206" />
+      <Members>
+        <BlockId Type="MyObjectBuilder_OreDetector" Subtype="AIQuotaMap" />
+        <BlockId Type="MyObjectBuilder_OreDetector" Subtype="AIQuotaMapSmall" />
+        <BlockId Type="MyObjectBuilder_OreDetector" Subtype="AIQuotaMapReskin" />
+        <BlockId Type="MyObjectBuilder_OreDetector" Subtype="AIQuotaMapReskinSmall" />
+      </Members>
+    </ResearchGroup>
+
   </ResearchGroups>
 </Definitions>

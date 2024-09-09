@@ -19,7 +19,7 @@ namespace AILogisticsAutomation
         public AIAssemblerControllerStockSettingsData stock = new AIAssemblerControllerStockSettingsData();
 
         [ProtoMember(4)]
-        public SerializableDefinitionId[] defaultPriority = new SerializableDefinitionId[] { };
+        public DocumentedDefinitionId[] defaultPriority = new DocumentedDefinitionId[] { };
 
         [ProtoMember(5)]
         public long[] ignoreAssembler = new long[] { };

@@ -288,14 +288,17 @@ namespace AILogisticsAutomation
             var power = CalcPowerFromBlocks(0, ValidInventories);
 
             // Get pull containers power
-            power += (
-                        AILogisticsAutomationSettings.Instance.EnergyCost.DefaultPullCost + 
-                        (Settings.GetSortItensType() > 0 ? AILogisticsAutomationSettings.Instance.EnergyCost.SortCost : 0) +
-                        (Settings.GetStackIfPossible() ? AILogisticsAutomationSettings.Instance.EnergyCost.StackCost : 0)
-                    ) * Settings.GetDefinitions().Count;
-            
+            var basePowerCost = (
+                AILogisticsAutomationSettings.Instance.EnergyCost.DefaultPullCost +
+                (Settings.GetSortItensType() > 0 ? AILogisticsAutomationSettings.Instance.EnergyCost.SortCost : 0) +
+                (Settings.GetStackIfPossible() ? AILogisticsAutomationSettings.Instance.EnergyCost.StackCost : 0)
+            );
+            power += basePowerCost * Settings.GetDefinitions().Count;
+            power += basePowerCost * Settings.GetQuotas().Count;
+
             // Get filter power
             var totalFilters = Settings.GetDefinitions().Values.Sum(x => x.IgnoreIds.Count + x.IgnoreTypes.Count + x.ValidTypes.Count + x.ValidIds.Count);
+            totalFilters += Settings.GetQuotas().Values.Sum(x => x.Entries.Count);
             power += AILogisticsAutomationSettings.Instance.EnergyCost.FilterCost * totalFilters;
 
             // Get subgrids
@@ -419,13 +422,13 @@ namespace AILogisticsAutomation
                     if (inventoryBase.GetItemsCount() > 0)
                     {
                         // Move itens para o iventário possivel
-                        TryToFullFromInventory(listaToCheck[i].BlockDefinition.Id, inventoryBase, listaToCheck, null, reactor, gasGenerator, farm, cage);
+                        TryToFullFromInventory(listaToCheck[i].EntityId, listaToCheck[i].BlockDefinition.Id, inventoryBase, listaToCheck, null, reactor, gasGenerator, farm, cage);
                         // Verifica se tem algo nos inventários de produção, se for uma montadora
                         if (listaToCheck[i].BlockDefinition.Id.IsAssembler())
                         {
                             var assembler = (listaToCheck[i] as IMyAssembler);
                             var inventoryProd = listaToCheck[i].GetInventory(0);
-                            TryToFullFromInventory(listaToCheck[i].BlockDefinition.Id, inventoryProd, listaToCheck, assembler, null, null, null, null);
+                            TryToFullFromInventory(listaToCheck[i].EntityId, listaToCheck[i].BlockDefinition.Id, inventoryProd, listaToCheck, assembler, null, null, null, null);
                         }
                     }
                     if (inventoryBase.GetItemsCount() > 0)
@@ -1280,8 +1283,17 @@ namespace AILogisticsAutomation
                 List<IMyGasGenerator> fishTraps = new List<IMyGasGenerator>();
                 List<IMyGasGenerator> refrigerators = new List<IMyGasGenerator>();
                 List<IMyOxygenFarm> farms = new List<IMyOxygenFarm>();
-                List<IMyCargoContainer> cages = new List<IMyCargoContainer>();                
-                DoCheckInventoryList(ValidInventories.ToArray(), ref reactors, ref gasGenerators, ref gasTanks, ref composters, ref fishTraps, ref refrigerators, ref farms, ref cages);
+                List<IMyCargoContainer> cages = new List<IMyCargoContainer>();
+
+                var inventories = ValidInventories.ToArray();
+                DoCheckInventoryList(inventories, ref reactors, ref gasGenerators, ref gasTanks, ref composters, ref fishTraps, ref refrigerators, ref farms, ref cages);
+                
+                if (Settings.GetQuotas().Any())
+                {
+                    var quotaInventories = inventories.Where(x => Settings.GetQuotas().ContainsKey(x.EntityId));
+                    DoCheckQuotas(quotaInventories, Settings.GetQuotas());
+                }
+
                 DoPullFromSubGridList(subgrids, ref reactors, ref gasGenerators, ref gasTanks, ref composters, ref fishTraps, ref refrigerators, ref farms, ref cages);
                 DoPullFromConnectedGridList(connectedGrids, ref reactors, ref gasGenerators, ref gasTanks, ref composters, ref fishTraps, ref refrigerators, ref farms, ref cages);
                 DoFillReactors(reactors);
@@ -1297,7 +1309,32 @@ namespace AILogisticsAutomation
             }
         }
 
-        private void TryToFullFromInventory(MyDefinitionId blockId, MyInventory inventoryBase, MyCubeBlock[] listaToCheck, IMyAssembler assembler, IMyReactor reactor, IMyGasGenerator gasGenerator, IMyOxygenFarm oxygenFarm, IMyCargoContainer cage)
+        private void DoCheckQuotas(IEnumerable<MyCubeBlock> quotaInventories, ConcurrentDictionary<long, AIInventoryManagerQuotaDefinition> quotas)
+        {
+            foreach (var entityId in quotas.Keys)
+            {
+                var inventory = quotaInventories.FirstOrDefault(x=>x.EntityId == entityId);
+                if (inventory != null)
+                {
+                    DoTryFillQuota(inventory, quotas[entityId]);
+                }
+            }
+        }
+
+        private void DoTryFillQuota(MyCubeBlock inventory, AIInventoryManagerQuotaDefinition quota)
+        {
+            var targetInventory = inventory.GetInventory();
+            if (targetInventory != null)
+            {
+                foreach (var quotaEntry in quota.Entries)
+                {
+                    var stockAmount = (float)targetInventory.GetItemAmount(quotaEntry.Id);
+                    MoveAmountFromStock(targetInventory, stockAmount, quotaEntry.Value, new UniqueEntityId(quotaEntry.Id));
+                }
+            }
+        }
+
+        private void TryToFullFromInventory(long entityId, MyDefinitionId blockId, MyInventory inventoryBase, MyCubeBlock[] listaToCheck, IMyAssembler assembler, IMyReactor reactor, IMyGasGenerator gasGenerator, IMyOxygenFarm oxygenFarm, IMyCargoContainer cage)
         {
             if (blockId.IsNanobot())
             {
@@ -1436,6 +1473,19 @@ namespace AILogisticsAutomation
                     foreach (var ration in ItensConstants.RATIONS_DEFINITIONS)
                     {
                         ignoreIds[ration.DefinitionId] = (MyFixedPoint)IDEAL_CAGE_RATION;
+                    }
+                }
+            }
+            // Quota
+            if (Settings.GetQuotas().ContainsKey(entityId))
+            {
+                var targetQuota = Settings.GetQuotas()[entityId];
+                if (targetQuota.Entries.Any())
+                {
+                    pullAll = false;
+                    foreach (var item in targetQuota.Entries)
+                    {
+                        ignoreIds[item.Id] = (MyFixedPoint)item.Value;
                     }
                 }
             }

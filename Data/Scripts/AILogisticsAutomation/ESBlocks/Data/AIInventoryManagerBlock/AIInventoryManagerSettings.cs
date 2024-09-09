@@ -17,6 +17,8 @@ namespace AILogisticsAutomation
         public long SelectedIgnoreEntityId { get; set; } = 0;
         public long SelectedAddedIgnoreEntityId { get; set; } = 0;
         public string SelectedAddedFilterId { get; set; } = "";
+        public long SelectedQuotaEntityId { get; set; } = 0;
+        public long SelectedQuotaEntryIndex { get; set; } = 0;        
 
         /* Data Properties */
 
@@ -24,6 +26,12 @@ namespace AILogisticsAutomation
         public ConcurrentDictionary<long, AIInventoryManagerCargoDefinition> GetDefinitions()
         {
             return definitions;
+        }
+
+        private readonly ConcurrentDictionary<long, AIInventoryManagerQuotaDefinition> quotas = new ConcurrentDictionary<long, AIInventoryManagerQuotaDefinition>();
+        public ConcurrentDictionary<long, AIInventoryManagerQuotaDefinition> GetQuotas()
+        {
+            return quotas;
         }
 
         private HashSet<long> ignoreCargos = new HashSet<long>();
@@ -439,7 +447,8 @@ namespace AILogisticsAutomation
                 fillCages = fillCages,
                 ignoreCargosPos = ignoreCargosPos.ToArray(),
                 ignoreConnectorsPos = ignoreConnectorsPos.ToArray(),
-                ignoreFunctionalBlocksPos = ignoreFunctionalBlocksPos.ToArray()
+                ignoreFunctionalBlocksPos = ignoreFunctionalBlocksPos.ToArray(),
+                quotas = quotas.Select(x => x.Value.GetData()).ToArray()
             };
             return data;
         }
@@ -452,6 +461,30 @@ namespace AILogisticsAutomation
             float valueAsFloat = 0f;
             switch (key.ToUpper())
             {
+                case "ENTRIES":
+                    if (long.TryParse(owner, out valueAsId))
+                    {
+                        var def = quotas.ContainsKey(valueAsId) ? quotas[valueAsId] : null;
+                        if (def != null)
+                        {
+                            return def.UpdateData(key, action, value);
+                        }
+                    }
+                    break;
+                case "QUOTAS":
+                    if (long.TryParse(value, out valueAsId))
+                    {
+                        switch (action)
+                        {
+                            case "ADD":
+                                quotas[valueAsId] = new AIInventoryManagerQuotaDefinition() { EntityId = valueAsId };
+                                return true;
+                            case "DEL":
+                                quotas.Remove(valueAsId);
+                                return true;
+                        }
+                    }
+                    break;
                 case "VALIDIDS":
                 case "VALIDTYPES":
                 case "IGNOREIDS":
@@ -766,6 +799,28 @@ namespace AILogisticsAutomation
                     definitions[item.entityId] = newItem;
                 }
             }
+            dataToRemove = quotas.Keys.Where(x => !data.quotas.Any(y => y.entityId == x)).ToArray();
+            foreach (var item in dataToRemove)
+            {
+                quotas.Remove(item);
+            }
+            foreach (var item in data.quotas)
+            {
+                var def = quotas.ContainsKey(item.entityId) ? quotas[item.entityId] : null;
+                if (def != null)
+                {
+                    def.UpdateData(item);
+                }
+                else
+                {
+                    var newItem = new AIInventoryManagerQuotaDefinition()
+                    {
+                        EntityId = item.entityId
+                    };
+                    newItem.UpdateData(item);
+                    quotas[item.entityId] = newItem;
+                }
+            }
             ignoreCargos.Clear();
             foreach (var item in data.ignoreCargos)
             {
@@ -835,12 +890,13 @@ namespace AILogisticsAutomation
             ignoreCargosPos.Clear();
             ignoreFunctionalBlocksPos.Clear();
             ignoreConnectorsPos.Clear();
-            if (GetIgnoreBlocks().Any() || GetDefinitions().Any())
+            if (GetIgnoreBlocks().Any() || GetDefinitions().Any() || GetQuotas().Any())
             {
                 List<IMySlimBlock> blocks = new List<IMySlimBlock>();
                 source.CubeGrid.GetBlocks(blocks, (x) => 
                     GetIgnoreBlocks().Contains(x.FatBlock?.EntityId ?? 0) ||
-                    GetDefinitions().ContainsKey(x.FatBlock?.EntityId ?? 0)
+                    GetDefinitions().ContainsKey(x.FatBlock?.EntityId ?? 0) ||
+                    GetQuotas().ContainsKey(x.FatBlock?.EntityId ?? 0)
                 );
                 if (blocks.Any())
                 {
@@ -877,6 +933,17 @@ namespace AILogisticsAutomation
                             GetDefinitions()[entityId].Position = Vector3I.Zero;
                         }
                     }
+                    foreach (var entityId in GetQuotas().Keys)
+                    {
+                        if (blocksInfo.ContainsKey(entityId))
+                        {
+                            GetQuotas()[entityId].Position = blocksInfo[entityId].Position;
+                        }
+                        else
+                        {
+                            GetQuotas()[entityId].Position = Vector3I.Zero;
+                        }
+                    }
                 }
             }
         }
@@ -885,12 +952,13 @@ namespace AILogisticsAutomation
         {
             if (source?.CubeGrid == null)
                 return;
-            if (GetIgnoreBlocks().Any() || GetDefinitions().Any())
+            if (GetIgnoreBlocks().Any() || GetDefinitions().Any() || GetQuotas().Any())
             {
                 List<IMySlimBlock> blocks = new List<IMySlimBlock>();
                 source.CubeGrid.GetBlocks(blocks, (x) => 
                     GetIgnoreBlocks().Contains(x.FatBlock?.EntityId ?? 0) ||
-                    GetDefinitions().ContainsKey(x.FatBlock?.EntityId ?? 0)
+                    GetDefinitions().ContainsKey(x.FatBlock?.EntityId ?? 0) ||
+                    GetQuotas().ContainsKey(x.FatBlock?.EntityId ?? 0)
                 );
                 var blocksInfo = blocks.ToDictionary(k => k.FatBlock.EntityId, v => v.FatBlock);
                 if (blocks.Any())
@@ -929,6 +997,17 @@ namespace AILogisticsAutomation
                         else
                         {
                             GetDefinitions()[entityId].Position = blocksInfo[entityId].Position;
+                        }
+                    }
+                    foreach (var entityId in GetQuotas().Keys)
+                    {
+                        if (!blocksInfo.ContainsKey(entityId))
+                        {
+                            GetQuotas()[entityId].EntityId = 0;
+                        }
+                        else
+                        {
+                            GetQuotas()[entityId].Position = blocksInfo[entityId].Position;
                         }
                     }
                     // Adiciona posições faltantes
@@ -971,6 +1050,10 @@ namespace AILogisticsAutomation
                     foreach (var entityId in GetDefinitions().Keys)
                     {
                         GetDefinitions()[entityId].EntityId = 0;
+                    }
+                    foreach (var entityId in GetQuotas().Keys)
+                    {
+                        GetQuotas()[entityId].EntityId = 0;
                     }
                 }
             }
@@ -1042,6 +1125,41 @@ namespace AILogisticsAutomation
                         var baseItem = GetDefinitions()[key];
                         GetDefinitions()[baseItem.EntityId] = baseItem;
                         GetDefinitions().Remove(key);
+                    }
+                }
+            }
+            if (GetQuotas().Any())
+            {
+                foreach (var entityId in GetQuotas().Keys)
+                {
+                    var entityPos = GetQuotas()[entityId].Position;
+                    if (source.CubeGrid.CubeExists(entityPos))
+                    {
+                        var block = source.CubeGrid.GetCubeBlock(entityPos);
+                        if (block?.FatBlock != null)
+                        {
+                            GetQuotas()[entityId].EntityId = block.FatBlock.EntityId;
+                        }
+                    }
+                }
+                // Remove all with EntityId = 0
+                var keysToRemove = GetQuotas().Where(x => x.Value.EntityId == 0).Select(x => x.Key).ToArray();
+                if (keysToRemove.Any())
+                {
+                    foreach (var key in keysToRemove)
+                    {
+                        GetQuotas().Remove(key);
+                    }
+                }
+                // Change key id to all with new EntityId
+                var keysToReAdd = GetQuotas().Where(x => x.Value.EntityId != x.Key).Select(x => x.Key).ToArray();
+                if (keysToReAdd.Any())
+                {
+                    foreach (var key in keysToReAdd)
+                    {
+                        var baseItem = GetQuotas()[key];
+                        GetQuotas()[baseItem.EntityId] = baseItem;
+                        GetQuotas().Remove(key);
                     }
                 }
             }

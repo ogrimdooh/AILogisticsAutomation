@@ -108,24 +108,32 @@ namespace AILogisticsAutomation
             Conditions.Clear();
             foreach (var item in data.conditions)
             {
-                Conditions.Add(new AIAssemblerControllerTriggerConditionSettings() 
-                { 
-                    QueryType = item.queryType,
-                    Id = item.id,
-                    OperationType = item.operationType,
-                    Value = item.value,
-                    Index = item.index
-                });
+                var id = item.id.GetId();
+                if (id.HasValue)
+                {
+                    Conditions.Add(new AIAssemblerControllerTriggerConditionSettings()
+                    {
+                        QueryType = item.queryType,
+                        Id = id.Value,
+                        OperationType = item.operationType,
+                        Value = item.value,
+                        Index = item.index
+                    });
+                }
             }
             Actions.Clear();
             foreach (var item in data.actions)
             {
-                Actions.Add(new AIAssemblerControllerTriggerActionSettings()
+                var id = item.id.GetId();
+                if (id.HasValue)
                 {
-                    Id = item.id,
-                    Value = item.value,
-                    Index = item.index
-                });
+                    Actions.Add(new AIAssemblerControllerTriggerActionSettings()
+                    {
+                        Id = id.Value,
+                        Value = item.value,
+                        Index = item.index
+                    });
+                }
             }
             TriggerId = data.triggerId;
             Name = data.name;

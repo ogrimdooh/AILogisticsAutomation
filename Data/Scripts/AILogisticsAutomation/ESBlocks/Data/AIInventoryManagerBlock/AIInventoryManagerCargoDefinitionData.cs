@@ -12,13 +12,13 @@ namespace AILogisticsAutomation
         public long entityId;
 
         [ProtoMember(2)]
-        public SerializableDefinitionId[] validIds = new SerializableDefinitionId[] { };
+        public DocumentedDefinitionId[] validIds = new DocumentedDefinitionId[] { };
 
         [ProtoMember(3)]
         public string[] validTypes = new string[] { };
 
         [ProtoMember(4)]
-        public SerializableDefinitionId[] ignoreIds = new SerializableDefinitionId[] { };
+        public DocumentedDefinitionId[] ignoreIds = new DocumentedDefinitionId[] { };
 
         [ProtoMember(5)]
         public string[] ignoreTypes = new string[] { };
