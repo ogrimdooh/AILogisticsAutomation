@@ -117,6 +117,9 @@ namespace AILogisticsAutomation
             if (!AIIgnoreMapBlockTerminal.Controller.CustomControlsInit)
                 AIIgnoreMapBlockTerminal.InitializeControls();
 
+            if (!AIQuotaMapBlockTerminal.Controller.CustomControlsInit)
+                AIQuotaMapBlockTerminal.InitializeControls();
+
         }
 
         private const string SETTINGS_COMMAND = "settings";

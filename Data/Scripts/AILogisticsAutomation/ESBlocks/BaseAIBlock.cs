@@ -233,11 +233,11 @@ namespace AILogisticsAutomation
 
         protected bool UpdateEmissiveState()
         {
-            if (!IsEnabled)
+            if (!IsEnabled || !IsPowered)
                 return SetEmissiveState(EmissiveState.Disabled);
             if (!IsWorking)
                 return SetEmissiveState(EmissiveState.Warning);
-            if (IsClient || cycleIsRuning)
+            if (IsClient || !cycleIsRuning)
                 return SetEmissiveState(EmissiveState.Working);
             return SetEmissiveState(EmissiveState.Damaged);
         }

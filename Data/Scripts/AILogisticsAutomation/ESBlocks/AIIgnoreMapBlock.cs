@@ -16,6 +16,28 @@ namespace AILogisticsAutomation
     public class AIIgnoreMapBlock : BaseAIBlock<IMyOreDetector, AIIgnoreMapSettings, AIIgnoreMapSettingsData>
     {
 
+        public AIQuotaMapBlock GetAIQuotaMap()
+        {
+            var block = GetAIQuotaBlock();
+            if (block != null)
+            {
+                return block.FatBlock.GameLogic?.GetAs<AIQuotaMapBlock>();
+            }
+            return null;
+        }
+
+        protected IMySlimBlock GetAIQuotaBlock()
+        {
+            var validSubTypes = new string[] { "AIQuotaMap", "AIQuotaMapSmall", "AIQuotaMapReskin", "AIQuotaMapReskinSmall" };
+            foreach (var item in validSubTypes)
+            {
+                var block = CubeGrid.GetBlocks(new MyDefinitionId(typeof(MyObjectBuilder_OreDetector), item))?.FirstOrDefault();
+                if (block != null)
+                    return block;
+            }
+            return null;
+        }
+
         protected override bool GetHadWorkToDo()
         {
             return Settings?.GetIgnoreBlocks().Any() ?? false;

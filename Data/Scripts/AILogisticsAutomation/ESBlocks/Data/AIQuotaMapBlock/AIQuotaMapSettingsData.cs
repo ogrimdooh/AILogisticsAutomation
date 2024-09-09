@@ -12,6 +12,9 @@ namespace AILogisticsAutomation
         [ProtoMember(2)]
         public bool enabled;
 
+        [ProtoMember(3)]
+        public AIQuotaMapQuotaDefinitionData[] quotas = new AIQuotaMapQuotaDefinitionData[] { };
+
     }
 
 }

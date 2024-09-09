@@ -254,7 +254,29 @@ namespace AILogisticsAutomation
             return power;
         }
 
-        protected AIIgnoreMapBlock GetAIIgnoreMap(IMyCubeGrid grid)
+        public AIQuotaMapBlock GetAIQuotaMap(IMyCubeGrid grid)
+        {
+            var block = GetAIQuotaBlock(grid);
+            if (block != null)
+            {
+                return block.FatBlock.GameLogic?.GetAs<AIQuotaMapBlock>();
+            }
+            return null;
+        }
+
+        protected IMySlimBlock GetAIQuotaBlock(IMyCubeGrid grid)
+        {
+            var validSubTypes = new string[] { "AIQuotaMap", "AIQuotaMapSmall", "AIQuotaMapReskin", "AIQuotaMapReskinSmall" };
+            foreach (var item in validSubTypes)
+            {
+                var block = grid.GetBlocks(new MyDefinitionId(typeof(MyObjectBuilder_OreDetector), item))?.FirstOrDefault();
+                if (block != null)
+                    return block;
+            }
+            return null;
+        }
+
+        public AIIgnoreMapBlock GetAIIgnoreMap(IMyCubeGrid grid)
         {
             var block = GetAIIgnoreBlock(grid);
             if (block != null)
@@ -294,7 +316,8 @@ namespace AILogisticsAutomation
                 (Settings.GetStackIfPossible() ? AILogisticsAutomationSettings.Instance.EnergyCost.StackCost : 0)
             );
             power += basePowerCost * Settings.GetDefinitions().Count;
-            power += basePowerCost * Settings.GetQuotas().Count;
+
+            power += AILogisticsAutomationSettings.Instance.EnergyCost.DefaultPullCost * Settings.GetQuotas().Count;
 
             // Get filter power
             var totalFilters = Settings.GetDefinitions().Values.Sum(x => x.IgnoreIds.Count + x.IgnoreTypes.Count + x.ValidTypes.Count + x.ValidIds.Count);
@@ -311,6 +334,13 @@ namespace AILogisticsAutomation
                     var customIgnoreBlocks = ignoreMap?.Settings.GetIgnoreBlocks().ToArray() ?? new long[] { };
                     var query = DoApplyBasicFilter(grid.Inventories, customIgnoreBlocks);
                     power = CalcPowerFromBlocks(power, query);
+                    var quotaMap = GetAIQuotaMap(grid);
+                    if (quotaMap != null)
+                    {
+                        power += AILogisticsAutomationSettings.Instance.EnergyCost.DefaultPullCost * quotaMap.Settings.GetQuotas().Count;
+                        totalFilters += quotaMap.Settings.GetQuotas().Values.Sum(x => x.Entries.Count);
+                        power += AILogisticsAutomationSettings.Instance.EnergyCost.FilterCost * totalFilters;
+                    }
                 }
             }
 
@@ -327,6 +357,13 @@ namespace AILogisticsAutomation
                         var customIgnoreBlocks = ignoreMap?.Settings.GetIgnoreBlocks().ToArray() ?? new long[] { };
                         var query = DoApplyBasicFilter(grid.Inventories, customIgnoreBlocks);
                         power = CalcPowerFromBlocks(power, query);
+                        var quotaMap = GetAIQuotaMap(grid);
+                        if (quotaMap != null)
+                        {
+                            power += AILogisticsAutomationSettings.Instance.EnergyCost.DefaultPullCost * quotaMap.Settings.GetQuotas().Count;
+                            totalFilters += quotaMap.Settings.GetQuotas().Values.Sum(x => x.Entries.Count);
+                            power += AILogisticsAutomationSettings.Instance.EnergyCost.FilterCost * totalFilters;
+                        }
                     }
                 }
             }
@@ -422,13 +459,13 @@ namespace AILogisticsAutomation
                     if (inventoryBase.GetItemsCount() > 0)
                     {
                         // Move itens para o iventário possivel
-                        TryToFullFromInventory(listaToCheck[i].EntityId, listaToCheck[i].BlockDefinition.Id, inventoryBase, listaToCheck, null, reactor, gasGenerator, farm, cage);
+                        TryToFullFromInventory(listaToCheck[i], listaToCheck[i].BlockDefinition.Id, inventoryBase, listaToCheck, null, reactor, gasGenerator, farm, cage);
                         // Verifica se tem algo nos inventários de produção, se for uma montadora
                         if (listaToCheck[i].BlockDefinition.Id.IsAssembler())
                         {
                             var assembler = (listaToCheck[i] as IMyAssembler);
                             var inventoryProd = listaToCheck[i].GetInventory(0);
-                            TryToFullFromInventory(listaToCheck[i].EntityId, listaToCheck[i].BlockDefinition.Id, inventoryProd, listaToCheck, assembler, null, null, null, null);
+                            TryToFullFromInventory(listaToCheck[i], listaToCheck[i].BlockDefinition.Id, inventoryProd, listaToCheck, assembler, null, null, null, null);
                         }
                     }
                     if (inventoryBase.GetItemsCount() > 0)
@@ -1215,7 +1252,16 @@ namespace AILogisticsAutomation
                     var ignoreMap = GetAIIgnoreMap(grid);
                     var customIgnoreBlocks = ignoreMap?.Settings.GetIgnoreBlocks().ToArray() ?? new long[] { };
 
-                    DoCheckInventoryList(DoApplyBasicFilter(grid.Inventories, customIgnoreBlocks).ToArray(), ref reactors, ref gasGenerators, ref gasTanks, ref composters, ref fishTraps, ref refrigerators, ref farms, ref cages);
+                    var inventories = DoApplyBasicFilter(grid.Inventories, customIgnoreBlocks).ToArray();
+                    DoCheckInventoryList(inventories, ref reactors, ref gasGenerators, ref gasTanks, ref composters, ref fishTraps, ref refrigerators, ref farms, ref cages);
+
+                    var quotaMap = GetAIQuotaMap(grid);
+                    if (quotaMap != null && quotaMap.Settings.GetQuotas().Any())
+                    {
+                        var quotaInventories = inventories.Where(x => quotaMap.Settings.GetQuotas().ContainsKey(x.EntityId));
+                        DoCheckQuotas(quotaInventories, quotaMap.Settings.GetQuotas());
+                    }
+
                     if (Settings.GetPullFromConnectedGrids())
                     {
                         var connectedGrids = GetConnectedGrids(grid);
@@ -1242,7 +1288,17 @@ namespace AILogisticsAutomation
 
                     if (!Settings.GetIgnoreConnectors().Contains(connector.EntityId) && !customIgnoreBlocks.Contains(connector.EntityId))
                     {
-                        DoCheckInventoryList(DoApplyBasicFilter(connectedGrids[connector].Grid.Inventories, customIgnoreBlocks).ToArray(), ref reactors, ref gasGenerators, ref gasTanks, ref composters, ref fishTraps, ref refrigerators, ref farms, ref cages);
+
+                        var inventories = DoApplyBasicFilter(connectedGrids[connector].Grid.Inventories, customIgnoreBlocks).ToArray();
+                        DoCheckInventoryList(inventories, ref reactors, ref gasGenerators, ref gasTanks, ref composters, ref fishTraps, ref refrigerators, ref farms, ref cages);
+
+                        var quotaMap = GetAIQuotaMap(connectedGrids[connector].Grid);
+                        if (quotaMap != null && quotaMap.Settings.GetQuotas().Any())
+                        {
+                            var quotaInventories = inventories.Where(x => quotaMap.Settings.GetQuotas().ContainsKey(x.EntityId));
+                            DoCheckQuotas(quotaInventories, quotaMap.Settings.GetQuotas());
+                        }
+
                         if (Settings.GetPullSubGrids())
                         {
                             var subGridsFromConnectedGrid = GetSubGrids(connectedGrids[connector].Grid).Values.ToList();
@@ -1334,7 +1390,32 @@ namespace AILogisticsAutomation
             }
         }
 
-        private void TryToFullFromInventory(long entityId, MyDefinitionId blockId, MyInventory inventoryBase, MyCubeBlock[] listaToCheck, IMyAssembler assembler, IMyReactor reactor, IMyGasGenerator gasGenerator, IMyOxygenFarm oxygenFarm, IMyCargoContainer cage)
+        private void DoCheckQuotas(IEnumerable<MyCubeBlock> quotaInventories, ConcurrentDictionary<long, AIQuotaMapQuotaDefinition> quotas)
+        {
+            foreach (var entityId in quotas.Keys)
+            {
+                var inventory = quotaInventories.FirstOrDefault(x => x.EntityId == entityId);
+                if (inventory != null)
+                {
+                    DoTryFillQuota(inventory, quotas[entityId]);
+                }
+            }
+        }
+
+        private void DoTryFillQuota(MyCubeBlock inventory, AIQuotaMapQuotaDefinition quota)
+        {
+            var targetInventory = inventory.GetInventory();
+            if (targetInventory != null)
+            {
+                foreach (var quotaEntry in quota.Entries)
+                {
+                    var stockAmount = (float)targetInventory.GetItemAmount(quotaEntry.Id);
+                    MoveAmountFromStock(targetInventory, stockAmount, quotaEntry.Value, new UniqueEntityId(quotaEntry.Id));
+                }
+            }
+        }
+
+        private void TryToFullFromInventory(IMyCubeBlock block, MyDefinitionId blockId, MyInventory inventoryBase, MyCubeBlock[] listaToCheck, IMyAssembler assembler, IMyReactor reactor, IMyGasGenerator gasGenerator, IMyOxygenFarm oxygenFarm, IMyCargoContainer cage)
         {
             if (blockId.IsNanobot())
             {
@@ -1477,15 +1558,38 @@ namespace AILogisticsAutomation
                 }
             }
             // Quota
-            if (Settings.GetQuotas().ContainsKey(entityId))
+            var samegrid = block.CubeGrid == CubeGrid;
+            if (samegrid)
             {
-                var targetQuota = Settings.GetQuotas()[entityId];
-                if (targetQuota.Entries.Any())
+                if (Settings.GetQuotas().ContainsKey(block.EntityId))
                 {
-                    pullAll = false;
-                    foreach (var item in targetQuota.Entries)
+                    var targetQuota = Settings.GetQuotas()[block.EntityId];
+                    if (targetQuota.Entries.Any())
                     {
-                        ignoreIds[item.Id] = (MyFixedPoint)item.Value;
+                        pullAll = false;
+                        foreach (var item in targetQuota.Entries)
+                        {
+                            ignoreIds[item.Id] = (MyFixedPoint)item.Value;
+                        }
+                    }
+                }
+            }
+            else
+            {
+                var quotaMap = GetAIQuotaMap(block.CubeGrid);
+                if (quotaMap != null)
+                {
+                    if (quotaMap.Settings.GetQuotas().ContainsKey(block.EntityId))
+                    {
+                        var targetQuota = quotaMap.Settings.GetQuotas()[block.EntityId];
+                        if (targetQuota.Entries.Any())
+                        {
+                            pullAll = false;
+                            foreach (var item in targetQuota.Entries)
+                            {
+                                ignoreIds[item.Id] = (MyFixedPoint)item.Value;
+                            }
+                        }
                     }
                 }
             }

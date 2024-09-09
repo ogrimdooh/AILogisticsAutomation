@@ -158,6 +158,15 @@ namespace AILogisticsAutomation
                         {
                             if (!ignoreBlocks.Contains(inventory.EntityId))
                             {
+                                var ignored = false;
+                                var quotaBlock = system.GetAIQuotaMap();
+                                if (quotaBlock != null)
+                                {
+                                    ignored = quotaBlock.Settings.GetQuotas().ContainsKey(inventory.EntityId);
+                                }
+
+                                if (ignored)
+                                    continue;
 
                                 var name = string.Format("{1} - ({0})", inventory.BlockDefinition.DisplayNameText, inventory.DisplayNameText);
                                 var item = new MyTerminalControlListBoxItem(MyStringId.GetOrCompute(name), MyStringId.GetOrCompute(name), inventory.EntityId);
